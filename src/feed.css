@@ -1,0 +1,34 @@
+/* FEED v2 */
+.feed-inner { gap: 14px; }
+.e-narr.v2 { --mc: #72aed0; position: relative; padding: 18px 22px 16px; border-radius: 18px; background: linear-gradient(180deg, color-mix(in srgb, var(--mc) 7%, rgba(255, 255, 255, .025)), rgba(255, 255, 255, .012) 70%); border: 1px solid color-mix(in srgb, var(--mc) 16%, rgba(255, 255, 255, .05)); box-shadow: 0 10px 30px -18px rgba(0, 0, 0, .7); font-size: 17px; line-height: 1.72; animation: nIn .45s cubic-bezier(.2, .8, .3, 1) both; }
+.e-narr.v2::before { content: ""; position: absolute; left: -1px; top: 18px; bottom: 18px; width: 3px; border-radius: 3px; background: linear-gradient(180deg, var(--mc), transparent); opacity: .8; }
+.e-narr.mood-fight { --mc: #e8735a; } .e-narr.mood-dread { --mc: #e3a55a; } .e-narr.mood-night { --mc: #8c9ce8; } .e-narr.mood-calm { --mc: #6fc4b0; }
+@keyframes nIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.e-narr.v2 p { margin: 0 0 .8em; } .e-narr.v2 .tx > :last-child, .e-narr.v2 .sp-body p { margin-bottom: 0; }
+.e-narr.v2 .lead-p { font-size: 1.06em; color: #f1ece2; }
+.e-narr.v2.has-lines > .speaker { display: none; }
+.e-narr.v2 q { color: #f7dfb4; font-style: normal; }
+.sp-line { display: flex; gap: 12px; align-items: flex-start; margin: .2em 0 .9em; }
+.sp-line:last-child { margin-bottom: 0; }
+.sp-ava { flex: none; width: 42px; height: 42px; border-radius: 50%; overflow: hidden; box-shadow: 0 0 0 2px var(--ac), 0 6px 16px -6px rgba(0, 0, 0, .8); margin-top: 4px; }
+.sp-ava .ph { width: 100%; height: 100%; border-radius: 50%; }
+.sp-body { flex: 1; min-width: 0; background: color-mix(in srgb, var(--ac) 9%, rgba(10, 16, 18, .55)); border: 1px solid color-mix(in srgb, var(--ac) 28%, transparent); border-radius: 4px 16px 16px 16px; padding: 9px 14px 10px; }
+.sp-name { display: flex; align-items: baseline; gap: 8px; font-family: var(--ui); font-size: 12.5px; font-weight: 700; color: var(--ac); letter-spacing: .02em; margin-bottom: 2px; }
+.sp-name small { font-weight: 500; color: var(--dim); font-size: 11.5px; letter-spacing: 0; }
+.ent { font: inherit; color: inherit; }
+.ent.npc { background: none; border: 0; padding: 0; cursor: pointer; color: #9fd6ee; font-weight: 600; border-bottom: 1px dashed rgba(159, 214, 238, .45); }
+.ent.npc:hover { color: #c6ecff; border-bottom-style: solid; }
+.ent.place { color: #e9c98a; font-weight: 600; }
+.scene-banner { display: flex; align-items: center; gap: 10px; margin: -2px 0 14px; font-family: var(--ui); }
+.scene-banner b { font-family: var(--display); font-size: 15px; font-weight: 600; color: var(--mc); letter-spacing: .01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%; }
+.scene-banner small { font-size: 11.5px; color: var(--dim); text-transform: uppercase; letter-spacing: .1em; white-space: nowrap; }
+.scene-banner .sb-l, .scene-banner .sb-r { flex: 1; height: 1px; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--mc) 40%, transparent)); } .scene-banner .sb-r { background: linear-gradient(90deg, color-mix(in srgb, var(--mc) 40%, transparent), transparent); }
+.e-player { position: relative; display: grid; grid-template-columns: 1fr auto; column-gap: 10px; align-items: end; background: none; border: 0; padding: 0; max-width: 82%; }
+.e-player .who-s { grid-column: 1; text-align: right; margin: 0 4px 3px 0; font-size: 10.5px; }
+.e-player .pl-tx { grid-column: 1; background: linear-gradient(180deg, #24343a, #1c2a2f); border: 1px solid rgba(242, 180, 92, .28); border-radius: 16px 16px 4px 16px; padding: 10px 15px; font-size: 15px; line-height: 1.5; color: #eef0ea; }
+.e-player.act .pl-tx { font-style: italic; color: #d9dfda; } .e-player.act .pl-tx::before { content: "➤ "; color: var(--lantern); font-style: normal; font-size: 12px; }
+.e-player .pl-ava { grid-column: 2; grid-row: 1 / span 2; width: 34px; height: 34px; border-radius: 50%; overflow: hidden; box-shadow: 0 0 0 2px var(--lantern); }
+.e-player .pl-ava .ph { width: 100%; height: 100%; }
+.e-first::first-letter { font-size: 2.9em; padding: 4px 10px 0 0; }
+@media (max-width: 600px) { .e-narr.v2 { padding: 14px 14px 12px; font-size: 16px; border-radius: 14px; } .sp-ava { width: 34px; height: 34px; } .sp-body { padding: 8px 11px; } .e-player { max-width: 92%; } }
+@media (prefers-reduced-motion: reduce) { .e-narr.v2 { animation: none; } }
