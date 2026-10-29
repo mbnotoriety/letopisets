@@ -1043,6 +1043,17 @@ body.low-hp::after { content: ""; position: fixed; inset: 0; pointer-events: non
 
 .cb-foe { width: 210px; } .cb-fint span { white-space: normal; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 @media (max-width: 760px) { body.in-combat #sugg button:not(.undo):not(.trip) { display: none; } .cb-foe { width: 176px; } }
+.btn.danger { border-color: rgba(232, 115, 90, .6); color: #ffd0c4; background: linear-gradient(180deg, rgba(232, 115, 90, .28), rgba(120, 24, 12, .35)); }
+.btn.danger:hover:not(:disabled) { border-color: #e8735a; background: linear-gradient(180deg, rgba(232, 115, 90, .45), rgba(120, 24, 12, .5)); }
+.sc-pop .btn.danger { font-weight: 700; }
+.nf-modal { max-width: 520px; } .nf-confirm { display: flex; flex-direction: column; gap: 14px; } .nf-confirm h2 { margin: 2px 0; }
+.nf-head { display: flex; gap: 14px; align-items: center; } .nf-head > :first-child { width: 68px; height: 68px; border-radius: 16px; overflow: hidden; flex: none; box-shadow: 0 0 0 2px rgba(232, 115, 90, .6); }
+.nf-cons { list-style: none; margin: 0; padding: 12px 14px; border-radius: 12px; background: rgba(120, 24, 12, .18); border: 1px solid rgba(232, 115, 90, .3); display: flex; flex-direction: column; gap: 8px; }
+.nf-cons li { display: flex; gap: 8px; align-items: flex-start; font-size: 13.5px; color: var(--mist); line-height: 1.4; } .nf-cons .gi { flex: none; color: #f0a58f; margin-top: 1px; } .nf-cons li.bad { color: #ffc2b2; }
+.nf-row { justify-content: flex-end; flex-wrap: wrap; } .nf-row .btn { display: inline-flex; gap: 6px; align-items: center; }
+.cb-fi.ph { padding: 0; overflow: hidden; } .cb-fi.ph img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 20%; filter: saturate(.85) contrast(1.05); }
+.cb-foe.dead .cb-fi.ph img { filter: grayscale(1); }
+.sc-tok.corpse:hover { filter: brightness(1.3) drop-shadow(0 0 5px rgba(232, 115, 90, .8)); }
 </style>
 
 <div id="app">
@@ -1420,7 +1431,7 @@ ${seedLine}
 {"name":"название местности, 2–3 слова","tagline":"подзаголовок до 8 слов","public":"3–4 предложения: что знает любой житель и что случилось недавно (завязка)","secret":"полная правда для мастера: кто злодей, чего хочет, что произошло, кто ему помогает, 5–7 предложений","beats":["4 опорные точки расследования, по фразе"],"endings":["2 хорошие концовки"],"quest":"первое задание героя, одна фраза","recommended":[{"cls":"fighter|rogue|wizard|cleric","why":"до 6 слов"},{"cls":"…","why":"…"}],"photo_style":"ENGLISH, one line: visual style for realistic photo portraits of this world — era, setting, light, colour palette, lens, e.g. cinematic photograph, misty medieval marsh village, cold dawn light, muted olive palette, 85mm lens, film grain","bg_hooks":{"soldier":"продолжение фразы «Вы …», связь с местом, до 18 слов","sage":"…","criminal":"…","acolyte":"…"}}`, { modelTier: "default", cache: false, signal });
   if (!core || typeof core !== "object" || !core.name) throw { code: "bad_world" };
   onStage(2);
-  const bestiary = Object.entries(BESTIARY).map(([k, b]) => `${k} — ${b.label}`).join("; ");
+  const bestiary = Object.entries(BESTIARY).filter(([, b]) => !b.npcOnly).map(([k, b]) => `${k} — ${b.label}`).join("; ");
   const people = await sample.json(`Ты продолжаешь создавать мир для кампании 5e. Вот основа мира:
 Название: ${core.name}. ${core.public}
 ТАЙНА: ${core.secret}
@@ -1616,7 +1627,7 @@ function castSpell(ch) {
   return base;
 }
 function hurtEnemy(id, amt) { const e = S.world.enemies[id]; e.hp = Math.max(0, e.hp - amt); e.asleep = false; if (e.hp === 0 && e.alive && FOE_KIT[ENEMIES[id]?.type]?.fort && !S._hitInfo?.crit && rnd(20) + 3 >= 5 + amt) { e.hp = 1; pushFeed({ t: "chips", items: [{ c: "dmg", x: `${ENEMIES[id].name} поднимается снова — стойкость нежити` }] }); } if (e.hp === 0 && e.alive) { e.alive = false; S.pendingXP = (S.pendingXP || 0) + ENEMIES[id].xp; } }
-function enemyStatus(id) { const e = S.world.enemies[id]; const E = ENEMIES[id]; if (!e.alive) return "повержен"; const p = e.hp / E.hp; return e.asleep ? "спит" : p > .7 ? "почти невредим" : p > .35 ? "ранен" : "тяжело ранен"; }
+function enemyStatus(id) { const e = S.world.enemies[id]; const E = ENEMIES[id]; if (e.ko) return "без сознания"; if (!e.alive) return "повержен"; const p = e.hp / E.hp; return e.asleep ? "спит" : p > .7 ? "почти невредим" : p > .35 ? "ранен" : "тяжело ранен"; }
 function healHero(amt) { const c = C(); const before = c.hp; c.hp = Math.min(c.maxHp, c.hp + amt); if (c.hp > 0) S.dying = null; return c.hp - before; }
 function hurtHero(amt) { const c = C(); c.hp = Math.max(0, c.hp - amt); if (c.hp === 0 && RACES[c.race]?.relentless && resOf(c).relentless > 0) { c.hp = 1; resOf(c).relentless = 0; pushFeed({ t: "chips", items: [{ c: "heal", x: "Неукротимость: вы остаётесь на ногах с 1 HP" }] }); } return amt; }
 /* =========================================================================
@@ -2680,7 +2691,7 @@ function scenePeople(id) {
     const a = (worker && pick("work")) || pick("stand") || pick("sit") || null; const p = a || scFreeNear(sc, taken, sc.spawn.x + (R() - .5) * 8, sc.spawn.y - 2 - R() * 5, 5);
     taken.push(p); out.push({ type: "npc", id: nid, x: p.x, y: p.y }); });
   const [labels, counts] = SC_CROWD[sc.tpl] || [[], [0, 0, 0, 0]]; const foesHere = Object.keys(ENEMIES).some(e => ENEMIES[e].loc === id && S.world.enemies[e]?.alive);
-  let n = st.crowd != null ? st.crowd : (labels.length && !foesHere ? counts[t.part] : 0); n = clamp(n - (loc.npcs || []).filter(x => NPCS[x]?.bld).length, 0, 8);
+  let n = S.world.crowdFled?.[id] === tkey() ? 0 : st.crowd != null ? st.crowd : (labels.length && !foesHere ? counts[t.part] : 0); n = clamp(n - (loc.npcs || []).filter(x => NPCS[x]?.bld).length, 0, 8);
   for (let i = 0; i < n; i++) { const a = pick("sit") || pick("stand") || pick("work"); const p = a && !taken.some(q => Math.hypot(q.x - a.x, q.y - a.y) < .9) ? a : scFreeNear(sc, taken, 2 + R() * 14, 2 + R() * 8);
     taken.push(p); out.push({ type: "crowd", id: "c" + i, label: labels.length ? labels[Math.floor(R() * labels.length)] : "местный", x: p.x, y: p.y }); }
   const foes = Object.keys(ENEMIES).filter(e => ENEMIES[e].loc === id && S.world.enemies[e]);
@@ -2897,7 +2908,10 @@ function scTokenSVG(p, P, big) {
   else if (p.type === "foe") { const E = ENEMIES[p.id]; const es = S.world.enemies[p.id]; r = E.boss ? 15 : 13; ring = "#e8735a"; fill = "#2a1210"; hit = "foe:" + p.id; label = E.name; title = `${E.name} — ${enemyStatus(p.id)}`; const g = FOE_GLYPH[E.type] || "blade";
     inner = (g === "skull" ? `<circle cy="-1.5" r="6.5" fill="#d8cfc0"/><rect x="-3.5" y="3" width="7" height="4" fill="#d8cfc0"/><circle cx="-2.4" cy="-1.6" r="1.7" fill="#2a1210"/><circle cx="2.4" cy="-1.6" r="1.7" fill="#2a1210"/>` : g === "beast" ? `<path d="M-7 5 L-5 -6 L-1 -1 L1 -1 L5 -6 L7 5 Z" fill="#d8cfc0"/><circle cx="-2.5" cy="1" r="1.3" fill="#e8735a"/><circle cx="2.5" cy="1" r="1.3" fill="#e8735a"/>` : `<path d="M-6 6 L5 -5 M2 -6 L6 -6 L6 -2" stroke="#d8cfc0" stroke-width="2.4" fill="none"/><path d="M-4 2 L-2 4" stroke="#d8cfc0" stroke-width="3"/>`) + (es.asleep ? `<text x="9" y="-8" font-size="9" fill="#9fd8ff">z</text>` : "");
     if (es.intent && !['attack', 'flee', 'surrender'].includes(es.intent.k)) inner += `<circle r="${r + 6}" class="sc-warn" fill="none" stroke="#f2b45c" stroke-width="2"/>`; if (S.world.tgt === p.id) inner += `<circle r="${r + 4}" fill="none" stroke="#fff" stroke-width="1.4" stroke-dasharray="3 3" class="sc-tgt"/>`; const pct = es.hp / E.hp; inner += `<rect x="-12" y="${r + 3}" width="24" height="3.5" rx="1.5" fill="#000" opacity=".6"/><rect x="-12" y="${r + 3}" width="${f1(24 * pct)}" height="3.5" rx="1.5" fill="${pct > .5 ? "#e8735a" : "#c9402a"}"/>`; }
-  else if (p.type === "corpse") { const E = ENEMIES[p.id]; return `<g data-k="corpse:${p.id}" data-sig="c" style="transform:translate(${x}px,${y}px)" opacity=".85"><title>${esc(E.name)} (повержен)</title><ellipse rx="15" ry="10" fill="#4a0f0b" opacity=".55"/><path d="M-7 -7 L7 7 M7 -7 L-7 7" stroke="#8a2a20" stroke-width="3.4" stroke-linecap="round"/></g>`; }
+  else if (p.type === "corpse") { const E = ENEMIES[p.id]; const es = S.world.enemies[p.id] || {}; const ko = !!es.ko; const npc = !!E.npc; const t = npc ? `${E.name} (${ko ? "без сознания" : "мёртв"})` : `${E.name} (повержен)`;
+    const body = npc ? `${ko ? "" : `<ellipse rx="17" ry="11" cx="3" cy="3" fill="#5a0d08" opacity=".6"/>`}<rect x="-12" y="-5" width="22" height="10" rx="5" fill="#6d6458" stroke="#1b1712" stroke-width="1.4" transform="rotate(-18)"/><circle cx="-13" cy="3" r="5.5" fill="#c9a98a" stroke="#1b1712" stroke-width="1.4"/>${ko ? `<text x="4" y="-10" font-size="10" font-weight="700" fill="#9fd8ff">z z</text>` : ""}`
+      : `<ellipse rx="15" ry="10" fill="#4a0f0b" opacity=".55"/><path d="M-7 -7 L7 7 M7 -7 L-7 7" stroke="#8a2a20" stroke-width="3.4" stroke-linecap="round"/>`;
+    return `<g class="sc-tok corpse" data-k="corpse:${p.id}" data-sig="c${ko ? 1 : 0}${es.searched ? 1 : 0}" data-hit="corpse:${p.id}" style="transform:translate(${x}px,${y}px)" opacity=".9" tabindex="0" role="button" aria-label="${esc(t)}"><title>${esc(t)}</title><circle r="16" fill="transparent"/>${body}</g>`; }
   const lab = label && (big || p.type === "hero") ? `<text class="sc-lab" y="${r + (p.type === "foe" ? 17 : 13)}" text-anchor="middle">${esc(label)}</text>` : "";
   const tk = p.type + ":" + (p.type === "crowd" ? p.id + p.label : p.id || ""); const body = `${inner}${lab}${ring}${r}${fill}${title}`;
   return `<g class="sc-tok ${p.type}" data-k="${esc(tk)}" data-sig="${hash(body)}" data-hit="${esc(hit)}" style="transform:translate(${x}px,${y}px)" tabindex="0" role="button" aria-label="${esc(title)}"><title>${esc(title)}</title><circle r="${r + 1}" cy="3" fill="#000" opacity=".5"/>${p.type === "hero" ? `<circle r="${r + 5}" fill="none" stroke="#f2b45c" stroke-opacity=".5" class="sc-pulse"/>` : ""}<circle r="${r}" fill="${fill}" stroke="${ring}" stroke-width="2.6"/>${inner}${lab}</g>`;
@@ -3231,12 +3245,12 @@ function npcSpotNow(id) {
   return cands.length ? cands[(r >>> 4) % cands.length] : n.bld;
 }
 function refreshPeople() {
-  if (!S) return; const ov = S.world.npcLoc || {}; const vis = {};
+  if (!S) return; npcTick(); const ov = S.world.npcLoc || {}; const vis = {};
   for (const [id, n] of Object.entries(NPCS)) { let spot; if (Object.prototype.hasOwnProperty.call(ov, id)) spot = ov[id]; else if (n.bld) spot = npcSpotNow(id); else continue; if (spot && POIS[spot]) (vis[spot] = vis[spot] || []).push(id); }
   for (const [lid, p] of Object.entries(POIS)) {
     if (!p.inner && !p.base) p.base = (p.npcs || []).filter(x => !NPCS[x]?.bld);
     const base = p.inner ? (p.extra || []) : p.base;
-    p.npcs = [...new Set([...base.filter(x => !Object.prototype.hasOwnProperty.call(ov, x) || ov[x] === lid), ...(vis[lid] || [])])];
+    p.npcs = [...new Set([...base.filter(x => !Object.prototype.hasOwnProperty.call(ov, x) || ov[x] === lid), ...(vis[lid] || [])])].filter(x => !npcGone(x));
     if (lid === S.world.loc) p.npcs.forEach(ensureNpcState);
   }
 }
@@ -3397,7 +3411,7 @@ function bindScene(root, big) {
   const walkTo = (x, y) => { const taken = scenePeople(id).filter(p => p.type !== "hero"); const p = scFreeNear(sc, taken, x, y, 2.5); scState(id).player = { x: +p.x.toFixed(2), y: +p.y.toFixed(2) }; sfx("step"); save(); rerender(); };
   const open = (el, title, sub, acts) => {
     scHidePop(); el.classList?.add("sel");
-    const pop = scShowPop(view, el, `<b>${esc(title)}</b>${sub ? `<small>${esc(sub)}</small>` : ""}<div class="sc-acts">${acts.map((a, i) => `<button type="button" class="btn small${i === 0 ? " primary" : ""}" data-i="${i}" ${a.dis ? "disabled" : ""}>${esc(a.t)}</button>`).join("")}</div>`);
+    const pop = scShowPop(view, el, `<b>${esc(title)}</b>${sub ? `<small>${esc(sub)}</small>` : ""}<div class="sc-acts">${acts.map((a, i) => `<button type="button" class="btn small${a.danger ? " danger" : i === 0 ? " primary" : ""}" data-i="${i}" ${a.dis ? "disabled" : ""}>${esc(a.t)}</button>`).join("")}</div>`);
     pop.querySelectorAll("button").forEach(b => b.onclick = ev => { ev.stopPropagation(); const a = acts[+b.dataset.i]; scHidePop(); if (big && a.closes !== false) closeModal(); a.fn(); });
   };
   const turn = t => { if (busy || S.dead) return; takeTurn(t); };
@@ -3423,9 +3437,13 @@ function bindScene(root, big) {
     if (kind === "npc") { const n = NPCS[ref]; const p = ppl.find(q => q.id === ref); const zz = p?.asleep; const mer = !zz && merchantsHere().find(mm => mm.npc === ref); open(el, n.name, `${n.role} · ${zz ? "спит" : attLabel(S.world.npcs[ref]?.att || 0)[0]}`, [
       ...(zz ? [] : questNpcActs(ref)), ...(mer ? [{ t: "Торговать", fn: () => openShop(mer), dis: busy }] : []),
       { t: zz ? "Разбудить" : "Заговорить", fn: () => { if (zz) { bstate(id).alarm = tkey(); turn(`Бужу: ${n.name}`); return; } walkTo(p.x, p.y + .9); showTab("story"); const inp = document.getElementById("act-input"); inp.value = `${n.name}, `; inp.focus(); }, closes: true },
-      { t: "Присмотреться", fn: () => turn(`Незаметно присматриваюсь: ${n.name} (${n.role})`), dis: busy }, { t: "Подойти", fn: approach(p.x, p.y), closes: false }]); return; }
+      { t: "Присмотреться", fn: () => turn(`Незаметно присматриваюсь: ${n.name} (${n.role})`), dis: busy }, { t: "Подойти", fn: approach(p.x, p.y), closes: false }, { t: "Напасть…", fn: () => confirmAttack(ref), dis: busy || S.world.combat, danger: true }]); return; }
     if (kind === "crowd") { const p = ppl.find(q => q.type === "crowd" && q.label === ref) || {}; const stall = /торгов/.test(ref) && merchantsHere().find(x => x.type === "stall");
-      open(el, ref[0].toUpperCase() + ref.slice(1), "безымянный местный житель", [...(stall ? [{ t: "Торговать", fn: () => openShop(stall), dis: busy }] : []),{ t: "Заговорить", fn: () => turn(`Подхожу к человеку (${ref}) и заговариваю с ним`), dis: busy }, { t: "Подслушать", fn: () => turn(`Прислушиваюсь, о чём говорит ${ref}`), dis: busy }, { t: "Подойти", fn: approach(p.x || 9, p.y || 6), closes: false }]); return; }
+      open(el, ref[0].toUpperCase() + ref.slice(1), "безымянный местный житель", [...(stall ? [{ t: "Торговать", fn: () => openShop(stall), dis: busy }] : []),{ t: "Заговорить", fn: () => turn(`Подхожу к человеку (${ref}) и заговариваю с ним`), dis: busy }, { t: "Подслушать", fn: () => turn(`Прислушиваюсь, о чём говорит ${ref}`), dis: busy }, { t: "Подойти", fn: approach(p.x || 9, p.y || 6), closes: false }, { t: "Напасть…", fn: () => confirmAttackCrowd(ref), dis: busy || S.world.combat, danger: true }]); return; }
+    if (kind === "corpse") { const E = ENEMIES[ref]; const es = S.world.enemies[ref]; if (!E || !es) return; const acts = [];
+      if (es.ko) acts.push({ t: "Привести в чувство и допросить", fn: () => koAct(ref, "wake"), dis: busy || S.world.combat }, { t: "Обыскать", fn: () => searchBody(ref), dis: busy || S.world.combat }, { t: "Добить…", fn: () => koAct(ref, "kill"), dis: busy || S.world.combat, danger: true });
+      else acts.push({ t: E.npc ? (es.searched ? "Осмотреть тело" : "Обыскать тело") : "Осмотреть останки", fn: () => searchBody(ref), dis: busy || S.world.combat });
+      open(el, E.name, es.ko ? "без сознания" : E.npc ? (isFem(NPCS[E.npc]) ? "мертва" : "мёртв") : "повержен", acts); return; }
     if (kind === "foe") { const E = ENEMIES[ref]; const it = intentInfo(ref); const w = C().weapons[0]; open(el, E.name, `${enemyStatus(ref)}${it ? " · " + it.t : ""}`, [{ t: `Атаковать (${WEAPONS[w]?.name.toLowerCase() || "оружие"})`, fn: () => { S.world.tgt = ref; takeTurn(`Атакую: ${E.name}`, { checks: [{ kind: "attack", target: ref, weapon: w, reason: "Атака оружием" }], combat: true }); }, dis: busy || !enemyHere(ref) }, { t: "Сделать целью", fn: () => setTarget(ref), dis: !enemyHere(ref) }, { t: "Оценить врага", fn: () => { S.world.tgt = ref; takeTurn(`Присматриваюсь к врагу: ${E.name}`, { checks: [], cact: "assess", target: ref, combat: true }); }, dis: busy || !S.world.combat }]); return; }
     if (kind === "hero") open(el, C().name, "это вы · клик по полу — переместиться", [{ t: "Осмотреться", fn: () => turn("Осматриваюсь внимательно"), dis: busy }, { t: "Подождать", fn: waitTime, dis: busy || S.world.combat }]);
   };
@@ -3817,7 +3835,7 @@ function stockByKey(st, k) { return st.stock.find(x => (x.k || x.id) === k); }
 function buyPrice(m, st, k) { const s = typeof k === "object" ? k : stockByKey(st, k); return s ? Math.max(1, Math.round(wareOf(s).p * priceFactor(m) * hagMult(st))) : 0; }
 function merchantBuys(m, it) { const M = MERCH[m.type]; const id = itemIdOf(it); const cat = itemCat(it); return M.rate > 0 && (M.buys.includes(cat) || (M.buyIds || []).includes(id)); }
 function sellPrice(m, st, it) { const v = itemValue(it); if (!v || !merchantBuys(m, it)) return 0; return Math.max(1, Math.round(v * MERCH[m.type].rate / priceFactor(m) * (2 - hagMult(st)))); }
-function refusesTrade(m) { if (!m.npc) return (S.world.rep || 0) <= -40; const att = S.world.npcs[m.npc]?.att || 0; const st = shopState(m); return (att <= -30 || (S.world.rep || 0) <= -40) && st.ok !== worldTime().day; }
+function refusesTrade(m) { if ((S.world.wanted || 0) >= 2 && m.type !== "stall") return true; if (!m.npc) return (S.world.rep || 0) <= -40; const att = S.world.npcs[m.npc]?.att || 0; const st = shopState(m); return (att <= -30 || (S.world.rep || 0) <= -40) && st.ok !== worldTime().day; }
 const GREET_HOSTILE = ["Говори быстро, что надо, и уходи.", "Деньги вперёд. И руки держи на виду.", "Тебе здесь не рады, но монета есть монета."];
 const GREET_FRIEND = ["А, это ты! Для тебя найдётся кое-что получше.", "Рад видеть! Для друга — особая цена.", "Заходи, заходи. Что сегодня?"];
 function greetFor(m) { const att = m.npc ? (S.world.npcs[m.npc]?.att || 0) : 0; const rep = S.world.rep || 0; const R = mulberry(hash(m.key + worldTime().day));
@@ -4856,7 +4874,7 @@ function heroDmgMods(target, d, dmg, crit) {
   if (c.venom > 0) { const v = rollDice("1d4", crit); dmg.total += v.total; txt += ` + яд ${v.text}`; c.venom--; }
   if (crit) { if (/дроб/.test(dt)) { fc.prone = true; txt += " · сбит с ног"; } else if (/руб/.test(dt)) { fc.bleed = 2; txt += " · кровотечение"; } else if (/кол/.test(dt)) { const x = rollDice("1d6"); dmg.total += x.total; txt += ` + пронзает ${x.text}`; } }
   if (K.vuln && dt.startsWith(K.vuln)) { dmg.total *= 2; txt += " · уязвим ×2"; } else if (K.resist && dt.startsWith(K.resist)) { dmg.total = Math.ceil(dmg.total / 2); txt += " · сопротивление ÷2"; }
-  fc.hidden = false; S._hitInfo = { crit }; return txt;
+  fc.hidden = false; S._hitInfo = { crit, ranged: !!d?.props?.includes("ranged") }; return txt;
 }
 function hitChance(bonus, ac, adv) { const p = clamp((21 - (ac - bonus)) / 20, .05, .95); return adv > 0 ? 1 - (1 - p) ** 2 : adv < 0 ? p * p : p; }
 function heroSave(ab, dc) { const hc = hcond(); let adv = 0; if (ab === "dex") { if (hc.dodge) adv++; if (hc.restrained) adv--; } const r = d20(clamp(adv, -1, 1)); const b = saveBonus(ab); const tot = r.nat + b; return { ok: tot >= dc, nat: r.nat, tot, txt: `${ABIL_RU[ab]} d20 (${r.pair ? r.pair.join("/") : r.nat}) ${fmt(b)} = ${tot} против КС ${dc}` }; }
@@ -4903,6 +4921,7 @@ function enemyTurn() {
     const it = e.intent || { k: "attack" };
     if (it.k === "flee") { e.alive = false; e.fled = true; S.pendingXP = (S.pendingXP || 0) + Math.round(E.xp / 2); out.push({ kind: "enemy", by: id, title: `${E.name} бежит с поля боя`, formula: "Скрывается — половина опыта", nat: 0, ok: false, enemyRoll: true, skip: true, fled: true }); continue; }
     if (it.k === "surrender") { e.alive = false; e.surrendered = true; S.pendingXP = (S.pendingXP || 0) + E.xp; out.push({ kind: "enemy", by: id, title: `${E.name} бросает оружие и сдаётся`, formula: "Пленника можно допросить", nat: 0, ok: false, enemyRoll: true, skip: true, surrendered: true }); continue; }
+    if (npcSpecial(id, it, out)) continue;
     if (it.k === "howl") { (e.used = e.used || {}).howl = true; const pos = fcPos(id); const nid = spawnFoes("wolf", "Волк из стаи", 1, S.world.loc)[0]; S.world.enemies[nid].fight = S.world.fightId; S.world.enemies[nid].pos = { x: clamp((pos?.x || 9) + 4, 1, SC_W - 1), y: 1.2 }; S.world.enemies[nid].intent = { k: "attack" };
       out.push({ kind: "enemy", by: id, title: `${E.name} воет — из темноты выходит ещё один волк`, formula: "Подмога", nat: 0, ok: false, enemyRoll: true, skip: true, summon: nid }); e.intent = undefined; continue; }
     if (it.k === "web") { e.cd = 2; const s = heroSave("dex", 12); const fail = !s.ok; if (fail) { hcond().restrained = true; hcond().rTurns = 0; }
@@ -4930,6 +4949,7 @@ function setTarget(id) { if (!enemyHere(id)) return; S.world.tgt = id; sfx("tap"
 async function combatPreAct(act, preset, results) {
   const c = C(); const hc = hcond(); const tgt = preset.target || curTarget(); const E = ENEMIES[tgt];
   const roll = async ch => { await waitRoll(ch); const r = resolveCheck(ch); results.push(r); pushFeed({ t: "roll", r }); setTimeout(() => rollSfx(r), 520); await pause(300); return r; };
+  if (act === "standdown") { await npcStandDown(results); return; }
   if (act === "dodge") { hc.dodge = true; results.push({ kind: "note", title: "Герой ушёл в глухую оборону: атаки по нему с помехой, спасброски Ловкости с преимуществом" }); pushFeed({ t: "chips", items: [{ c: "xp", x: "Оборона: враги бьют с помехой" }] }); sfx("whoosh"); return; }
   if (act === "potion") { const it = c.items.find(i => i.potion || itemIdOf(i) === "potion" || itemIdOf(i) === "potion2"); if (!it) return; const d = rollDice(itemHeal(it) || "2d4+2"); const got = healHero(d.total); removeItem(c, it); pushFeed({ t: "chips", items: [{ c: "heal", x: `+${got} HP · ${it.name}` }] }); sfx("potion"); results.push({ kind: "note", title: `Герой выпил зелье в бою (+${got} HP, уже учтено)` }); return; }
   if (act === "shove" && E) { const dc = 10 + Math.max(0, E.atk - 2); const r = await roll({ kind: "skill", skill: "athletics", dc, adv: 0, reason: `Сбить с ног: ${E.name}` });
@@ -4959,7 +4979,7 @@ function endCombatState() { S.world.hc = {}; S.world.round = 0; S.world.tgt = nu
 function onCombatEnd(results) {
   const fid = S.world.fightId; const loc = S.world.loc; const c = C(); const R = Math.random; const loot = []; let gold = 0, silver = 0; const killed = [], fled = [], caught = [];
   Object.keys(S.world.enemies).forEach(id => { const e = S.world.enemies[id]; const E = ENEMIES[id]; if (!E || E.loc !== loc || e.looted || e.alive) return; if (fid && e.fight && e.fight !== fid) return; e.looted = true;
-    if (e.fled) { fled.push(E.name); return; } if (e.surrendered) caught.push(E.name); else killed.push(E.name);
+    if (e.ko) { caught.push(E.name + " (без сознания)"); return; } if (e.fled) { fled.push(E.name); return; } if (e.surrendered) caught.push(E.name); else killed.push(E.name);
     const L = (FOE_LOOT[E.type] || (() => ({})))(R); gold += L.gold || 0; silver += L.silver || 0;
     (L.items || []).forEach(it => { if (it.weapon) { const d = makeWeapon(it.weapon, mulberry(hash(id + "loot")), { tier: it.tier || (R() < .6 ? "rusty" : "common") }); giveWeapon(c, d); loot.push({ name: d.name, ico: d.ico, col: d.col }); } else { c.items.push({ name: it.name, desc: it.desc, ...(it.venom ? { venom: true } : {}), ...(it.value != null ? { value: it.value } : {}) }); loot.push({ name: it.name, ico: it.venom ? "k_venom" : "i_gem" }); } }); });
   if (gold) c.gold += gold; if (silver) setPurse(c, purse(c) + silver);
@@ -4970,7 +4990,7 @@ function onCombatEnd(results) {
   setTimeout(() => sfx("victory"), 300); combatBanner(caught.length && !killed.length ? "Они сдались" : "Победа", "win");
 }
 function victoryHTML(e) {
-  return `<div class="vic-head">${ico("k_trophy", 34)}<div><b>${e.killed.length || e.caught.length ? "Победа" : "Бой окончен"}</b><small>${[e.killed.length ? `повержено: ${e.killed.length}` : "", e.caught.length ? `сдались: ${e.caught.length}` : "", e.fled.length ? `сбежали: ${e.fled.length}` : ""].filter(Boolean).join(" · ")}</small></div><span class="vic-hp">${ico("k_heart", 16)} ${e.hp}/${e.max}</span></div>
+  return `<div class="vic-head">${ico("k_trophy", 34)}<div><b>${e.killed.length || e.caught.length ? "Победа" : "Бой окончен"}</b><small>${[e.killed.length ? `повержено: ${e.killed.length}` : "", e.caught.length ? `обезврежены: ${e.caught.length}` : "", e.fled.length ? `сбежали: ${e.fled.length}` : ""].filter(Boolean).join(" · ")}</small></div><span class="vic-hp">${ico("k_heart", 16)} ${e.hp}/${e.max}</span></div>
     <div class="vic-loot">${e.xp ? `<span class="xp">+${e.xp} опыта за врагов</span>` : ""}${e.money ? `<span class="gold">${COIN}${fmtMoney(e.money)}</span>` : ""}${e.loot.map(l => `<span style="${l.col ? "--wc:" + l.col : ""}">${ico(l.ico || "i_gem", 15)}${esc(l.name)}</span>`).join("")}${!e.xp && !e.money && !e.loot.length ? `<span class="dim">без трофеев</span>` : ""}</div>`;
 }
 /* ---------- быстрые описания хода без ИИ ---------- */
@@ -5016,7 +5036,7 @@ function renderCombatHud() {
   const box = hud.querySelector(".cb-foes"); const ids = foeCardsList(); const keep = new Set(ids);
   [...box.children].forEach(el => { if (!keep.has(el.dataset.id)) el.remove(); });
   ids.forEach(id => { const e = S.world.enemies[id], E = ENEMIES[id]; let el = box.querySelector(`[data-id="${id}"]`);
-    if (!el) { el = document.createElement("button"); el.type = "button"; el.className = "cb-foe enter"; el.dataset.id = id; el.innerHTML = `<span class="cb-fi">${ico(FOE_ICO[E.type] || "e_bandit", 34)}</span><span class="cb-fb"><b class="cb-fn"></b><span class="cb-fhp"><i></i></span><span class="cb-fst"></span><span class="cb-fint"></span><span class="cb-fcs"></span></span><span class="cb-stamp"></span>`; box.append(el); el.onclick = () => setTarget(id); setTimeout(() => el.classList.remove("enter"), 500); }
+    if (!el) { el = document.createElement("button"); el.type = "button"; el.className = "cb-foe enter"; el.dataset.id = id; el.innerHTML = `<span class="cb-fi${E.npc && npcImg(E.npc) ? " ph" : ""}">${E.npc && npcImg(E.npc) ? `<img src="${esc(npcImg(E.npc))}" alt="">` : ico(FOE_ICO[E.type] || "e_bandit", 34)}</span><span class="cb-fb"><b class="cb-fn"></b><span class="cb-fhp"><i></i></span><span class="cb-fst"></span><span class="cb-fint"></span><span class="cb-fcs"></span></span><span class="cb-stamp"></span>`; box.append(el); el.onclick = () => setTarget(id); setTimeout(() => el.classList.remove("enter"), 500); }
     const dead = !e.alive; const fc = fcond(id); const it = intentInfo(id); el.classList.toggle("dead", dead && !e.fled && !e.surrendered); el.classList.toggle("gone", !!(e.fled || e.surrendered)); el.classList.toggle("tgt", id === tgt && !dead); el.classList.toggle("boss", !!E.boss); el.disabled = dead;
     el.querySelector(".cb-fn").textContent = E.name; const p = e.hp / E.hp; const bar = el.querySelector(".cb-fhp i"); bar.style.width = (p * 100) + "%"; bar.style.background = p > .6 ? "#c9573f" : p > .3 ? "#d87a2f" : "#e8a33a";
     el.querySelector(".cb-fst").textContent = dead ? (e.fled ? "сбежал" : e.surrendered ? "сдался" : "повержен") : e.known ? `${e.hp}/${E.hp} HP · КД ${E.ac}` : `${enemyStatus(id)}${e.acKnown ? " · КД " + E.ac : ""}`;
@@ -5040,6 +5060,7 @@ function renderCombatHud() {
   if (T && !S.world.enemies[tgt].known) btn("def", ico("x_look", 22), "Оценить врага", "повадки и брешь", () => takeTurn(`Присматриваюсь к врагу: ${T.name}`, { checks: [], cact: "assess", target: tgt, combat: true }), dis);
   const pot = c.items.find(i => i.potion || ["potion", "potion2"].includes(itemIdOf(i))); if (pot && c.hp < c.maxHp) btn("heal", ico("i_potion", 22), "Выпить зелье", esc(pot.name), () => takeTurn(`Выпиваю ${pot.name.toLowerCase()}`, { checks: [], cact: "potion", combat: true }), dis);
   const ven = c.items.find(i => i.venom); if (ven && !(c.venom > 0)) btn("cls", ico("k_venom", 22), "Смазать ядом", "3 удара +1d4", () => { c.venom = 3; removeItem(c, ven); pushFeed({ t: "chips", items: [{ c: "dmg", x: "Клинок смазан ядом: 3 удара +1d4" }] }); sfx("poison"); after(); }, dis);
+  npcHudActs(btn, dis);
   btn("run", ico("t_run", 22), "Отступить", `${mod(c.scores.dex) >= mod(c.scores.str) ? SKILLS.acrobatics[0] : SKILLS.athletics[0]} · КС ${9 + aliveEnemiesHere().length * 2 + (hc.restrained ? 4 : 0)}`, () => takeTurn("Пытаюсь вырваться из боя и отступить", { checks: [], cact: "escape", combat: true }), dis);
 }
 /* ---------- анимации и эффекты ---------- */
@@ -5084,6 +5105,161 @@ function foeSnd(id, i) { const K = kitOf(id); return K.snd?.[i] || ["sword", "hu
 function heroHurtSnd() { return C().gender === "f" ? "hero-f-hit" : "hurt"; }
 let beatT = null;
 function lowHpBeat(on) { if (!on) { clearInterval(beatT); beatT = null; return; } if (beatT || !AU.cfg.on || !AU.unlocked) return; const beat = () => { try { const ctx = AU.ctx || (AU.ctx = new (window.AudioContext || window.webkitAudioContext)()); [0, .23].forEach((t0, k) => { const o = ctx.createOscillator(); const g = ctx.createGain(); o.type = "sine"; o.frequency.value = k ? 48 : 58; const t = ctx.currentTime + t0; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(AU.cfg.sfx * .55, t + .02); g.gain.exponentialRampToValueAtTime(.001, t + .22); o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t + .25); }); } catch (e) {} }; beat(); beatT = setInterval(() => { if (!document.body.classList.contains("low-hp")) { clearInterval(beatT); beatT = null; return; } beat(); }, 1150); }
+
+/* NPCFIGHT */
+/* =========================================================================
+   НАПАДЕНИЕ НА ЛЮБОГО НПС: бой, оглушение, смерть, свидетели, розыск, последствия
+   ========================================================================= */
+const NPC_STATS = {
+  commoner: { label: "житель", ac: 10, hp: 6, atk: 2, dmg: "1d4", dex: 0, xp: 10 },
+  tough: { label: "крепкий работяга", ac: 11, hp: 11, atk: 3, dmg: "1d6+1", dex: 0, xp: 25 },
+  guard: { label: "стражник", ac: 16, hp: 11, atk: 3, dmg: "1d6+1", dex: 1, xp: 25 },
+  noble: { label: "знатный", ac: 15, hp: 9, atk: 3, dmg: "1d8+1", dex: 1, xp: 25 },
+  acolyte: { label: "служитель", ac: 10, hp: 9, atk: 2, dmg: "1d4", dex: 0, xp: 25 },
+  shady: { label: "лихой человек", ac: 12, hp: 11, atk: 3, dmg: "1d6+1", dex: 2, xp: 25 },
+  veteran: { label: "опытный боец", ac: 17, hp: 30, atk: 5, dmg: "1d8+3", dex: 1, xp: 150, boss: true }
+};
+Object.assign(FOE_KIT, {
+  commoner: { snd: ["fist", "human-hit", "human-die"], kind: "humanoid", morale: .95, surrender: true, flee: true, traits: ["Не воин: при первой возможности бежит или молит о пощаде"] },
+  tough: { snd: ["club", "human-hit", "human-die"], kind: "humanoid", morale: .45, surrender: true, flee: true, traits: ["Бьёт тяжело, но за жизнь держится крепче, чем за честь"] },
+  guard: { snd: ["spear", "human-hit", "human-die"], kind: "humanoid", morale: .2, surrender: true, traits: ["Обучен строю, сдаётся неохотно", "Может позвать подмогу"], specials: [{ id: "call", t: "Свистит, зовя стражу", warn: "не остановить сейчас — придёт ещё стражник", once: true, chance: .45 }] },
+  noble: { snd: ["sword", "human-hit", "human-die"], kind: "humanoid", morale: .5, surrender: true, traits: ["Фехтует, но жизнь ценит выше чести"] },
+  acolyte: { snd: ["staff", "human-hit", "human-die"], kind: "humanoid", morale: .6, surrender: true, flee: true, traits: ["Молится об исцелении"], specials: [{ id: "pray", t: "Молится об исцелении", warn: "восстановит себе хиты", chance: .4, recharge: 2 }] },
+  shady: { snd: ["dagger", "human-hit", "human-die"], kind: "humanoid", morale: .35, surrender: true, flee: true, nimble: true, traits: ["Юркий: бьёт и уходит в тень"] },
+  veteran: { snd: ["sword", "orc-hit", "human-die"], kind: "humanoid", multi: 2, morale: .15, surrender: true, traits: ["Две атаки за ход", "Опытный боец"] }
+});
+Object.assign(FOE_ICO, { commoner: "r_human", tough: "b_artisan", guard: "b_watch", noble: "b_noble", acolyte: "b_acolyte", shady: "b_criminal", veteran: "b_knight" });
+function npcStatKey(n) { const r = (n?.role || "").toLowerCase();
+  if (/капитан|сержант|командир|рыцарь|ветеран|десятник/.test(r)) return "veteran"; if (/страж|дозор|солдат|воин|часов|гвард/.test(r)) return "guard";
+  if (/контрабанд|вор|бандит|разбойн|скупщик|главар|пират|головорез|наёмник/.test(r)) return "shady"; if (/жрец|жриц|монах|сестра|настоятел|послуш|священ|проповед|знахар|травни/.test(r)) return "acolyte";
+  if (/староста|купец|купчих|лорд|граф|барон|судья|бургомистр|знат|госпож/.test(r)) return "noble"; if (/кузнец|мясник|охотник|рыбак|лесоруб|рудокоп|моряк|лодочник|батрак|пастух|мельник|грузчик|углежог/.test(r)) return "tough"; return "commoner"; }
+function npcGone(id) { const w = S?.world; if (!w) return false; return !!(NPCS[id]?.dead || w.hostile?.[id] || (w.awayUntil?.[id] != null && w.awayUntil[id] >= tkey())); }
+function inSettlement(loc) { const p = POIS[loc]; if (!p || p.wild) return false; if (p.inner) return true; return p.where === "village" || ["street", "square", "inn", "chapel", "pier", "farm", "gate", "house"].includes(tplOfPlace(p)) || loc === WD.start; }
+function npcScenePos(nid) { try { const p = scenePeople(S.world.loc).find(q => q.type === "npc" && q.id === nid); return p ? { x: +p.x.toFixed(2), y: +p.y.toFixed(2) } : null; } catch (e) { return null; } }
+function makeHostile(nid, o = {}) {
+  S.world.hostile = S.world.hostile || {}; const ex = S.world.hostile[nid]; if (ex && S.world.enemies[ex]?.alive) return ex;
+  const n = NPCS[nid]; if (!n || n.dead) return null; const key = npcStatKey(n); const B = NPC_STATS[key]; const eid = "npc_" + nid + "_" + rnd(9999); const pos = npcScenePos(nid);
+  ENEMIES[eid] = { ...B, type: key, name: n.name, loc: S.world.loc, npc: nid }; S.world.enemies[eid] = { hp: B.hp, alive: true, asleep: false, fight: S.world.fightId, pos };
+  POIS[S.world.loc].enemies = [...(POIS[S.world.loc].enemies || []), eid]; S.world.hostile[nid] = eid; const st = ensureNpcState(nid); if (st) st.att = Math.min(st.att, o.byHero ? -80 : -40);
+  refreshPeople(); return eid;
+}
+function witnessesOf(nid) { const loc = POIS[S.world.loc]; const npcs = (loc.npcs || []).filter(x => x !== nid && NPCS[x] && !npcGone(x)); let crowd = 0; try { crowd = scenePeople(S.world.loc).filter(p => p.type === "crowd").length; } catch (e) {} return { npcs, crowd, seen: npcs.length + crowd > 0 }; }
+function heroAssault(nid, o = {}) {
+  const n = NPCS[nid]; const w = witnessesOf(nid); const loc = S.world.loc; const town = inSettlement(loc); const chips = [];
+  const eid = makeHostile(nid, { byHero: true }); if (!eid) return null; const st = S.world.npcs[nid]; st.mem.push(`герой напал на меня в «${POIS[loc].name}»`);
+  chips.push({ c: "dmg", x: `${n.name}: враждебно` });
+  w.npcs.forEach(x => { const xs = ensureNpcState(x); if (!xs) return; xs.att = clamp(xs.att - 30, -100, 100); xs.mem.push(`видел(а), как герой напал на ${n.name}`);
+    if (npcStatKey(NPCS[x]) === "guard" || npcStatKey(NPCS[x]) === "veteran" && /страж|капитан|сержант/.test(NPCS[x].role || "")) { makeHostile(x); chips.push({ c: "dmg", x: `${NPCS[x].name} вступается!` }); }
+    else { S.world.awayUntil = S.world.awayUntil || {}; S.world.awayUntil[x] = tkey(); chips.push({ c: "npc", x: `${NPCS[x].name} в ужасе убегает` }); } });
+  if (w.crowd) { S.world.crowdFled = S.world.crowdFled || {}; S.world.crowdFled[loc] = tkey(); }
+  S.world.crimes = S.world.crimes || []; S.world.crimes.push({ k: "assault", npc: nid, day: worldTime().day, loc, seen: w.seen });
+  if (w.seen && town) { addRep(-12, "нападение на жителя"); S.world.wanted = Math.max(S.world.wanted || 0, 1); S.world.wantedDay = worldTime().day; }
+  S.world.facts.push(`Герой напал на ${n.name} (${n.role}) в «${POIS[loc].name}»${w.seen ? " на глазах у людей" : " без свидетелей"}`);
+  S.world.nonLethal = !!o.nonLethal; pushFeed({ t: "chips", items: chips }); sfx("horn3");
+  if (!S.world.combat) { S.world.fightId = uid(); S.world.round = 1; encStartCombat(true); }
+  return eid;
+}
+/* смерть и оглушение */
+function npcDown(eid) {
+  const E = ENEMIES[eid]; const e = S.world.enemies[eid]; const nid = E?.npc; if (!nid) return;
+  if (S.world.nonLethal && S._hitInfo && !S._hitInfo.ranged) { e.ko = true; S.world.ko = S.world.ko || {}; S.world.ko[nid] = tkey(); pushFeed({ t: "chips", items: [{ c: "npc", x: `${E.name} без сознания` }] }); return; }
+  npcKilled(nid, eid);
+}
+function npcKilled(nid, eid, how) {
+  const n = NPCS[nid]; if (!n || n.dead) return; const loc = S.world.loc; const w = witnessesOf(nid); const town = inSettlement(loc); n.dead = true;
+  S.world.deadNpcs = S.world.deadNpcs || {}; S.world.deadNpcs[nid] = { day: worldTime().day, loc, eid, seen: w.seen || !!S.world.crimes?.some(c => c.npc === nid && c.seen), how: how || (isFem(n) ? "убита героем" : "убит героем") };
+  const chips = [{ c: "dmg", x: `${n.name} ${isFem(n) ? "мертва" : "мёртв"}` }];
+  allQuests().forEach(q => { const st = qSt(q.id); if ((q.giver === nid || q.to === nid) && ["new", "declined", "active", "ready"].includes(st.st)) { const was = st.st; st.st = "failed"; if (was !== "new" && was !== "declined") chips.push({ c: "dmg", x: `Поручение провалено: ${q.title}` }); } });
+  const seen = S.world.deadNpcs[nid].seen;
+  if (seen && town) { addRep(-25, "убийство"); S.world.wanted = 2; S.world.wantedDay = worldTime().day; Object.keys(S.world.npcs).forEach(x => { if (x !== nid && NPCS[x] && !NPCS[x].dead) { S.world.npcs[x].att = clamp(S.world.npcs[x].att - 10, -100, 100); } }); }
+  S.world.crimes = S.world.crimes || []; S.world.crimes.push({ k: "murder", npc: nid, day: worldTime().day, loc, seen });
+  S.world.facts.push(`${n.name} (${n.role}) ${isFem(n) ? "убита" : "убит"} героем в «${POIS[loc].name}»${seen ? ", это видели люди" : ", свидетелей не было"}`);
+  pushFeed({ t: "chips", items: chips }); setTimeout(() => sfx(isFem(n) ? "hero-f-die" : "human-die"), 300);
+}
+function npcTick() {
+  if (!S) return; const w = S.world; const now = tkey();
+  Object.entries(w.ko || {}).forEach(([nid, t]) => { if (now - t >= 2) { const eid = w.hostile?.[nid]; delete w.ko[nid]; if (eid) { despawnFoes([eid]); delete w.hostile[nid]; } const st = w.npcs[nid]; if (st) { st.att = Math.min(st.att, -60); st.mem.push("очнулся после побоев и помнит, кто это сделал"); } } });
+  if (w.wanted && worldTime().day - (w.wantedDay || 0) >= 3) { w.wanted--; w.wantedDay = worldTime().day; }
+}
+/* после хода: сдавшиеся и сбежавшие НПС возвращаются в мир */
+function npcAfterTurn(results) {
+  const w = S.world; if (!w.hostile) return;
+  Object.entries(w.hostile).forEach(([nid, eid]) => { const e = w.enemies[eid]; if (!e) { delete w.hostile[nid]; return; } if (e.alive || e.ko || NPCS[nid]?.dead) return;
+    if (e.surrendered || e.fled) { despawnFoes([eid]); delete w.hostile[nid]; const st = ensureNpcState(nid); if (st) { st.att = Math.min(st.att, -70); st.mem.push(e.fled ? "сбежал(а) от героя, спасая жизнь" : "сдался(-ась) герою и молил(а) о пощаде"); }
+      if (e.fled) { w.awayUntil = w.awayUntil || {}; w.awayUntil[nid] = tkey() + 3; } results.push({ kind: "note", title: `${NPCS[nid].name} ${e.fled ? "сбегает — запомнив обиду" : "сдаётся и молит о пощаде: теперь боится героя, может выдать тайну под давлением"}` }); } });
+  refreshPeople();
+}
+/* обыск тела, оглушённые */
+function searchBody(eid) {
+  const E = ENEMIES[eid]; const e = S.world.enemies[eid]; if (!E || !e || busy) return; const nid = E.npc; const n = nid ? NPCS[nid] : null; const c = C(); const chips = []; let note;
+  if (!e.searched && n) { e.searched = true; const R = mulberry(hash(eid)); const key = E.type; const money = { commoner: 3 + R() * 10, tough: 5 + R() * 15, guard: 10 + R() * 20, noble: 60 + R() * 120, acolyte: 4 + R() * 12, shady: 15 + R() * 40, veteran: 40 + R() * 80 }[key] || 5; const sv = Math.round(money);
+    setPurse(c, purse(c) + sv); chips.push({ c: "gold", x: `+${fmtMoney(sv)}` }); const it = { name: `Личная вещь: ${n.name}`, desc: `Снято с тела. ${n.look ? "Владелец: " + n.look : ""}`.trim(), value: 0 }; c.items.push(it); chips.push({ c: "item", x: `+ ${it.name}` });
+    if (merchantType(nid) && R() < .7) { const k = { name: "Связка ключей", desc: `Ключи ${n.name}: от дома и лавки`, value: 0 }; c.items.push(k); chips.push({ c: "item", x: `+ ${k.name}` }); }
+    note = `Герой обыскивает тело ${n.name}: найдено ${fmtMoney(sv)} и личная вещь (уже выдано движком, не дублируй gold/items_add). ${n.secret ? `При нём есть намёк на его тайну («${n.secret}») — записка, вещь или знак. Опиши находку конкретно, это может продвинуть или изменить расследование.` : "Опиши, что при нём было."}`;
+    pushFeed({ t: "chips", items: chips }); sfx("gold"); }
+  else note = n ? `Герой снова осматривает тело ${n.name}: ничего нового, кроме деталей смерти` : `Герой осматривает останки: ${E.name}`;
+  S.pendingQNote = note; takeTurn(n ? `Обыскиваю тело: ${n.name}` : `Осматриваю останки: ${E.name}`, { checks: [] });
+}
+function koAct(eid, act) {
+  const E = ENEMIES[eid]; const nid = E?.npc; const w = S.world; if (!nid || busy) return; const n = NPCS[nid];
+  if (act === "kill") { modal(`<div class="nf-confirm"><div class="eyebrow">Необратимо</div><h2>Добить ${esc(n.name)}?</h2><p>${esc(n.name)} лежит без сознания и не может сопротивляться. Это убийство — без шанса на оправдание.</p><div class="row"><button class="btn" type="button" id="nf-no">Нет</button><button class="btn danger" type="button" id="nf-yes">${ico("k_skull", 16)} Добить</button></div></div>`, root => {
+      root.querySelector("#nf-no").onclick = closeModal; root.querySelector("#nf-yes").onclick = () => { closeModal(); delete w.ko[nid]; S.world.enemies[eid].ko = false; npcKilled(nid, eid, "добит(а) героем, лёжа без сознания"); addRep(-5, "хладнокровие"); S.pendingQNote = `Герой хладнокровно добил беспомощного ${n.name}. Опиши коротко и без смакования, отрази тяжесть поступка`; takeTurn(`Добиваю: ${n.name}`, { checks: [] }); }; }); return; }
+  delete w.ko[nid]; despawnFoes([eid]); delete w.hostile[nid]; const st = ensureNpcState(nid); st.att = Math.min(st.att, -60); st.mem.push("герой избил меня, а потом привёл в чувство и допрашивал"); refreshPeople();
+  S.pendingQNote = `${n.name} приходит в себя после побоев: напуган(а), зол(а) и в руках героя. Под давлением может выдать то, что знает (${n.secret || "свои мелкие тайны"}), но запомнит это навсегда`; takeTurn(`Привожу в чувство и допрашиваю: ${n.name}`, { checks: [], talk_to: nid });
+}
+/* подтверждение нападения */
+function confirmAttack(nid) {
+  const n = NPCS[nid]; if (!n || busy) return; const w = witnessesOf(nid); const guards = w.npcs.filter(x => ["guard", "veteran"].includes(npcStatKey(NPCS[x])));
+  const key = npcStatKey(n); const B = NPC_STATS[key]; const danger = B.hp >= 20 ? "опасный противник" : B.ac >= 15 ? "умеет драться" : B.atk <= 2 ? "почти беззащитен" : "может дать отпор";
+  modal(`<div class="nf-confirm"><div class="nf-head">${npcPh(nid)}<div><div class="eyebrow" style="color:var(--ember)">Нападение</div><h2>${esc(n.name)}</h2><small class="home-note">${esc(n.role)} · ${danger} · КД ${B.ac}</small></div></div>
+    <ul class="nf-cons"><li>${ico("k_broken", 16)} ${esc(n.name)} станет вашим врагом — навсегда.</li>
+      ${w.seen ? `<li>${ico("x_look", 16)} Это увидят: ${esc(w.npcs.map(x => NPCS[x].name).join(", ") || "")}${w.crowd ? `${w.npcs.length ? " и ещё " : ""}${w.crowd} ${w.npcs.length ? "человек вокруг" : "человек вокруг"}` : ""}. Репутация упадёт${inSettlement(S.world.loc) ? ", начнутся разговоры о розыске" : ""}.</li>` : `<li>${ico("t_hidden", 16)} Свидетелей нет. Пока.</li>`}
+      ${guards.length ? `<li class="bad">${ico("b_watch", 16)} ${esc(guards.map(x => NPCS[x].name).join(", "))} вступится за жертву.</li>` : ""}
+      <li>${ico("k_skull", 16)} Если ${esc(n.name)} погибнет, поручения с ${isFem(n) ? "ней" : "ним"} провалятся, а история пойдёт иначе.</li></ul>
+    <div class="row nf-row"><button class="btn" type="button" id="nf-no">Передумать</button><button class="btn" type="button" id="nf-ko" title="Только оружием ближнего боя. При нуле хитов противник теряет сознание">${ico("k_stun", 16)} Оглушить</button><button class="btn danger" type="button" id="nf-kill">${ico("k_swords", 16)} Напасть</button></div></div>`, root => {
+    root.querySelector(".modal").classList.add("nf-modal"); root.querySelector("#nf-no").onclick = closeModal;
+    const go = nl => { closeModal(); takeTurn(nl ? `Бросаюсь на ${n.name}, чтобы оглушить` : `Нападаю на ${n.name}!`, { checks: [], npcAttack: nid, nonLethal: nl, combat: true }); };
+    root.querySelector("#nf-ko").onclick = () => go(true); root.querySelector("#nf-kill").onclick = () => go(false); });
+}
+function confirmAttackCrowd(label) { const nid = spawnNpc({ role: label, look: "", persona: "Обычный местный житель." }, S.world.loc); refreshPeople(); confirmAttack(nid); }
+/* в ходе: внезапная атака на НПС */
+function npcAttackPlan(plan, preset) {
+  const nid = preset?.npcAttack || plan.attack_npc; if (!nid || !NPCS[nid] || NPCS[nid].dead) return; const here = POIS[S.world.loc].npcs.includes(nid) || S.world.hostile?.[nid]; if (!here) return;
+  const eid = S.world.hostile?.[nid] && S.world.enemies[S.world.hostile[nid]]?.alive ? S.world.hostile[nid] : heroAssault(nid, { nonLethal: preset ? !!preset.nonLethal : !!plan.nonlethal }); if (!eid) return;
+  const melee = C().weapons.find(w => !isRangedW(w)); const wid = preset?.nonLethal ? (melee || C().weapons[0]) : C().weapons[0];
+  plan.checks = [{ kind: "attack", target: eid, weapon: wid, adv: 1, reason: "Внезапное нападение" }]; plan.talk_to = null; S.world.tgt = eid;
+}
+function npcHudActs(btn, dis) {
+  const npcFoes = aliveEnemiesHere().filter(id => ENEMIES[id].npc); if (!npcFoes.length) return;
+  btn("cls", ico(S.world.nonLethal ? "k_stun" : "k_skull", 22), S.world.nonLethal ? "Оглушать" : "Бить насмерть", S.world.nonLethal ? "ближний бой не убивает" : "переключить на оглушение", () => { S.world.nonLethal = !S.world.nonLethal; sfx("tap"); renderCombatHud(); }, false);
+  if (npcFoes.length === aliveEnemiesHere().length) { const sk = skillBonus("intimidation") >= skillBonus("persuasion") ? "intimidation" : "persuasion"; btn("def", ico("x_talk", 22), "Опустить оружие", `${SKILLS[sk][0]} · КС 13`, () => takeTurn(sk === "intimidation" ? "Рявкаю: «Хватит! Бросьте оружие, пока живы!»" : "Опускаю оружие: «Хватит. Никому не нужно умирать»", { checks: [], cact: "standdown", combat: true }), dis); }
+}
+async function npcStandDown(results) {
+  const sk = skillBonus("intimidation") >= skillBonus("persuasion") ? "intimidation" : "persuasion"; await waitRoll({ kind: "skill", skill: sk, dc: 13, adv: 0, reason: "Прекратить драку" });
+  const r = resolveCheck({ kind: "skill", skill: sk, dc: 13, adv: 0, reason: "Прекратить драку" }); results.push(r); pushFeed({ t: "roll", r }); setTimeout(() => rollSfx(r), 520); await pause(300);
+  if (r.ok) { aliveEnemiesHere().filter(id => ENEMIES[id].npc).forEach(id => { const e = S.world.enemies[id]; e.alive = false; e.surrendered = true; }); results.push({ kind: "note", title: "Драка прекращена: противники опустили оружие, но смотрят с ненавистью и страхом (бой окончен)" }); }
+  else results.push({ kind: "note", title: "Слова не подействовали — драка продолжается" });
+}
+/* сводка для рассказчика */
+function npcBrief() {
+  const w = S.world; const out = []; const dead = Object.entries(w.deadNpcs || {}).filter(([id]) => NPCS[id]);
+  if (dead.length) out.push(`ПОГИБШИЕ НПС (мертвы окончательно — не оживляй и не выводи в сценах; их смерть меняет сюжет: знание, которое они хранили, теперь добывается иначе — у близких, в их доме, на теле; планы злодея могут ускориться или рухнуть; развязка должна это учитывать): ${dead.map(([id, d]) => `${NPCS[id].name} (${NPCS[id].role}) — ${d.how}, день ${d.day}${d.seen ? ", при свидетелях" : ", тайно"}`).join("; ")}.`);
+  const ko = Object.keys(w.ko || {}).filter(id => NPCS[id]); if (ko.length) out.push(`БЕЗ СОЗНАНИЯ: ${ko.map(id => NPCS[id].name).join(", ")}.`);
+  const hostile = Object.keys(w.hostile || {}).filter(id => NPCS[id] && !NPCS[id].dead && !w.ko?.[id]); if (hostile.length) out.push(`ВРАЖДУЮТ С ГЕРОЕМ (дерутся): ${hostile.map(id => NPCS[id].name).join(", ")}.`);
+  const crimes = (w.crimes || []).slice(-4); if (crimes.length) out.push(`ПРЕСТУПЛЕНИЯ ГЕРОЯ: ${crimes.map(c => `${c.k === "murder" ? "убийство" : "нападение"} — ${NPCS[c.npc]?.name || "?"} (день ${c.day}, ${c.seen ? "видели" : "тайно"})`).join("; ")}.`);
+  if (w.wanted) out.push(`РОЗЫСК (${w.wanted === 2 ? "за убийство" : "за нападение"}): местные сторонятся героя, торговцы ${w.wanted >= 2 ? "отказываются торговать" : "насторожены"}; стражники при встрече требуют сдаться и, если герой отказывается, нападают (верни их id в npc_attack). Мрачные концовки допустимы: изгнание, суд, виселица — или власть через страх.`);
+  return out.length ? out.join("\n") + "\n" : "";
+}
+function npcAttackEffects(list) { (Array.isArray(list) ? list : []).slice(0, 3).forEach(nid => { if (!NPCS[nid] || NPCS[nid].dead || !POIS[S.world.loc].npcs.includes(nid)) return; const eid = makeHostile(nid); if (!eid) return; const st = ensureNpcState(nid); st.mem.push("напал(а) на героя"); pushFeed({ t: "chips", items: [{ c: "dmg", x: `${NPCS[nid].name} нападает!` }] }); if (!S.world.combat) { S.world.fightId = uid(); S.world.round = 1; encStartCombat(false); } }); }
+/* особые приёмы НПС в бою */
+function npcSpecial(id, it, out) {
+  const E = ENEMIES[id]; const e = S.world.enemies[id];
+  if (it.k === "call") { (e.used = e.used || {}).call = true; const nid = spawnFoes("guard_x", "Стражник", 1, S.world.loc)[0]; S.world.enemies[nid].fight = S.world.fightId; S.world.enemies[nid].pos = { x: 1, y: 6 }; out.push({ kind: "enemy", by: id, title: `${E.name} свистит — на шум прибегает стражник`, formula: "Подмога", nat: 0, ok: false, enemyRoll: true, skip: true, summon: nid }); e.intent = undefined; return true; }
+  if (it.k === "pray") { e.cd = 2; const d = rollDice("1d8+2"); e.hp = Math.min(E.hp, e.hp + d.total); out.push({ kind: "enemy", by: id, title: `${E.name} молится — раны затягиваются`, formula: `исцеление ${d.text}`, nat: 0, ok: false, enemyRoll: true, skip: true, healed: d.total }); e.intent = undefined; return true; }
+  return false;
+}
+BESTIARY.guard_x = { label: "стражник", ac: 16, hp: 11, atk: 3, dmg: "1d6+1", dex: 1, xp: 25, npcOnly: true }; FOE_KIT.guard_x = FOE_KIT.guard; FOE_ICO.guard_x = "b_watch";
+{ const _hurt0 = hurtEnemy; hurtEnemy = function (id, amt) { const was = S.world.enemies[id]?.alive; _hurt0(id, amt); const e = S.world.enemies[id]; if (was && e && !e.alive && ENEMIES[id]?.npc) npcDown(id); }; }
 
 /* =========================================================================
    ЗВУК: музыка по настроению, фон, эффекты
@@ -5304,7 +5480,7 @@ function charBrief() {
 function sceneBrief() {
   const loc = POIS[S.world.loc]; const L = S.world.loc;
   const npcs = loc.npcs.filter(id => NPCS[id]).map(id => { const n = NPCS[id]; const st = S.world.npcs[id] || { att: 0, mem: [] }; return `- [${id}] ${n.name}, ${n.role}; внешность: ${n.look}; характер: ${n.persona}; тайна (не выдавать сразу): ${n.secret}; отношение к герою: ${st.att} (${attLabel(st.att)[0]}); помнит: ${st.mem.slice(-4).join("; ") || "ничего"}`; }).join("\n");
-  const foes = Object.keys(ENEMIES).filter(id => ENEMIES[id].loc === L).map(id => `- [${id}] ${ENEMIES[id].name}: ${enemyStatus(id)}`).join("\n");
+  const foes = Object.keys(ENEMIES).filter(id => ENEMIES[id].loc === L && (S.world.enemies[id]?.alive || !ENEMIES[id].npc || S.world.enemies[id]?.ko || NPCS[ENEMIES[id].npc]?.dead)).map(id => `- [${id}] ${ENEMIES[id].name}: ${S.world.enemies[id]?.ko ? "без сознания" : ENEMIES[id].npc && !S.world.enemies[id]?.alive ? "мёртв(а), тело лежит здесь" : enemyStatus(id)}${ENEMIES[id].npc ? ` (это НПС ${NPCS[ENEMIES[id].npc]?.role || ""}, враждует с героем)` : ""}`).join("\n");
   const pois = outerEntries().map(([id, p]) => `${id} = ${p.name}`).join("; ");
   return `ЛОКАЦИЯ: ${loc.name} [${L}] — ${loc.desc}
 Улика здесь (выдать при успешном поиске): ${loc.clue || "—"}
@@ -5324,7 +5500,7 @@ async function adjudicate(text) {
   const sample = await getSample(); if (!sample) return offlineAdjudicate(text);
   const prompt = `Ты — арбитр правил 5e в текстовой ролевой игре. Ты НЕ пишешь историю, только решаешь, какие броски нужны для действия игрока. Броски сделает программа.
 ${sceneBrief()}
-${combatBrief()}${travelBrief()}${questBrief()}
+${npcBrief()}${combatBrief()}${travelBrief()}${questBrief()}
 ГЕРОЙ: ${charBrief()}
 Недавнее:
 ${recentLog(6)}
@@ -5339,7 +5515,8 @@ ${recentLog(6)}
 - Заклинание: {"kind":"spell","spell":"id","target":"id врага или null"}. Заклинания героя: ${C().spells.join(", ") || "нет"}.
 - adv: 1 если есть явное преимущество (враг спит, засада, отличная подготовка), -1 если помеха, иначе 0.
 - move_to: id точки на карте, если герой явно идёт в другое место, иначе null. talk_to: id НПС, к которому обращаются, иначе null.
-Ответь только JSON: {"checks":[{"kind":"skill","skill":"perception","dc":13,"adv":0,"reason":"коротко зачем"}],"move_to":null,"talk_to":null}`;
+- attack_npc: id НПС из списка людей в сцене, если герой ЯВНО нападает на него (бьёт, стреляет, режет, душит, пытается убить или избить), иначе null. nonlethal: true, если герой хочет лишь оглушить, побить или скрутить, не убивая. Угрозы и словесные ссоры — не нападение.
+Ответь только JSON: {"checks":[{"kind":"skill","skill":"perception","dc":13,"adv":0,"reason":"коротко зачем"}],"move_to":null,"talk_to":null,"attack_npc":null,"nonlethal":false}`;
   try { return await sample.json(prompt, { modelTier: "quick", cache: false }); }
   catch (e) { pushFeed({ t: "sys", html: esc(aiFail(e)) }); return offlineAdjudicate(text); }
 }
@@ -5348,6 +5525,7 @@ function validatePlan(plan) {
   if (plan.move_to && POIS[plan.move_to] && plan.move_to !== S.world.loc) { const t = POIS[plan.move_to];
     if (!t.inner) out.move_to = plan.move_to; else if (t.parent !== hereOuter()) out.notes.push("Это здание в другом месте."); else if (bldLocked(plan.move_to)) { bstate(plan.move_to).known = tkey(); out.notes.push(`Дверь заперта: ${t.name}.`); } else { out.move_to = plan.move_to; const st = bstate(plan.move_to); st.how = st.how || "вошёл"; } }
   if (plan.talk_to && NPCS[plan.talk_to]) out.talk_to = plan.talk_to;
+  if (plan.attack_npc && NPCS[plan.attack_npc]) { out.attack_npc = plan.attack_npc; out.nonlethal = !!plan.nonlethal; }
   (Array.isArray(plan.checks) ? plan.checks : []).slice(0, 2).forEach(ch => {
     const adv = clamp(Number(ch.adv) || 0, -1, 1); const reason = str(ch.reason, 120);
     if (ch.kind === "skill" && SKILLS[ch.skill]) out.checks.push({ kind: "skill", skill: ch.skill, dc: clamp(Math.round(Number(ch.dc) || 12), 5, 30), adv, reason });
@@ -5365,6 +5543,7 @@ function validatePlan(plan) {
 }
 function offlineAdjudicate(text) {
   const t = text.toLowerCase(); const plan = { checks: [], move_to: null, talk_to: null };
+  if (/(бью|ударяю|нападаю|атакую|убиваю|убить|стреляю|режу|рублю|колю|душу|пырну|бросаюсь на|избиваю|оглушаю)/.test(t)) { const nid = (POIS[S.world.loc].npcs || []).find(id => NPCS[id] && t.includes(NPCS[id].name.toLowerCase().slice(0, Math.max(3, NPCS[id].name.length - 2)))); if (nid) { plan.attack_npc = nid; plan.nonlethal = /(оглуш|скрут|побить|избива|не насмерть)/.test(t); return plan; } }
   if (/(ид[уё]|пойти|отправ|направля|бегу|возвращ)/.test(t)) {
     for (const [id, p] of outerEntries()) { const words = p.name.toLowerCase().replace(/[«»"]/g, "").split(/\s+/).filter(w => w.length > 3); if (words.some(w => t.includes(w.slice(0, Math.max(4, w.length - 2))))) { plan.move_to = id; break; } }
   }
@@ -5404,6 +5583,7 @@ async function takeTurn(text, preset) {
     if (preset) plan = validatePlan(preset);
     else { thinking = showThinking("Рассказчик обдумывает последствия"); plan = validatePlan(await adjudicate(text)); thinking.remove(); thinking = null; }
     plan.notes.forEach(n => pushFeed({ t: "sys", html: esc(n) }));
+    npcAttackPlan(plan, preset);
     if (plan.move_to && !(preset && preset.fromTrip) && !S.world.combat && needsTrip(plan.move_to)) { thinking?.remove(); busy = false; setBusy(false); const dest = plan.move_to; setTimeout(() => openBigMap({ target: dest, autostart: true }), 60); return; }
     const results = [];
     if (preset && preset.cact) await combatPreAct(preset.cact, preset, results);
@@ -5420,7 +5600,7 @@ async function takeTurn(text, preset) {
       await pause(250);
     }
     if (S.world.combat && !intro) { for (const r of enemyTurn()) { results.push(r); pushFeed({ t: "roll", r }); if (!r.skip) { sfx("dice"); setTimeout(() => rollSfx(r), 480); await pause(300); } if (r.dmg) pushFeed({ t: "chips", items: [{ c: "dmg", x: `−${r.dmg} HP вам` }] }); await pause(200); } }
-    bldAfterChecks(results); searchAfterChecks(results); encAfterChecks(results); questAfterChecks(results);
+    bldAfterChecks(results); searchAfterChecks(results); encAfterChecks(results); questAfterChecks(results); npcAfterTurn(results);
     let combatEnded = false;
     if (S.world.combat && !aliveEnemiesHere().length) { S.world.combat = false; combatEnded = true; C().rage = false; C().mark = null; results.push({ kind: "combat_end", title: "Все враги повержены" }); onCombatEnd(results); }
     renderSheet(); renderWorld(); renderTop();
@@ -5462,7 +5642,7 @@ ${toneLine()}
 Опорные точки: ${(WD.beats || []).join(" | ")}. Хорошие концовки: ${(WD.endings || []).join(" | ")}.
 ГЕРОЙ: ${charBrief()}
 ${sceneBrief()}
-${combatBrief()}${travelBrief()}${questBrief()}
+${npcBrief()}${combatBrief()}${travelBrief()}${questBrief()}
 ЗАДАНИЕ: ${S.world.quest}
 КРАТКО О ПРОШЛОМ (летопись архивариуса): ${S.summary || "кампания только началась"}
 УСТАНОВЛЕННЫЕ ФАКТЫ (не противоречь): ${S.world.facts.slice(-14).join(" | ") || "пока ничего"}
@@ -5484,8 +5664,8 @@ ${resultsBrief(results)}`}
 - Не решай за героя, что он делает дальше. Закончи на моменте выбора.
 
 После текста поставь строку @@@ и затем ОДНУ строку JSON с последствиями (только то, что реально произошло в тексте):
-{"speaker": "id НПС, который говорит больше всех, или null", "damage": [{"dice":"1d4","reason":"почему"}], "heal": null, "items_add": [{"name":"…","desc":"…"}], "items_remove": [], "gold": 0, "xp": 0, "attitude": {"id_нпс": 0}, "facts": ["1–2 важных новых факта для памяти, коротко"], "quest": null, "map_notes": [{"place":"id места","note":"что герой узнал об этом месте, до 8 слов"}], "rumors": ["id места, о котором герой услышал, но ещё не был"], "building": null, "npc_moves": [], "rep": 0, "side_quests": [], "scene": {"add": [{"label":"предмет, 1–3 слова","acc":"он же в винительном падеже","kind":"chest|crate|barrel|table|bed|altar|statue|body|item|fire|lantern|boat|rock|bell|cart|cauldron|sack"}], "remove": ["label исчезнувшего предмета"], "crowd": null}, "new_npcs": [{"id":"latin_snake_case","name":"…","role":"…","look":"внешность 6–10 слов","persona":"характер, 1 предложение","gender":"m|f","age":"young|adult|old","important":false}], "threat": 0, "start_combat": [], "suggestions": ["3 коротких варианта следующего действия, до 6 слов"]}
-damage — только если герой получил вред от окружения или ловушки (не от врагов, их урон уже посчитан). xp — 25–75 за важное открытие или решённую проблему, иначе 0. attitude — изменения от −15 до +15. quest — новая формулировка задания, если оно изменилось. npc_moves — если по сюжету НПС ушёл, сбежал, его увели или он пришёл в другое место: [{"id":"id НПС","to":"id места из списка или null — вернуться домой"}]. side_quests — [{"id":"id поручения","status":"ready|failed"}] только если поручение явно выполнено или провалено НЕ через механику движка (например, договорился словами), иначе []. rep — изменение репутации героя в поселении от −10 до +10, если поступок стал известен местным (помощь, щедрость, драка, кража, хамство), иначе 0. scene — только если в сцене появился заметный предмет, с которым герой может взаимодействовать (тело, сундук, записка, следы), или предмет исчез/унесён; crowd — сколько безымянных людей сейчас фоном в локации (0–8), только если это заметно изменилось, иначе null. new_npcs — только если в сцене впервые появился новый человек с именем, которого нет в списке НПС (important: true — если он важен для тайны). threat: +1, если противник получил преимущество или герой потратил время впустую, −1 при серьёзном успехе против противника, иначе 0.`;
+{"speaker": "id НПС, который говорит больше всех, или null", "damage": [{"dice":"1d4","reason":"почему"}], "heal": null, "items_add": [{"name":"…","desc":"…"}], "items_remove": [], "gold": 0, "xp": 0, "attitude": {"id_нпс": 0}, "facts": ["1–2 важных новых факта для памяти, коротко"], "quest": null, "map_notes": [{"place":"id места","note":"что герой узнал об этом месте, до 8 слов"}], "rumors": ["id места, о котором герой услышал, но ещё не был"], "building": null, "npc_moves": [], "rep": 0, "side_quests": [], "npc_attack": [], "scene": {"add": [{"label":"предмет, 1–3 слова","acc":"он же в винительном падеже","kind":"chest|crate|barrel|table|bed|altar|statue|body|item|fire|lantern|boat|rock|bell|cart|cauldron|sack"}], "remove": ["label исчезнувшего предмета"], "crowd": null}, "new_npcs": [{"id":"latin_snake_case","name":"…","role":"…","look":"внешность 6–10 слов","persona":"характер, 1 предложение","gender":"m|f","age":"young|adult|old","important":false}], "threat": 0, "start_combat": [], "suggestions": ["3 коротких варианта следующего действия, до 6 слов"]}
+damage — только если герой получил вред от окружения или ловушки (не от врагов, их урон уже посчитан). xp — 25–75 за важное открытие или решённую проблему, иначе 0. attitude — изменения от −15 до +15. quest — новая формулировка задания, если оно изменилось. npc_moves — если по сюжету НПС ушёл, сбежал, его увели или он пришёл в другое место: [{"id":"id НПС","to":"id места из списка или null — вернуться домой"}]. npc_attack — id НПС, которые САМИ нападают на героя в этом тексте (злодей раскрыт и бросается, стража хватает разыскиваемого, обиженный бьёт первым), иначе []. side_quests — [{"id":"id поручения","status":"ready|failed"}] только если поручение явно выполнено или провалено НЕ через механику движка (например, договорился словами), иначе []. rep — изменение репутации героя в поселении от −10 до +10, если поступок стал известен местным (помощь, щедрость, драка, кража, хамство), иначе 0. scene — только если в сцене появился заметный предмет, с которым герой может взаимодействовать (тело, сундук, записка, следы), или предмет исчез/унесён; crowd — сколько безымянных людей сейчас фоном в локации (0–8), только если это заметно изменилось, иначе null. new_npcs — только если в сцене впервые появился новый человек с именем, которого нет в списке НПС (important: true — если он важен для тайны). threat: +1, если противник получил преимущество или герой потратил время впустую, −1 при серьёзном успехе против противника, иначе 0.`;
   ctl = new AbortController(); document.getElementById("btn-stop").hidden = false;
   let full = "";
   try {
@@ -5525,7 +5705,7 @@ function applyEffects(eff, combatEnded) {
     if ((before < 3 && now >= 3) || (before < 6 && now >= 6)) { S.world.villainMove = true; pushFeed({ t: "sys", html: now >= 6 ? "<b>Часы угрозы пробили.</b> Противник добился своего, и мир меняется." : "<b>Угроза нарастает.</b> Противник делает свой ход." }); } }
   (Array.isArray(eff.map_notes) ? eff.map_notes : []).slice(0, 2).forEach(m => { const id = m?.place; const n = str(m?.note, 80); if (POIS[id] && n) { const isNew = !S.world.notes[id]; S.world.notes[id] = n; if (isNew) chips.push({ c: "gold", x: `На карте: ${POIS[id].name}` }); } });
   (Array.isArray(eff.rumors) ? eff.rumors : []).slice(0, 2).forEach(id => { if (POIS[id] && !S.world.visited.includes(id) && !S.world.rumors.includes(id)) { S.world.rumors.push(id); chips.push({ c: "gold", x: `Слух: ${POIS[id].name}` }); } });
-  sideQuestEffects(eff.side_quests);
+  sideQuestEffects(eff.side_quests); npcAttackEffects(eff.npc_attack);
   if (eff.quest && typeof eff.quest === "string") { S.world.quest = str(eff.quest, 200); chips.push({ c: "xp", x: "Задание обновлено" }); }
   const sc = (Array.isArray(eff.start_combat) ? eff.start_combat : []).filter(id => enemyHere(id));
   if (sc.length && !S.world.combat) { S.world.combat = true; const ini = rnd(20); const tot = ini + mod(c.scores.dex) + traitFx(c.traits || {}).init;
