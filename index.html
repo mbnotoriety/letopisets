@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>Летописец</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -6432,9 +6433,33 @@ async function puterCall(input, opts, json) {
 /* ---------- ИИ в браузере (WebLLM) ---------- */
 let webEngine = null, webLoading = null;
 const HAS_WEBGPU = typeof navigator !== "undefined" && !!navigator.gpu;
+const LOCAL_LIBS = { "Qwen3-4B-q4f16_1-MLC": "Qwen3-4B-q4f16_1-ctx4k_cs1k-webgpu.wasm", "Qwen3-8B-q4f16_1-MLC": "Qwen3-8B-q4f16_1-ctx4k_cs1k-webgpu.wasm", "Qwen2.5-3B-Instruct-q4f16_1-MLC": "Qwen2.5-3B-Instruct-q4f16_1-ctx4k_cs1k-webgpu.wasm", "Qwen3-1.7B-q4f16_1-MLC": "Qwen3-1.7B-q4f16_1-ctx4k_cs1k-webgpu.wasm" };
+const LOCAL_VRAM = { "Qwen3-4B-q4f16_1-MLC": 3432, "Qwen3-8B-q4f16_1-MLC": 5696, "Qwen2.5-3B-Instruct-q4f16_1-MLC": 2505, "Qwen3-1.7B-q4f16_1-MLC": 2037 };
+const WEBLLM_LIB = ["https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.79/+esm", "https://esm.sh/@mlc-ai/web-llm@0.2.79"];
+const WASM_HOSTS = ["https://cdn.jsdelivr.net/gh/mlc-ai/binary-mlc-llm-libs@main/web-llm-models/v0_2_48/", "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/web-llm-models/v0_2_48/"];
+const WEIGHT_HOSTS = ["https://huggingface.co/mlc-ai/", "https://modelscope.cn/models/mlc-ai/"];
+async function probe(url, ms) { const ac = new AbortController(); const t = setTimeout(() => ac.abort(), ms || 9000); try { const r = await fetch(url, { method: "GET", headers: { Range: "bytes=0-63" }, signal: ac.signal, cache: "no-store" }); return r.ok || r.status === 206; } catch (e) { return false; } finally { clearTimeout(t); } }
+async function firstOk(cands, path) { for (const c of cands) if (await probe(c + path)) return c; return null; }
 async function loadLocal(model, onProg) {
   if (!HAS_WEBGPU) throw aiErr("no_webgpu", "браузер не поддерживает WebGPU"); if (webEngine && webEngine.__model === model) return webEngine;
-  if (!webLoading) webLoading = (async () => { const m = await import("https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.79/+esm"); const e = await m.CreateMLCEngine(model, { initProgressCallback: p => onProg?.(p) }, { context_window_size: 8192 }); e.__model = model; webEngine = e; return e; })().finally(() => { webLoading = null; });
+  if (!webLoading) webLoading = (async () => {
+    onProg?.({ progress: 0, text: "Проверяю, откуда можно скачать…" });
+    let lib = null, libErr = null; for (const u of WEBLLM_LIB) { try { lib = await import(u); break; } catch (e) { libErr = e; } }
+    if (!lib) throw aiErr("lib", "не удалось скачать библиотеку ИИ (jsDelivr и esm.sh недоступны)");
+    const wasmFile = LOCAL_LIBS[model]; const wasmHost = await firstOk(WASM_HOSTS, wasmFile); if (!wasmHost) throw aiErr("wasm", "не удалось скачать движок модели — ни jsDelivr, ни GitHub не отвечают");
+    const hosts = []; for (const h of WEIGHT_HOSTS) if (await probe(h + model + "/resolve/main/mlc-chat-config.json") && await probe(h + model + "/resolve/main/params_shard_0.bin", 15000)) hosts.push(h);
+    if (!hosts.length) throw aiErr("weights", "веса модели недоступны ни с Hugging Face, ни с ModelScope");
+    let lastErr = null;
+    for (const wHost of hosts) {
+      onProg?.({ progress: 0, text: `Качаю с ${new URL(wHost).hostname}…` });
+      const appConfig = { model_list: [{ model: wHost + model, model_id: model, model_lib: wasmHost + wasmFile, vram_required_MB: LOCAL_VRAM[model], low_resource_required: true, overrides: { context_window_size: 8192 } }] };
+      try { const e = await lib.CreateMLCEngine(model, { appConfig, initProgressCallback: p => onProg?.(p) }); e.__model = model; webEngine = e; return e; }
+      catch (er) { const m = String(er?.message || er);
+        if (/quota/i.test(m)) throw aiErr("space", "браузеру не хватает места для модели — освободите место на диске, закройте режим инкогнито или выберите модель поменьше");
+        if (/memory|OOM|allocate|device lost|adapter/i.test(m)) throw aiErr("vram", "видеокарта не справилась (мало видеопамяти или нет WebGPU) — выберите модель поменьше");
+        lastErr = /fetch|network|load|abort/i.test(m) ? aiErr("download", `загрузка с ${new URL(wHost).hostname} прервалась`) : aiErr("local", m.slice(0, 160)); }
+    }
+    throw lastErr || aiErr("download", "загрузка прервалась — попробуйте ещё раз, скачанное сохранится"); })().finally(() => { webLoading = null; });
   return webLoading;
 }
 function stripThink(t) { return String(t || "").replace(/<think>[\s\S]*?(<\/think>|$)/g, "").trimStart(); }
