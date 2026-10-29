@@ -140,10 +140,11 @@ async function callProv(id, input, opts, json) {
     return { value: parseJSONLoose(again.text) }; }
 }
 function provChain() { const cfg = aiCfg(); if (cfg.prov === "offline") return []; const want = cfg.prov === "auto" ? AUTO_ORDER : [cfg.prov, ...AUTO_ORDER.filter(x => x !== cfg.prov)]; return want.filter(id => provReady(id, cfg)); }
+function cleanAIText(t) { return String(t || "").replace(/<br\s*\/?>/gi, "\n").replace(/<\/?(em|i|b|strong|u|span|p|div|q)(\s[^>]*)?>/gi, "").replace(/\*\*([^*\n]+)\*\*/g, "$1"); }
 async function chainRun(input, opts, json) {
   const list = provChain(); let last = aiErr("no_ai");
   for (const id of list) { if ((provCool[id] || 0) > Date.now()) continue;
-    try { const r = await callProv(id, input, opts, json); if (lastProv !== id) { lastProv = id; setAIPill(true); } return r; }
+    try { const o2 = id !== "claude" && !json && opts?.onText ? { ...opts, onText: x => opts.onText({ text: cleanAIText(x.text), delta: x.delta }) } : opts; const r = await callProv(id, input, o2, json); if (id !== "claude" && !json && r) r.text = cleanAIText(r.text); if (lastProv !== id) { lastProv = id; setAIPill(true); } return r; }
     catch (e) { if (e?.code === "cancelled" || e?.name === "AbortError") throw e.code ? e : aiErr("cancelled", "", { text: "" }); last = e; provCool[id] = Date.now() + (e?.code === "auth" || e?.code === "no_key" || e?.code === "no_login" || e?.code === "region" ? 10 * 60e3 : e?.code === "too_long" ? 5 * 60e3 : 45e3); console.warn("ИИ-провайдер", id, e); } }
   throw last;
 }
@@ -168,7 +169,7 @@ async function pollImage(prompt, seed) {
   }
   throw aiErr("busy");
 }
-async function puterImage(prompt) { const p = await loadPuter(); if (!(await puterSigned())) throw aiErr("no_img_prov"); let img; try { img = await p.ai.txt2img(prompt.slice(0, 900), { model: aiCfg().models.puterImg || "@cf/black-forest-labs/flux-1-schnell" }); } catch (e) { throw aiErr(/funds|limit/i.test(e?.code || e?.message || "") ? "quota" : "img_failed"); } const src = img?.src || String(img || ""); if (!src) throw aiErr("no_image"); try { return { blob: await blobFromUrl(src) }; } catch (e) { return { url: src }; } }
+async function puterImage(prompt) { const p = await loadPuter(); if (!(await puterSigned())) throw aiErr("no_img_prov"); let img; try { img = await p.ai.txt2img(prompt.slice(0, 900), { model: aiCfg().models.puterImg || "@cf/black-forest-labs/flux-1-schnell", width: IMG_W, height: IMG_H }); } catch (e) { throw aiErr(/funds|limit/i.test(e?.code || e?.message || "") ? "quota" : "img_failed"); } const src = img?.src || String(img || ""); if (!src) throw aiErr("no_image"); try { return { blob: await blobFromUrl(src) }; } catch (e) { return { url: src }; } }
 async function proxyImage(prompt, seed) { const base = aiCfg().url.replace(/\/+$/, "").replace(/\/v1$/, ""); if (!base) throw aiErr("no_img_prov"); const r = await fetch(`${base}/image?${new URLSearchParams({ prompt: prompt.slice(0, 900), seed: String(seed), w: String(IMG_W), h: String(IMG_H) })}`).catch(() => null); if (!r) throw aiErr("img_failed"); if (r.status === 429) throw aiErr("busy"); if (!r.ok || !/^image\//.test(r.headers.get("content-type") || "")) throw aiErr("img_failed"); return { blob: await r.blob() }; }
 async function hfTokenImage(prompt, seed) { const tok = aiCfg().keys.hf; if (!tok) throw aiErr("no_img_prov"); const r = await fetch("https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell", { method: "POST", headers: { Authorization: "Bearer " + tok, "Content-Type": "application/json" }, body: JSON.stringify({ inputs: prompt.slice(0, 900), parameters: { width: IMG_W, height: IMG_H, num_inference_steps: 4, seed } }) }).catch(() => null); if (!r) throw aiErr("img_failed"); if (r.status === 402 || r.status === 429) throw aiErr("quota"); if (!r.ok) throw aiErr(r.status === 401 ? "img_auth" : "img_failed"); return { blob: await r.blob() }; }
 function imgChain() { const cfg = aiCfg(); if (cfg.img === "off") return []; const ok = { claude: !!window.claude?.use, proxy: !IS_ARTIFACT && !!cfg.url, puter: !IS_ARTIFACT && cfg.puter, pollinations: !IS_ARTIFACT, hf: !IS_ARTIFACT && !!cfg.keys.hf };

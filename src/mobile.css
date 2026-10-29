@@ -50,3 +50,4 @@
 }
 @media (max-width: 380px) { body:has(#screen-game:not([hidden])) #pill-ai { display: none; } }
 @media (max-width: 980px) { .npc-pop { top: calc(72px + env(safe-area-inset-top, 0px)); bottom: auto; right: 12px; width: 128px; } .npc-pop .cap { padding: 8px 10px 9px; } .npc-pop b { font-size: 18px; } .npc-pop small { font-size: 11px; } }
+@media (max-width: 600px) { .tip-toast { bottom: auto; top: calc(70px + env(safe-area-inset-top, 0px)); } }
