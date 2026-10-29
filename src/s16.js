@@ -1,0 +1,3666 @@
+"use strict";
+/* =========================================================================
+   RULES — SRD 5e, упрощённо. Числа живут только здесь.
+   ========================================================================= */
+const ABIL = ["str", "dex", "con", "int", "wis", "cha"];
+const ABIL_RU = { str: "СИЛ", dex: "ЛОВ", con: "ТЕЛ", int: "ИНТ", wis: "МДР", cha: "ХАР" };
+const ABIL_FULL = { str: "Сила", dex: "Ловкость", con: "Телосложение", int: "Интеллект", wis: "Мудрость", cha: "Харизма" };
+const SKILLS = {
+  acrobatics: ["Акробатика", "dex"], investigation: ["Анализ", "int"], athletics: ["Атлетика", "str"],
+  perception: ["Внимательность", "wis"], survival: ["Выживание", "wis"], performance: ["Выступление", "cha"],
+  intimidation: ["Запугивание", "cha"], history: ["История", "int"], sleight: ["Ловкость рук", "dex"],
+  arcana: ["Магия", "int"], medicine: ["Медицина", "wis"], deception: ["Обман", "cha"],
+  nature: ["Природа", "int"], insight: ["Проницательность", "wis"], religion: ["Религия", "int"],
+  stealth: ["Скрытность", "dex"], persuasion: ["Убеждение", "cha"], animal: ["Уход за животными", "wis"]
+};
+const RACES = {
+  human: { name: "Человек", sub: "Упрямые, разные, вездесущие", bonus: { str: 1, dex: 1, con: 1, int: 1, wis: 1, cha: 1 }, speed: 30,
+    traits: ["+1 ко всем характеристикам", "Лишний язык"], skills: [] },
+  elf: { name: "Эльф", sub: "Высокий эльф, видит в темноте", bonus: { dex: 2, int: 1 }, speed: 30,
+    traits: ["Тёмное зрение", "Владеет Внимательностью", "Устойчив к очарованию"], skills: ["perception"] },
+  dwarf: { name: "Дварф", sub: "Холмовой дварф, крепкий как скала", bonus: { con: 2, wis: 1 }, speed: 25, hpBonus: 1,
+    traits: ["Тёмное зрение", "Сопротивление яду", "+1 HP за уровень"], skills: [] },
+  halfling: { name: "Полурослик", sub: "Легконогий, удачливый", bonus: { dex: 2, cha: 1 }, speed: 25, lucky: true,
+    traits: ["Везение: переброс натуральной 1", "Храбрость", "Проворство"], skills: [] }
+};
+const WEAPONS = {
+  longsword: { name: "Длинный меч", dice: "1d8", abil: "str" },
+  rapier: { name: "Рапира", dice: "1d8", abil: "finesse" },
+  shortbow: { name: "Короткий лук", dice: "1d6", abil: "dex", ranged: true },
+  staff: { name: "Боевой посох", dice: "1d6", abil: "str" },
+  mace: { name: "Булава", dice: "1d6", abil: "str" }
+};
+const SPELLS = {
+  firebolt: { name: "Огненный снаряд", lvl: 0, kind: "attack", dice: "1d10", type: "огнём", desc: "Атака заклинанием, 1d10 огня" },
+  magic_missile: { name: "Волшебная стрела", lvl: 1, kind: "auto", dice: "3d4+3", type: "силовым полем", desc: "Три дротика, всегда попадают" },
+  sleep: { name: "Усыпление", lvl: 1, kind: "sleep", dice: "5d8", desc: "Усыпляет врагов с HP не выше 5d8" },
+  sacred_flame: { name: "Священное пламя", lvl: 0, kind: "save", abil: "dex", dice: "1d8", type: "излучением", desc: "Спасбросок ЛОВ, 1d8 излучения" },
+  cure_wounds: { name: "Лечение ран", lvl: 1, kind: "heal", dice: "1d8", desc: "Восстанавливает 1d8 + МДР" },
+  guiding_bolt: { name: "Направляющий снаряд", lvl: 1, kind: "attack", dice: "4d6", type: "излучением", desc: "Атака заклинанием, 4d6 излучения" },
+  shatter: { name: "Дребезги", lvl: 2, kind: "save", abil: "con", dice: "3d8", type: "звуком", desc: "Спасбросок ТЕЛ, 3d8 звуком" },
+  fireball: { name: "Огненный шар", lvl: 3, kind: "save", abil: "dex", dice: "8d6", type: "огнём", desc: "Спасбросок ЛОВ, 8d6 огня" },
+  spiritual_weapon: { name: "Божественное оружие", lvl: 2, kind: "attack", dice: "1d8+3", type: "силовым полем", desc: "Атака заклинанием, 1d8 + МДР" },
+  spirit_guardians: { name: "Духовные стражи", lvl: 3, kind: "save", abil: "wis", dice: "3d8", type: "излучением", desc: "Спасбросок МДР, 3d8 излучения" }
+};
+const XP_LEVELS = [0, 300, 900, 2700, 6500];
+const MAX_LEVEL = 5;
+const SLOT_TABLE = { 1: { 1: 2 }, 2: { 1: 3 }, 3: { 1: 4, 2: 2 }, 4: { 1: 4, 2: 3 }, 5: { 1: 4, 2: 3, 3: 2 } };
+const LEVEL_SPELLS = { wizard: { 3: "shatter", 5: "fireball" }, cleric: { 3: "spiritual_weapon", 5: "spirit_guardians" } };
+const LEVEL_FEATS = {
+  fighter: { 2: "Всплеск действий: раз за отдых — ещё одно действие", 3: "Боевой архетип: Чемпион — крит на 19–20", 4: "Увеличение характеристик", 5: "Дополнительная атака: две атаки за действие" },
+  rogue: { 2: "Хитрое действие: рывок, отход или засада бонусом", 3: "Скрытая атака 2d6", 4: "Увеличение характеристик", 5: "Скрытая атака 3d6, Невероятное уклонение" },
+  wizard: { 2: "Школа воплощения", 3: "Заклинания 2 круга: Дребезги", 4: "Увеличение характеристик", 5: "Заклинания 3 круга: Огненный шар" },
+  cleric: { 2: "Божественный канал: изгнание нежити", 3: "Заклинания 2 круга: Божественное оружие", 4: "Увеличение характеристик", 5: "Заклинания 3 круга: Духовные стражи, Уничтожение нежити" }
+};
+const CLASSES = {
+  fighter: { name: "Воин", role: "Передняя линия", color: "#d0814f", hd: 10, saves: ["str", "con"],
+    prio: ["str", "con", "dex", "wis", "cha", "int"], armor: { name: "Кольчуга и щит", base: 18, dex: 0 },
+    weapons: ["longsword"], skillCount: 2,
+    skillList: ["acrobatics", "animal", "athletics", "history", "insight", "intimidation", "perception", "survival"],
+    features: ["Второе дыхание: 1d10 + уровень HP раз за короткий отдых", "Боевой стиль: Защита"],
+    items: ["Кольчуга", "Щит", "Длинный меч", "Набор путешественника"], blurb: "Сталь, щит и выдержка. Держит удар лучше всех." },
+  rogue: { name: "Плут", role: "Ловкость и хитрость", color: "#7cc79c", hd: 8, saves: ["dex", "int"],
+    prio: ["dex", "con", "wis", "cha", "int", "str"], armor: { name: "Кожаный доспех", base: 11, dex: 99 },
+    weapons: ["rapier", "shortbow"], skillCount: 4,
+    skillList: ["acrobatics", "athletics", "deception", "insight", "intimidation", "investigation", "perception", "performance", "persuasion", "sleight", "stealth"],
+    features: ["Скрытая атака: +1d6 урона при преимуществе", "Воровской жаргон"],
+    items: ["Кожаный доспех", "Рапира", "Короткий лук и 20 стрел", "Воровские инструменты"], blurb: "Тень у двери, нож в рукаве, нужное слово вовремя." },
+  wizard: { name: "Волшебник", role: "Магия и знание", color: "#72aed0", hd: 6, saves: ["int", "wis"],
+    prio: ["int", "con", "dex", "wis", "cha", "str"], armor: { name: "Без доспеха", base: 10, dex: 99 },
+    weapons: ["staff"], skillCount: 2, cast: "int", spells: ["firebolt", "magic_missile", "sleep"],
+    skillList: ["arcana", "history", "insight", "investigation", "medicine", "religion"],
+    features: ["Колдовство (ИНТ)", "Магическое восстановление"],
+    items: ["Боевой посох", "Книга заклинаний", "Мешочек с компонентами"], blurb: "Хрупкий, но знает слова, которые меняют исход боя." },
+  cleric: { name: "Жрец", role: "Свет и исцеление", color: "#e3c06a", hd: 8, saves: ["wis", "cha"],
+    prio: ["wis", "con", "str", "dex", "cha", "int"], armor: { name: "Чешуйчатый доспех и щит", base: 16, dex: 2 },
+    weapons: ["mace"], skillCount: 2, cast: "wis", spells: ["sacred_flame", "cure_wounds", "guiding_bolt"],
+    skillList: ["history", "insight", "medicine", "persuasion", "religion"],
+    features: ["Колдовство (МДР)", "Божественный домен: Жизнь"],
+    items: ["Чешуйчатый доспех", "Щит", "Булава", "Священный символ"], blurb: "Лечит, изгоняет нежить, держит строй." }
+};
+const BACKGROUNDS = {
+  soldier: { name: "Солдат", skills: ["athletics", "intimidation"], hook: "отслужили своё и ищете место, где оружие ещё нужно" },
+  sage: { name: "Мудрец", skills: ["arcana", "history"], hook: "приехали за старой тайной, о которой пишут в забытых книгах" },
+  criminal: { name: "Преступник", skills: ["deception", "stealth"], hook: "скрываетесь от прошлого и знаете, как говорить с тёмными людьми" },
+  acolyte: { name: "Прислужник", skills: ["insight", "religion"], hook: "пришли по зову храма, которому служили с детства" }
+};
+const MODES = {
+  chronicle: { name: "Хроника", sub: "Строгий сюжет, честные броски, перманентная смерть", prompt: "Режим ХРОНИКА: серьёзный тон, сюжет ведёт к тайне, мир жёсткий, ошибки имеют цену. Смерть героя окончательна." },
+  sandbox: { name: "Песочница", sub: "Свободный мир, один второй шанс при смерти", prompt: "Режим ПЕСОЧНИЦА: мир свободен, следуй за интересами игрока, сюжет подстраивается." },
+  novice: { name: "Новичок", sub: "Дружелюбно, с подсказками по правилам, без смерти", prompt: "Режим НОВИЧОК: дружелюбный тон, в конце коротко подскажи, какие действия возможны и как работают проверки. Герой не умирает, а теряет сознание." }
+};
+/* Бестиарий: ИИ выбирает только тип и имя, статы берутся отсюда (SRD) */
+const BESTIARY = {
+  zombie: { label: "зомби, утопленник, ожившие мертвецы", ac: 8, hp: 22, atk: 3, dmg: "1d6+1", dex: -2, xp: 50 },
+  skeleton: { label: "скелет", ac: 13, hp: 13, atk: 4, dmg: "1d6+2", dex: 2, xp: 50 },
+  bandit: { label: "бандит, контрабандист, наёмник", ac: 12, hp: 11, atk: 3, dmg: "1d6+1", dex: 1, xp: 25 },
+  cultist: { label: "культист, фанатик", ac: 12, hp: 9, atk: 3, dmg: "1d6+1", dex: 1, xp: 25 },
+  thug: { label: "громила, главарь банды (босс)", ac: 11, hp: 32, atk: 4, dmg: "1d6+2", dex: 0, xp: 100, boss: true },
+  wolf: { label: "волк, дикий пёс", ac: 13, hp: 11, atk: 4, dmg: "2d4+2", dex: 2, xp: 50 },
+  giant_rat: { label: "гигантская крыса", ac: 12, hp: 7, atk: 4, dmg: "1d4+2", dex: 2, xp: 25 },
+  goblin: { label: "гоблин", ac: 15, hp: 7, atk: 4, dmg: "1d6+2", dex: 2, xp: 50 },
+  giant_spider: { label: "гигантский паук, логово чудовища (босс)", ac: 14, hp: 26, atk: 5, dmg: "1d8+3", dex: 3, xp: 200, boss: true }
+};
+const KINDS = { inn: "⌂", house: "⌂", hut: "⌂", chapel: "✝", shrine: "✧", tower: "♜", cave: "◖", ruin: "∏", camp: "▲", mine: "◆", farm: "≡", pier: "≈", wreck: "✕", grove: "♣", bridge: "∩", well: "○", gate: "∏" };
+const WHERES = ["village", "shore", "forest", "hills", "water_edge", "wild"];
+const FEATURES = ["beard", "hood", "scarf", "scar", "jewel", "braid", "bald", "hat"];
+const HAIRS = { black: "hsl(220, 10%, 14%)", brown: "hsl(28, 35%, 24%)", red: "hsl(14, 70%, 42%)", grey: "hsl(210, 6%, 66%)", white: "hsl(40, 12%, 86%)", blond: "hsl(44, 60%, 62%)" };
+const BIOMES = { coast: "Побережье", marsh: "Болота", mountains: "Горы", forest: "Лес" };
+const TONES = { grim: "Мрачный", heroic: "Героический", fairy: "Сказочный" };
+const MAGICS = { rare: "Магия редка", common: "Магия обычна" };
+const MAP_W = 20, MAP_H = 14;
+
+/* =========================================================================
+   RNG & DICE
+   ========================================================================= */
+function rnd(n) { const a = new Uint32Array(1); crypto.getRandomValues(a); return (a[0] % n) + 1; }
+const DICE_RE = /^(\d{1,2})d(4|6|8|10|12|20)(?:([+-])(\d{1,2}))?$/;
+function parseDice(s) {
+  const m = DICE_RE.exec(String(s || "").replace(/\s+/g, "").toLowerCase());
+  if (!m) return null;
+  return { n: Math.min(+m[1], 8), d: +m[2], mod: m[3] ? (m[3] === "-" ? -1 : 1) * +m[4] : 0 };
+}
+function rollDice(s, crit) {
+  const p = typeof s === "string" ? parseDice(s) : s;
+  if (!p) return { total: 0, rolls: [], text: "—" };
+  const n = crit ? p.n * 2 : p.n;
+  const rolls = []; for (let i = 0; i < n; i++) rolls.push(rnd(p.d));
+  const total = Math.max(0, rolls.reduce((a, b) => a + b, 0) + p.mod);
+  return { total, rolls, text: `${n}d${p.d}${p.mod ? (p.mod > 0 ? "+" : "") + p.mod : ""} [${rolls.join(", ")}] = ${total}` };
+}
+const fmt = n => (n >= 0 ? "+" : "") + n;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+function mulberry(seed) { let a = seed >>> 0; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function esc(s) { return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+function hash(s) { let h = 2166136261; for (const ch of String(s)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
+function uid() { return Date.now().toString(36) + rnd(1e6).toString(36); }
+function str(v, n) { return String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n); }
+
+/* =========================================================================
+   WORLD — активный мир. Всё, что ниже читает POIS/NPCS/ENEMIES, берёт их отсюда.
+   ========================================================================= */
+let WD = null, POIS = {}, NPCS = {}, ENEMIES = {}, ROAD = new Set();
+function setWorld(def) {
+  ensureBuildings(def); WD = def; POIS = def.places; NPCS = def.npcs; ENEMIES = def.enemies; ROAD = new Set(def.roads || []);
+}
+function tileAt(x, y) { const r = WD.tiles[y]; return r ? r[x] : "S"; }
+const PASSABLE = t => t !== "S" && t !== "W";
+
+/* ---------- готовый мир: Солёная Гавань ---------- */
+function makeDefaultWorld() {
+  const coast = y => 2 + Math.round(Math.sin(y * .55 + 1));
+  const T = (x, y) => {
+    if (y === 13 && x < 12) return "S"; if (y === 12 && x < 4) return "S"; if (x < coast(y)) return "S";
+    if (x === coast(y) || (y === 12 && x < 9) || (y === 13 && x < 14)) return "a";
+    if ((x >= 15 && y <= 3) || (x >= 16 && y >= 10) || (x >= 18 && y >= 9)) return "r";
+    if (y <= 3 && x >= 6 && x <= 13) return "f"; if (x === 19 && y >= 4 && y <= 9) return "S"; return "g";
+  };
+  const tiles = []; for (let y = 0; y < MAP_H; y++) { let r = ""; for (let x = 0; x < MAP_W; x++) r += T(x, y); tiles.push(r); }
+  const places = {
+    tavern: { name: "Таверна «Кривой якорь»", kind: "inn", x: 9, y: 7, short: "Сердце деревни, пахнет рыбой и смолой", rest: true, npcs: ["marta"], enemies: [],
+      desc: "Низкий зал с чадящим очагом. Рыбаки шепчутся о ночном крушении. Здесь можно снять комнату и отдохнуть.", clue: "Из разговоров ясно: в ночь крушения кто-то видел лодку без фонаря." },
+    pier: { name: "Пристань", kind: "pier", x: 3, y: 9, short: "Мокрые доски, сети, лодки", npcs: ["ost"], enemies: [],
+      desc: "Скрипучие мостки уходят в серую воду. Рыбак чинит сеть и упорно не смотрит в сторону маяка.", clue: "Ост дёргается при слове «маяк» и бросает взгляд на скалы к востоку." },
+    elder: { name: "Дом старосты", kind: "house", x: 12, y: 5, short: "Единственный дом из камня", npcs: ["brenn"], enemies: [],
+      desc: "Добротный дом с новой черепицей, слишком новой для деревни, где всё рассыпается.", clue: "На столе старосты дорогой подсвечник, похожий на груз «Чайки»." },
+    chapel: { name: "Часовня Приливов", kind: "chapel", x: 14, y: 8, short: "Старая часовня с пустой звонницей", rest: true, npcs: ["ilva"], enemies: [],
+      desc: "В звоннице нет колокола: на балке лишь светлый след от крепления. Внутри тихо и сыро.", clue: "На балке звонницы свежие царапины: колокол сняли недавно и грубо." },
+    wreck: { name: "Место крушения", kind: "wreck", x: 5, y: 12, short: "Обломки «Серебряной чайки»", npcs: [], enemies: [],
+      desc: "На отмели лежит разбитый когг. Ящики вскрыты, но не волнами: на досках следы ломов.", clue: "Среди ящиков медная пуговица с якорем — такие носят люди Рэйфа." },
+    grove: { name: "Сосновая роща", kind: "grove", x: 9, y: 2, short: "Тропа к маяку через сосны", npcs: [], enemies: [],
+      desc: "Узловатые сосны, ветер с моря. На тропе свежие следы нескольких пар сапог, ведущие к маяку.", clue: "Следы сапог ведут к маяку и обратно, их не меньше четырёх пар." },
+    lighthouse: { name: "Старый маяк", kind: "tower", x: 17, y: 2, short: "Заброшен, но ночью в нём горит свет", npcs: [], enemies: ["drowned_a", "drowned_b"],
+      desc: "Башня на скале, дверь сорвана с петель. Внутри пахнет водорослями, на ступенях мокрые следы босых ног.", clue: "В нише размокшая записка: «…огонь зажигают не мертвецы. Грот под скалой. — Х.»" },
+    cave: { name: "Грот под скалой", kind: "cave", x: 17, y: 11, short: "Видно только в отлив", npcs: [], enemies: ["smug_a", "smug_b", "rafe"],
+      desc: "Низкий вход у самой воды. Внутри отблеск фонаря и голоса.", clue: "У дальней стены под мешковиной темнеет силуэт колокола." }
+  };
+  const npcs = {
+    marta: { name: "Марта", role: "хозяйка таверны", look: "полная, рыжая, с ожогом на руке", persona: "Громкая, добрая, любит сплетни. Боится, что деревня вымрет.",
+      secret: "Видела, как Ост ночью выходил в море без фонаря в ночь крушения.", greet: "«Садись, путник. Ты ведь слышал про «Чайку»?»", hair: "red", feature: "braid", age: "adult",
+      photo_prompt: "portrait of a stout red-haired tavern keeper woman in her forties, thick braid, old burn scar on her forearm, flour on apron, warm worried smile, inside a smoky low-ceilinged fishermen tavern, hearth glow" },
+    ost: { name: "Ост", role: "рыбак", look: "жилистый, седая щетина, взгляд в пол", persona: "Молчаливый, нервный, защищает семью любой ценой.",
+      secret: "Его брат Рэйф — главарь контрабандистов. Ост знает про грот, но боится за брата.", greet: "«Я рыбак. Я ничего не видел», — бормочет он.", hair: "grey", feature: "beard", age: "old",
+      photo_prompt: "portrait of a wiry old fisherman, grey stubble beard, nervous downcast eyes, salt-stained wool sweater, mending a net on a wet wooden pier" },
+    brenn: { name: "Бренн", role: "староста", look: "холёный, перстни, дорогой плащ", persona: "Вежлив, уклончив, хочет замять историю с крушением.",
+      secret: "Берёт долю с добычи контрабандистов. Сам никого не убивал.", greet: "«Крушение? Печально. Но лишний шум деревне не нужен».", hair: "brown", feature: "jewel", age: "adult",
+      photo_prompt: "portrait of a well-groomed village elder man in his fifties, neat brown hair, rings on his fingers, expensive dark wool cloak with silver clasp, polite evasive smile, stone house interior with candlelight" },
+    ilva: { name: "Сестра Илва", role: "жрица Часовни Приливов", look: "худая, в сером, с выцветшей синей лентой", persona: "Тихая, упорная, верит в старые обряды.",
+      secret: "Знает, что Колокол Приливов украден месяц назад, и подозревает, что мертвецы поднялись из-за этого.", greet: "«С тех пор как пропал колокол, море неспокойно».", hair: "white", feature: "hood", age: "adult",
+      photo_prompt: "portrait of a thin pale priestess in a grey hooded robe, faded blue ribbon tied at her wrist, calm stubborn gaze, inside a damp old stone chapel, candle light" }
+  };
+  const B = BESTIARY;
+  const enemies = {
+    drowned_a: { ...B.zombie, type: "zombie", name: "Утопленник", loc: "lighthouse" },
+    drowned_b: { ...B.zombie, type: "zombie", name: "Хальвард-утопленник", loc: "lighthouse" },
+    smug_a: { ...B.bandit, type: "bandit", name: "Контрабандист", loc: "cave" },
+    smug_b: { ...B.bandit, type: "bandit", name: "Контрабандист с багром", loc: "cave" },
+    rafe: { ...B.thug, type: "thug", name: "Рэйф", loc: "cave", ac: 14, hp: 30, dmg: "1d8+2" }
+  };
+  const roads = []; const hub = [10, 7];
+  const L = (a, b) => { let [x, y] = a; while (x !== b[0]) { roads.push(x + "," + y); x += Math.sign(b[0] - x); } while (y !== b[1]) { roads.push(x + "," + y); y += Math.sign(b[1] - y); } roads.push(x + "," + y); };
+  Object.values(places).forEach(p => L(hub, [p.x, p.y]));
+  return { id: "salt-harbor", season: "autumn", culture: "north", settle: "village", danger: "mid", genre: "mystery", photo_style: "cinematic photograph, medieval northern fishing village, cold overcast sea light, muted teal and grey palette, wool and weathered wood textures, 85mm lens, shallow depth of field, subtle film grain, realistic skin", name: "Солёная Гавань", tagline: "Маяк горит, хотя смотритель мёртв", biome: "coast", tone: "grim", start: "tavern",
+    public: "Солёная Гавань — бедная рыбацкая деревня на холодном северном побережье. Прошлой ночью на рифах у старого маяка разбился торговый когг «Серебряная чайка». Маяк заброшен с тех пор, как месяц назад пропал смотритель Хальвард, но в ночь крушения в нём горел свет. Магия в мире редка и пугает простых людей.",
+    secret: "Рэйф, брат рыбака Оста, главарь контрабандистов из грота под скалой. Он зажигает ложный огонь на маяке, чтобы корабли разбивались о рифы, и грабит обломки. Смотритель Хальвард узнал об этом и был утоплен людьми Рэйфа. Месяц назад Рэйф украл из часовни Колокол Приливов (он у него в гроте) — без колокола благословение моря ослабло, и утонувшие, включая Хальварда, по ночам встают у маяка. Староста Бренн берёт долю с добычи. Ост всё знает, но покрывает брата.",
+    beats: ["Улики на месте крушения: следы ломов", "Признание Оста или слова Марты", "Маяк с утопленниками и записка Хальварда о гроте", "Грот, Рэйф и Колокол Приливов"],
+    endings: ["Вернуть колокол в часовню — мертвецы упокоятся", "Разоблачить Рэйфа и Бренна перед деревней"],
+    quest: "Узнать, почему горел маяк в ночь крушения «Серебряной чайки».",
+    recommended: [{ cls: "cleric", why: "Нежить у маяка" }, { cls: "rogue", why: "Тайны и контрабанда" }],
+    bg_hooks: { soldier: "служили в береговой страже и помните, как горел маяк в лучшие годы", sage: "приехали изучать старые приливные обряды здешней часовни",
+      criminal: "когда-то возили контрабанду вдоль этого берега и знаете, кто здесь платит за молчание", acolyte: "получили письмо от сестры Илвы с просьбой о помощи" },
+    intro: "Утро пахнет мокрой золой и солью. В «Кривом якоре» тесно: рыбаки говорят вполголоса, и каждый второй косится в окно, туда, где на скале чернеет старый маяк.\n\nМарта ставит перед тобой миску ухи и наклоняется ближе: «Ночью «Серебряная чайка» налетела на рифы. А маяк горел, понимаешь? Горел, хотя Хальвард пропал ещё в прошлом месяце».",
+    intro_speaker: "marta", places, npcs, enemies, tiles, roads: [...new Set(roads)],
+    houses: [[7, 6], [8, 9], [11, 8], [6, 8], [12, 7], [10, 5], [13, 6], [7, 10]], labels: [{ t: "Холодное море", x: .3, y: 4.2 }] };
+}
+
+/* ---------- процедурная карта ---------- */
+function noiseField(rand, cell) {
+  const gw = Math.ceil(MAP_W / cell) + 2, gh = Math.ceil(MAP_H / cell) + 2; const g = [];
+  for (let i = 0; i < gw * gh; i++) g.push(rand());
+  const sm = t => t * t * (3 - 2 * t);
+  return (x, y) => { const fx = x / cell, fy = y / cell; const x0 = Math.floor(fx), y0 = Math.floor(fy); const tx = sm(fx - x0), ty = sm(fy - y0);
+    const v = (i, j) => g[(j) * gw + i]; const a = v(x0, y0) * (1 - tx) + v(x0 + 1, y0) * tx; const b = v(x0, y0 + 1) * (1 - tx) + v(x0 + 1, y0 + 1) * tx; return a * (1 - ty) + b * ty; };
+}
+function buildMap(biome, seed, placeList) {
+  const rand = mulberry(seed);
+  const n1a = noiseField(rand, 5), n1b = noiseField(rand, 2.5), n2a = noiseField(rand, 4), n2b = noiseField(rand, 2);
+  const N1 = (x, y) => n1a(x, y) * .7 + n1b(x, y) * .3, N2 = (x, y) => n2a(x, y) * .65 + n2b(x, y) * .35;
+  const side = Math.floor(rand() * 4); // where the sea is for coast
+  const grid = [];
+  for (let y = 0; y < MAP_H; y++) { grid.push([]); for (let x = 0; x < MAP_W; x++) {
+    const e = N1(x, y), m = N2(x, y); let t = "g";
+    if (biome === "coast") {
+      const d = [x / MAP_W, 1 - x / MAP_W, y / MAP_H, 1 - y / MAP_H][side] + (e - .5) * .28;
+      t = d < .17 ? "S" : d < .22 ? "a" : e > .74 ? "r" : m > .6 ? "f" : "g";
+    } else if (biome === "marsh") t = e < .3 ? "W" : m > .7 ? "f" : m > .4 ? "m" : "g";
+    else if (biome === "mountains") t = e > .76 ? "n" : e > .58 ? "r" : e < .16 ? "W" : m > .6 ? "f" : "g";
+    else t = e < .2 ? "W" : m > .38 ? "f" : "g";
+    grid[y].push(t);
+  } }
+  // hub — ближайшая к центру проходимая клетка; расчищаем поляну под поселение
+  let hub = [10, 7], best = 1e9;
+  for (let y = 2; y < MAP_H - 2; y++) for (let x = 3; x < MAP_W - 3; x++) { const d = Math.hypot(x - 10, y - 7) + (PASSABLE(grid[y][x]) ? 0 : 50) + (grid[y][x] === "g" ? 0 : 2); if (d < best) { best = d; hub = [x, y]; } }
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const x = hub[0] + dx, y = hub[1] + dy; if (grid[y] && grid[y][x]) grid[y][x] = "g"; }
+  const adjWater = (x, y) => [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => { const t = grid[y + b]?.[x + a]; return t === "S" || t === "W"; });
+  const pos = {}; const taken = [];
+  placeList.forEach((p, i) => {
+    if (i === 0) { pos[p.id] = hub; taken.push(hub); return; }
+    let bestP = null, bestS = -1e9;
+    for (let pass = 0; pass < 2 && !bestP; pass++) {
+      const minD = pass ? 2 : 2.9;
+      for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) {
+        const t = grid[y][x]; if (!PASSABLE(t)) continue; if (x === 0 || y === 0 || x === MAP_W - 1 || y === MAP_H - 1) continue;
+        if (taken.some(([a, b]) => Math.hypot(a - x, b - y) < minD)) continue;
+        const dh = Math.hypot(x - hub[0], y - hub[1]); let s = rand() * 1.5;
+        const w = p.where;
+        if (w === "village") s += dh >= 2 && dh <= 4.2 ? 6 : -dh;
+        else if (w === "shore" || w === "water_edge") s += adjWater(x, y) ? 6 : -3;
+        else if (w === "forest") s += t === "f" ? 6 : -2;
+        else if (w === "hills") s += t === "r" || t === "n" ? 6 : e2(x, y) * 4;
+        else s += dh >= 6 ? 4 + dh * .2 : -4;
+        if (w !== "village" && dh < 3) s -= 4;
+        if (s > bestS) { bestS = s; bestP = [x, y]; }
+      }
+    }
+    pos[p.id] = bestP || [clamp(hub[0] + i, 1, MAP_W - 2), hub[1]]; taken.push(pos[p.id]);
+    function e2(x, y) { return N1(x, y); }
+  });
+  // дороги: BFS от поселения
+  const roads = new Set();
+  placeList.slice(1).forEach(p => {
+    const [tx, ty] = pos[p.id]; const prev = new Map(); const q = [hub]; prev.set(hub.join(","), null);
+    while (q.length) { const [x, y] = q.shift(); if (x === tx && y === ty) break;
+      for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + a, ny = y + b, k = nx + "," + ny;
+        if (nx < 0 || ny < 0 || nx >= MAP_W || ny >= MAP_H || prev.has(k) || !PASSABLE(grid[ny][nx])) continue; prev.set(k, x + "," + y); q.push([nx, ny]); } }
+    let k = tx + "," + ty; if (!prev.has(k)) return; while (k) { roads.add(k); k = prev.get(k); }
+  });
+  const houses = [];
+  for (let r = 1; r <= 3 && houses.length < 7; r++) for (let y = hub[1] - r; y <= hub[1] + r; y++) for (let x = hub[0] - r; x <= hub[0] + r; x++) {
+    if (houses.length >= 7 || grid[y]?.[x] !== "g" || roads.has(x + "," + y) || taken.some(([a, b]) => a === x && b === y) || houses.some(([a, b]) => a === x && b === y)) continue;
+    if (Math.hypot(x - hub[0], y - hub[1]) <= r && rand() < .45) houses.push([x, y]);
+  }
+  return { tiles: grid.map(r => r.join("")), roads: [...roads], houses, pos };
+}
+
+/* ---------- генерация мира ИИ ---------- */
+const FORGE_STAGES = ["Семя мира", "Конфликт и тайна", "Места и люди", "География и карта", "Враги из бестиария", "Завязка"];
+function slug(s, i) { const t = String(s || "").toLowerCase().replace(/[^a-z0-9_]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "").slice(0, 24); return t || "p" + i; }
+async function forgeWorld(opts, onStage, signal) {
+  const sample = await getSample(); if (!sample) throw { code: "no_ai" };
+  onStage(0);
+  const nPl = { small: 5, normal: 7, large: 9 }[opts.size] || 7; const nFoe = { small: "1–2 места", normal: "Ровно 2 места", large: "Ровно 3 места" }[opts.size] || "Ровно 2 места";
+  const seedLine = `Окружение: ${BIOMES[opts.biome]}. Жанр: ${GENRES[opts.genre] || "Расследование"}. Тон: ${TONES[opts.tone]}. Время года: ${SEASONS[opts.season] || "Осень"}. Культура: ${CULTURE_PROMPT[opts.culture] || CULTURE_PROMPT.auto}. Поселение: ${SETTLES[opts.settle] || "Деревня"}. Опасность: ${DANGERS[opts.danger] || "Опасный"}. ${MAGICS[opts.magic]}. Пожелания игрока: ${opts.wish || "нет"}.`;
+  onStage(1);
+  const core = await sample.json(`Ты — мастер настольных ролевых игр. Создай оригинальную местность для короткой кампании 5e (2–4 сессии) для одного героя 1 уровня. Пиши по-русски, конкретно, без клише про «тёмного властелина» и «избранного».
+${seedLine}
+Нужна одна небольшая местность (поселение и окрестности на день пути), а не целый континент. В центре — тайна, которую герой раскрывает через улики, и злодей с понятным мотивом.
+Ответь только JSON:
+{"name":"название местности, 2–3 слова","tagline":"подзаголовок до 8 слов","public":"3–4 предложения: что знает любой житель и что случилось недавно (завязка)","secret":"полная правда для мастера: кто злодей, чего хочет, что произошло, кто ему помогает, 5–7 предложений","beats":["4 опорные точки расследования, по фразе"],"endings":["2 хорошие концовки"],"quest":"первое задание героя, одна фраза","recommended":[{"cls":"fighter|rogue|wizard|cleric","why":"до 6 слов"},{"cls":"…","why":"…"}],"photo_style":"ENGLISH, one line: visual style for realistic photo portraits of this world — era, setting, light, colour palette, lens, e.g. cinematic photograph, misty medieval marsh village, cold dawn light, muted olive palette, 85mm lens, film grain","bg_hooks":{"soldier":"продолжение фразы «Вы …», связь с местом, до 18 слов","sage":"…","criminal":"…","acolyte":"…"}}`, { modelTier: "default", cache: false, signal });
+  if (!core || typeof core !== "object" || !core.name) throw { code: "bad_world" };
+  onStage(2);
+  const bestiary = Object.entries(BESTIARY).map(([k, b]) => `${k} — ${b.label}`).join("; ");
+  const people = await sample.json(`Ты продолжаешь создавать мир для кампании 5e. Вот основа мира:
+Название: ${core.name}. ${core.public}
+ТАЙНА: ${core.secret}
+Опорные точки: ${Array.isArray(core.beats) ? core.beats.join(" | ") : ""}
+${seedLine}
+
+Создай места и людей. Требования:
+- ${nPl} мест. Первое — безопасное стартовое место в поселении (таверна, постоялый двор, общий дом) с rest:true. Ещё одно безопасное место может иметь rest:true.
+- ${nFoe} с врагами (foes), не в поселении, одно из них — логово злодея. Враги — только типы из бестиария: ${bestiary}. В группе 1–3 врага, не больше одного босса на группу.
+- kind — один из: ${Object.keys(KINDS).join(", ")}. where — один из: ${WHERES.join(", ")} (village = в поселении).
+- clue — улика, которую герой найдёт при успешном поиске в этом месте, ведёт к тайне.
+- 4–5 НПС, у каждого своё место (поле npcs у места). Каждый что-то знает или скрывает о тайне. Злодей может быть НПС, если он притворяется честным.
+- feature — одно из: ${FEATURES.join(", ")}; hair — одно из: ${Object.keys(HAIRS).join(", ")}; age — young, adult или old.
+- intro — 2 коротких абзаца начала кампании от второго лица в стартовом месте, где НПС заговаривает с героем. Не раскрывай тайну.
+Ответь только JSON:
+{"places":[{"id":"latin_snake_case","name":"…","kind":"inn","where":"village","short":"до 8 слов","desc":"2 предложения, что видит герой","clue":"1 предложение","rest":true,"npcs":["npc_id"],"foes":[{"type":"bandit","name":"имя или прозвище"}]}],"npcs":[{"id":"latin_snake_case","name":"…","role":"…","look":"внешность, 6–10 слов","persona":"характер, 1 предложение","secret":"что скрывает, 1–2 предложения","greet":"первая реплика в «ёлочках»","feature":"beard","hair":"brown","age":"adult","photo_prompt":"ENGLISH, 25–40 words: realistic head-and-shoulders portrait of this person — age, gender, face, hair, clothing, expression, a hint of their place"}],"intro":"…","intro_speaker":"npc_id"}`, { modelTier: "default", cache: false, signal });
+  if (!people || !Array.isArray(people.places) || people.places.filter(p => p && typeof p === "object").length < 3) throw { code: "bad_world" };
+  onStage(3);
+  // нормализация: id, ссылки, ограничения
+  const npcs = {}; const npcIdMap = {};
+  (Array.isArray(people.npcs) ? people.npcs : []).filter(n => n && typeof n === "object").slice(0, 6).forEach((n, i) => {
+    let id = slug(n.id, i); while (npcs[id]) id += "_" + i; npcIdMap[n.id] = id;
+    npcs[id] = { name: str(n.name, 32) || "Незнакомец", role: str(n.role, 40), look: str(n.look, 90), persona: str(n.persona, 200), secret: str(n.secret, 300),
+      greet: str(n.greet, 200), photo_prompt: str(n.photo_prompt, 320), feature: FEATURES.includes(n.feature) ? n.feature : FEATURES[hash(id) % FEATURES.length],
+      hair: HAIRS[n.hair] ? n.hair : Object.keys(HAIRS)[hash(id) % 6], age: ["young", "adult", "old"].includes(n.age) ? n.age : "adult" };
+  });
+  const placeList = []; const usedIds = new Set();
+  people.places.filter(p => p && typeof p === "object").slice(0, nPl + 1).forEach((p, i) => {
+    let id = slug(p.id, i); while (usedIds.has(id)) id += "_" + i; usedIds.add(id);
+    placeList.push({ id, name: str(p.name, 40) || "Безымянное место", kind: KINDS[p.kind] ? p.kind : "ruin", where: WHERES.includes(p.where) ? p.where : (i === 0 ? "village" : "wild"),
+      short: str(p.short, 60), desc: str(p.desc, 320), clue: str(p.clue, 220), rest: !!p.rest || i === 0,
+      npcs: (Array.isArray(p.npcs) ? p.npcs : []).map(x => npcIdMap[x]).filter(x => x && npcs[x]), foes: i === 0 ? [] : (Array.isArray(p.foes) ? p.foes : []) });
+  });
+  placeList[0].where = "village";
+  const placedNpc = new Set(); placeList.forEach(p => { p.npcs = p.npcs.filter(n => !placedNpc.has(n) && placedNpc.add(n)); });
+  Object.keys(npcs).forEach(id => { if (!placedNpc.has(id)) placeList[0].npcs.push(id); });
+  const seed = hash(core.name + Date.now());
+  const map = buildMap(opts.biome, seed, placeList);
+  onStage(4);
+  const enemies = {}; const places = {};
+  let groups = 0;
+  placeList.forEach(p => {
+    const ids = [];
+    if (p.foes.length && groups < ({ small: 2, normal: 3, large: 4 }[opts.size] || 3)) {
+      groups++; let boss = 0;
+      p.foes.slice(0, 3).forEach((f, k) => {
+        let type = BESTIARY[f.type] ? f.type : "bandit"; if (BESTIARY[type].boss) { if (boss) type = "bandit"; else boss++; }
+        if (opts.danger === "low" && k >= 2) return; const id = `${p.id}_${k}`; const E = { ...BESTIARY[type], type, name: str(f.name, 32) || BESTIARY[type].label.split(",")[0], loc: p.id };
+        if (opts.danger === "high") { E.hp = Math.round(E.hp * 1.3); E.atk += 1; } if (opts.danger === "low") E.hp = Math.max(4, Math.round(E.hp * .8)); enemies[id] = E; ids.push(id);
+      });
+    }
+    places[p.id] = { name: p.name, kind: p.kind, where: p.where, x: map.pos[p.id][0], y: map.pos[p.id][1], short: p.short, desc: p.desc, clue: p.clue, rest: p.rest, npcs: p.npcs, enemies: ids };
+  });
+  onStage(5);
+  const start = placeList[0].id;
+  const recommended = (Array.isArray(core.recommended) ? core.recommended : []).filter(r => CLASSES[r.cls]).slice(0, 2).map(r => ({ cls: r.cls, why: str(r.why, 40) }));
+  const bg = {}; Object.keys(BACKGROUNDS).forEach(k => { const v = str(core.bg_hooks?.[k], 160); if (v) bg[k] = v.replace(/^вы\s+/i, ""); });
+  const sp = npcIdMap[people.intro_speaker];
+  return { id: uid(), photo_style: str(core.photo_style, 300) || `cinematic photograph, realistic fantasy ${({ coast: "coastal", marsh: "marsh", mountains: "mountain", forest: "forest" })[opts.biome]} village, natural light, 85mm lens, film grain`, name: str(core.name, 40), tagline: str(core.tagline, 70), biome: opts.biome, tone: opts.tone, genre: opts.genre, season: opts.season, culture: opts.culture, settle: opts.settle, danger: opts.danger, start,
+    public: str(core.public, 700), secret: str(core.secret, 1400), beats: (Array.isArray(core.beats) ? core.beats : []).slice(0, 5).map(b => str(b, 160)), endings: (Array.isArray(core.endings) ? core.endings : []).slice(0, 3).map(b => str(b, 160)),
+    quest: str(core.quest, 200) || "Разобраться, что здесь происходит.", recommended, bg_hooks: bg,
+    intro: String(people.intro || "").slice(0, 1200), intro_speaker: sp && places[start].npcs.includes(sp) ? sp : places[start].npcs[0] || null,
+    places, npcs, enemies, tiles: map.tiles, roads: map.roads, houses: map.houses, labels: [] };
+}
+
+/* =========================================================================
+   STORAGE — несколько кампаний в браузере, экспорт и импорт
+   ========================================================================= */
+const IDX_KEY = "sh2-index", C_KEY = id => "sh2-c-" + id, OLD_KEY = "salt-harbor-v1";
+let S = null, D = null;
+function lsGet(k) { try { const r = localStorage.getItem(k); return r ? JSON.parse(r) : null; } catch (e) { return null; } }
+function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
+function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
+function campIndex() { const i = lsGet(IDX_KEY); return Array.isArray(i) ? i : []; }
+function indexEntry(s) { return { id: s.id, world: s.wd.name, img: s.char.img && !String(s.char.img).startsWith("data:") ? s.char.img : "", hero: s.char.name, cls: s.char.cls, race: s.char.race, gender: s.char.gender, level: s.char.level, mode: s.mode, updated: Date.now(), dead: !!s.dead, loc: s.wd.places[s.world.loc]?.name || "" }; }
+function save() {
+  if (!S) return; S.updated = Date.now(); lsSet(C_KEY(S.id), S);
+  const idx = campIndex().filter(e => e.id !== S.id); idx.unshift(indexEntry(S)); lsSet(IDX_KEY, idx.slice(0, 30));
+}
+function loadCamp(id) { const s = lsGet(C_KEY(id)); return s && s.v === 2 && s.char && s.wd ? s : null; }
+function deleteCamp(id) { lsDel(C_KEY(id)); lsSet(IDX_KEY, campIndex().filter(e => e.id !== id)); }
+function migrateV1() {
+  const old = lsGet(OLD_KEY); if (!old || !old.char) return;
+  const s = { ...old, v: 2, id: uid(), wd: makeDefaultWorld(), summary: "" };
+  s.feed = (s.feed || []).map(e => ({ ...e, streaming: false }));
+  S = s; save(); S = null; lsDel(OLD_KEY);
+}
+function adoptCampaign(obj) {
+  if (!obj || obj.v !== 2 || !obj.char || !obj.wd || !obj.world) throw new Error("bad");
+  obj.id = uid(); S = obj; save(); S = null;
+}
+
+/* =========================================================================
+   ENGINE
+   ========================================================================= */
+const mod = v => Math.floor((v - 10) / 2);
+const prof = lvl => 2 + Math.floor((lvl - 1) / 4);
+function finalScores(base, race) { const out = {}; const b = RACES[race]?.bonus || {}; for (const a of ABIL) out[a] = (base[a] || 8) + (b[a] || 0); return out; }
+function calcAC(cls, scores) { const ar = CLASSES[cls].armor; return ar.base + Math.min(mod(scores.dex), ar.dex); }
+function maxHP(cls, race, scores) { return Math.max(1, CLASSES[cls].hd + mod(scores.con) + (RACES[race].hpBonus || 0)); }
+function slotsFor(cls, lvl) { const C0 = CLASSES[cls]; lvl = clamp(lvl, 1, 5); if (C0.half) return { ...HALF_SLOTS[lvl] }; if (C0.pact) return { ...PACT_SLOTS[lvl] }; if (!C0.spells) return {}; return { ...SLOT_TABLE[lvl] }; }
+function C() { return S.char; }
+function skillBonus(key) { const c = C(); const [, ab] = SKILLS[key]; return mod(c.scores[ab]) + (c.skills.includes(key) ? prof(c.level) : 0) + (traitFx(c.traits || { sl1: c.sl1, sl2: c.sl2 }).skills[key] || 0); }
+function saveBonus(ab) { const c = C(); return mod(c.scores[ab]) + (CLASSES[c.cls].saves.includes(ab) ? prof(c.level) : 0); }
+function d20(adv) {
+  const lucky = RACES[C().race].lucky; const one = () => { let r = rnd(20); if (r === 1 && lucky) r = rnd(20); return r; };
+  const a = one(); if (!adv) return { nat: a, pair: null }; const b = one(); return { nat: adv > 0 ? Math.max(a, b) : Math.min(a, b), pair: [a, b] };
+}
+function weaponAtk(wid) {
+  const w = WEAPONS[wid]; const c = C(); const ab = w.abil === "finesse" ? (mod(c.scores.dex) >= mod(c.scores.str) ? "dex" : "str") : w.abil;
+  return { w, ab, bonus: mod(c.scores[ab]) + (weaponProf(c, wid) ? prof(c.level) : 0) + (w.hit || 0), dmgMod: mod(c.scores[ab]) + (w.dmg || 0) };
+}
+function castMod() { const c = C(); const ab = CLASSES[c.cls].cast; return ab ? mod(c.scores[ab]) : 0; }
+function spellAtk() { return castMod() + prof(C().level); }
+function spellDC() { return 8 + castMod() + prof(C().level); }
+function enemyHere(id) { const e = S.world.enemies[id]; return e && e.alive && ENEMIES[id] && ENEMIES[id].loc === S.world.loc ? e : null; }
+function aliveEnemiesHere() { return Object.keys(S.world.enemies).filter(id => enemyHere(id)); }
+function resolveCheck(ch) {
+  const c = C();
+  if (ch.kind === "skill") {
+    if (c.bless) { ch.adv = 1; c.bless = false; ch.reason = (ch.reason ? ch.reason + "; " : "") + "благословение"; } const r = d20(ch.adv); const ins = useInsp(c); const b = skillBonus(ch.skill) + (ins?.total || 0); const tot = r.nat + b; const ok = r.nat === 20 ? true : tot >= ch.dc;
+    return { ...ch, nat: r.nat, pair: r.pair, bonus: b, total: tot, ok, crit: r.nat === 20, fumble: r.nat === 1,
+      title: `Проверка: ${SKILLS[ch.skill][0]}`, formula: `d20 (${r.pair ? r.pair.join(" / ") : r.nat}) ${fmt(b)}${ins ? ` (вдохновение ${ins.total})` : ""} = ${tot} против КС ${ch.dc}` };
+  }
+  if (ch.kind === "save") {
+    const adv = ch.adv || (RACES[c.race]?.gnomish && ["int", "wis", "cha"].includes(ch.ability) ? 1 : 0); const r = d20(adv); const ins = useInsp(c); const b = saveBonus(ch.ability) + (ins?.total || 0); const tot = r.nat + b; const ok = tot >= ch.dc;
+    return { ...ch, nat: r.nat, pair: r.pair, bonus: b, total: tot, ok, crit: r.nat === 20, fumble: r.nat === 1,
+      title: `Спасбросок: ${ABIL_FULL[ch.ability]}`, formula: `d20 (${r.nat}) ${fmt(b)} = ${tot} против КС ${ch.dc}` };
+  }
+  if (ch.kind === "attack") {
+    const e = S.world.enemies[ch.target]; const E = ENEMIES[ch.target]; const { w, ab, bonus, dmgMod } = weaponAtk(ch.weapon); const d = wDef(ch.weapon) || { props: [], crit: 20 }; const g = gearOf(c); const notes = [];
+    let adv = ch.adv || (e.asleep ? 1 : 0); if (c.bless) { adv = Math.max(adv, 1); c.bless = false; notes.push("благословение"); }
+    if (d.props.includes("heavy") && RACES[c.race]?.small) { adv = Math.min(adv, 0) - 1; notes.push("тяжёлое для маленького: помеха"); } if (d.props.includes("two") && g.shield && !d.props.includes("ranged")) { adv = Math.min(adv, 0) - 1; notes.push("двуручное со щитом: помеха"); }
+    adv = clamp(adv, -1, 1); const r = d20(adv); const ins = useInsp(c); const tot = r.nat + bonus + (ins?.total || 0);
+    const critOn = Math.min(c.cls === "fighter" && c.level >= 3 ? 19 : 20, d.crit || 20); const isCrit = r.nat >= critOn; const hit = isCrit || (r.nat !== 1 && tot >= E.ac);
+    let dmg = null, extra = "";
+    if (hit) {
+      dmg = rollDice({ ...parseDice(weaponDice(c, d)), mod: dmgMod }, isCrit); const add = (label, dice) => { const x = typeof dice === "number" ? { total: dice, text: String(dice) } : rollDice(dice, isCrit); dmg.total += x.total; extra += ` + ${label} ${x.text}`; };
+      if (c.cls === "rogue" && adv > 0 && !S.turnSneak) { add("скрытая атака", Math.ceil(c.level / 2) + "d6"); S.turnSneak = true; }
+      if (c.rage && !w.ranged && ab === "str") add("ярость", 2);
+      if (d.vs?.undead && UNDEAD.has(E.type)) add("серебро/свет", d.vs.undead);
+      if (c.mark && c.mark.target === ch.target) add(c.mark.name.toLowerCase(), c.mark.dice);
+      if (c.smite) { add("кара", UNDEAD.has(E.type) ? "3d8" : "2d8"); c.smite = false; }
+      if (c.favored && FAVORED[c.favored]?.[2].has(E.type)) add("избранный враг", 2);
+      if (c.cls === "ranger" && c.level >= 3 && e.hp < E.hp && !S.turnColossus) { add("охотник", "1d8"); S.turnColossus = true; }
+      hurtEnemy(ch.target, dmg.total);
+    }
+    return { ...ch, nat: r.nat, pair: r.pair, total: tot, ok: hit, crit: isCrit, fumble: r.nat === 1, dmg: dmg?.total || 0, title: `Атака: ${w.name} → ${E.name}${ch.extra ? " (вторая)" : ""}`,
+      formula: `d20 (${r.pair ? r.pair.join(" / ") : r.nat}) ${fmt(bonus)}${ins ? ` + вдохновение ${ins.total}` : ""} = ${tot} против КД ${E.ac}${notes.length ? " · " + notes.join(", ") : ""}` + (hit ? ` · урон ${dmg.text}${extra}` : ""), enemyAfter: enemyStatus(ch.target) };
+  }
+  if (ch.kind === "breath") {
+    const res = resOf(c); res.breath = 0; const dc = 8 + mod(c.scores.con) + prof(c.level); const dice = c.level >= 5 ? "3d6" : "2d6"; const dd = rollDice(dice); const parts = [];
+    aliveEnemiesHere().forEach(id => { const E = ENEMIES[id]; const sv = rnd(20) + E.dex; const amt = sv >= dc ? Math.floor(dd.total / 2) : dd.total; hurtEnemy(id, amt); parts.push(`${E.name}: −${amt}${sv >= dc ? " (увернулся наполовину)" : ""}`); });
+    return { ...ch, nat: 0, ok: true, dmg: 0, title: "Оружие дыхания", formula: `${dice} = ${dd.total} огнём, спасбросок ЛОВ КС ${dc} · ${parts.join("; ") || "некого задеть"}` };
+  }
+  if (ch.kind === "spell") return castSpell(ch);
+  return null;
+}
+function hasSlot(lvl, c) { c = c || C(); if (!lvl) return true; return Object.entries(c.slots || {}).some(([l, v]) => +l >= lvl && v[1] > 0); }
+function useSlot(lvl) { const s = C().slots; if (!lvl) return true; const l = Object.keys(s).map(Number).sort((a, b) => a - b).find(x => x >= lvl && s[x][1] > 0); if (!l) return false; s[l][1]--; return true; }
+function castSpell(ch) {
+  const sp = SPELLS[ch.spell];
+  if (!useSlot(sp.lvl)) return { ...ch, ok: false, title: sp.name, formula: "Нет свободных ячеек заклинаний", noslot: true, nat: 0 };
+  const E = ENEMIES[ch.target]; const e = S.world.enemies[ch.target]; const base = { ...ch, title: `Заклинание: ${sp.name}${E ? " → " + E.name : ""}` };
+  if (sp.kind === "attack") {
+    const r = d20(e?.asleep ? 1 : 0); const b = spellAtk(); const tot = r.nat + b; const hit = r.nat === 20 || (r.nat !== 1 && tot >= E.ac);
+    let d = null; if (hit) { d = rollDice(sp.dice, r.nat === 20); if (ch.spell === "eldritch_blast" && C().cls === "warlock" && C().level >= 2) d.total += castMod(); if (C().mark && C().mark.target === ch.target) { const x = rollDice(C().mark.dice); d.total += x.total; d.text += " + " + x.text; } hurtEnemy(ch.target, d.total); }
+    return { ...base, nat: r.nat, total: tot, ok: hit, crit: r.nat === 20, dmg: d?.total || 0, formula: `d20 (${r.nat}) ${fmt(b)} = ${tot} против КД ${E.ac}` + (hit ? ` · урон ${d.text} ${sp.type}` : ""), enemyAfter: enemyStatus(ch.target) };
+  }
+  if (sp.kind === "mark") { C().mark = { target: ch.target, dice: sp.dice, name: sp.name }; return { ...base, nat: 0, ok: true, formula: `${E.name}: ваши попадания наносят ещё ${sp.dice} до конца боя` }; }
+  if (sp.kind === "buff") { C().bless = true; return { ...base, title: `Заклинание: ${sp.name}`, nat: 0, ok: true, formula: "Преимущество на следующую проверку или атаку" }; }
+  if (sp.kind === "smite") { C().smite = true; return { ...base, title: `Заклинание: ${sp.name}`, nat: 0, ok: true, formula: "Следующее попадание оружием: +2d8 излучения" }; }
+  if (sp.kind === "auto") { const d = rollDice(sp.dice); hurtEnemy(ch.target, d.total); return { ...base, nat: 0, ok: true, dmg: d.total, formula: `Попадание без броска · урон ${d.text}`, enemyAfter: enemyStatus(ch.target) }; }
+  if (sp.kind === "save") {
+    const sv = rnd(20); const tot = sv + E.dex; const dc = spellDC(); const failed = tot < dc; let d = null; if (failed) { d = rollDice(sp.dice); hurtEnemy(ch.target, d.total); }
+    return { ...base, nat: sv, ok: failed, dmg: d?.total || 0, enemyRoll: true, formula: `Спасбросок цели d20 (${sv}) ${fmt(E.dex)} = ${tot} против КС ${dc}` + (failed ? ` · урон ${d.text} ${sp.type}` : " · увернулась"), enemyAfter: enemyStatus(ch.target) };
+  }
+  if (sp.kind === "sleep") {
+    const pool = rollDice(sp.dice); let left = pool.total; const slept = [];
+    aliveEnemiesHere().map(id => [id, S.world.enemies[id].hp]).sort((a, b) => a[1] - b[1]).forEach(([id, hp]) => { if (hp <= left) { left -= hp; S.world.enemies[id].asleep = true; slept.push(ENEMIES[id].name); } });
+    return { ...base, nat: 0, ok: slept.length > 0, formula: `Пул ${pool.text} · уснули: ${slept.join(", ") || "никто"}` };
+  }
+  if (sp.kind === "heal") { const d = rollDice(sp.dice); const amt = d.total + castMod(); const got = healHero(amt); return { ...base, title: `Заклинание: ${sp.name}`, nat: 0, ok: true, heal: got, formula: `${d.text} ${fmt(castMod())} = ${amt} HP` }; }
+  return base;
+}
+function hurtEnemy(id, amt) { const e = S.world.enemies[id]; e.hp = Math.max(0, e.hp - amt); e.asleep = false; if (e.hp === 0 && e.alive) { e.alive = false; S.pendingXP = (S.pendingXP || 0) + ENEMIES[id].xp; } }
+function enemyStatus(id) { const e = S.world.enemies[id]; const E = ENEMIES[id]; if (!e.alive) return "повержен"; const p = e.hp / E.hp; return e.asleep ? "спит" : p > .7 ? "почти невредим" : p > .35 ? "ранен" : "тяжело ранен"; }
+function healHero(amt) { const c = C(); const before = c.hp; c.hp = Math.min(c.maxHp, c.hp + amt); if (c.hp > 0) S.dying = null; return c.hp - before; }
+function hurtHero(amt) { const c = C(); c.hp = Math.max(0, c.hp - amt); if (c.hp === 0 && RACES[c.race]?.relentless && resOf(c).relentless > 0) { c.hp = 1; resOf(c).relentless = 0; pushFeed({ t: "chips", items: [{ c: "heal", x: "Неукротимость: вы остаётесь на ногах с 1 HP" }] }); } return amt; }
+function enemyTurn() {
+  const out = []; if (!S.world.combat) return out;
+  for (const id of aliveEnemiesHere()) {
+    const e = S.world.enemies[id]; const E = ENEMIES[id];
+    if (e.asleep) { out.push({ kind: "enemy", title: `${E.name} спит`, formula: "Пропускает ход", nat: 0, ok: false, enemyRoll: true, skip: true }); continue; }
+    if (C().hp <= 0) break;
+    const nat = rnd(20); const tot = nat + E.atk; const hit = nat === 20 || (nat !== 1 && tot >= C().ac); let d = null; if (hit) { d = rollDice(E.dmg, nat === 20); if (C().rage) { d.total = Math.ceil(d.total / 2); d.text += " ÷2 ярость"; } hurtHero(d.total); }
+    out.push({ kind: "enemy", by: id, title: `${E.name} атакует`, nat, total: tot, ok: hit, crit: nat === 20, enemyRoll: true, dmg: d?.total || 0, formula: `d20 (${nat}) +${E.atk} = ${tot} против вашего КД ${C().ac}` + (hit ? ` · урон ${d.text}` : " · промах") });
+  }
+  return out;
+}
+
+/* =========================================================================
+   SVG ART
+   ========================================================================= */
+const EMBLEM = {
+  fighter: '<path d="M50 14 L56 20 L56 62 L50 70 L44 62 L44 20 Z" fill="currentColor"/><rect x="32" y="62" width="36" height="6" rx="2" fill="currentColor"/><rect x="47" y="68" width="6" height="16" rx="2" fill="currentColor"/><circle cx="50" cy="88" r="4" fill="currentColor"/>',
+  rogue: '<path d="M30 24 L58 68 L54 72 L26 28 Z" fill="currentColor"/><path d="M70 24 L42 68 L46 72 L74 28 Z" fill="currentColor" opacity=".75"/><rect x="47" y="70" width="6" height="12" rx="2" transform="rotate(-33 50 76)" fill="currentColor"/><circle cx="50" cy="48" r="5" fill="none" stroke="currentColor" stroke-width="3"/>',
+  wizard: '<path d="M50 14 L57 38 L82 38 L62 53 L70 78 L50 63 L30 78 L38 53 L18 38 L43 38 Z" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/><circle cx="50" cy="48" r="7" fill="currentColor"/>',
+  cleric: '<circle cx="50" cy="50" r="14" fill="currentColor"/><g stroke="currentColor" stroke-width="4" stroke-linecap="round"><path d="M50 18v10M50 72v10M18 50h10M72 50h10M27 27l7 7M66 66l7 7M73 27l-7 7M34 66l-7 7"/></g>'
+};
+function emblemSVG(cls, size) { const c = CLASSES[cls]; if (ICONS["c_" + cls]) return `<span style="color:${c.color};display:inline-grid">${ico("c_" + cls, size)}</span>`; return `<svg width="${size}" height="${size}" viewBox="0 0 100 100" style="color:${c.color}" aria-hidden="true"><circle cx="50" cy="50" r="46" fill="none" stroke="currentColor" stroke-width="2" opacity=".5"/>${EMBLEM[cls]}</svg>`; }
+function portraitSVG(cls, race, name) {
+  const col = cls ? CLASSES[cls].color : "#f0b35a"; const h = hash((name || "") + race + cls); const ini = (String(name || "").trim()[0] || "?").toUpperCase();
+  const stars = Array.from({ length: 18 }, (_, i) => { const x = ((h >> (i % 24)) % 400 + (i * 37) % 400) % 400; const y = (i * 53 + (h % 97)) % 160; return `<circle cx="${x}" cy="${y}" r="${1 + (i % 3) * .5}" fill="#e7ede8" opacity="${.2 + (i % 4) * .12}"/>`; }).join("");
+  const raceMark = { elf: '<path d="M160 150 l-26 -40 l16 42 Z M240 150 l26 -40 l-16 42 Z" fill="#e7ede8" opacity=".55"/>', dwarf: '<path d="M170 250 q30 60 60 0 q-30 25 -60 0Z" fill="#e7ede8" opacity=".35"/>', halfling: '<circle cx="200" cy="300" r="70" fill="none" stroke="#e7ede8" stroke-opacity=".2" stroke-width="2"/>' }[race] || "";
+  return `<svg viewBox="0 0 400 320" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Герб героя"><defs><radialGradient id="pg${h}" cx="50%" cy="38%" r="70%"><stop offset="0" stop-color="${col}" stop-opacity=".55"/><stop offset=".55" stop-color="#122126"/><stop offset="1" stop-color="#0c1619"/></radialGradient><linearGradient id="sea${h}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b3139"/><stop offset="1" stop-color="#0c1619"/></linearGradient></defs>
+  <rect width="400" height="320" fill="url(#pg${h})"/>${stars}<path d="M0 250 Q60 236 120 248 T240 246 T400 244 V320 H0Z" fill="url(#sea${h})"/><path d="M0 262 Q80 252 160 262 T320 258 T400 260" stroke="${col}" stroke-opacity=".35" fill="none"/>${raceMark}
+  <g transform="translate(140 70) scale(1.2)" style="color:${col}"><path d="M50 4 L92 20 V52 C92 78 72 94 50 100 C28 94 8 78 8 52 V20 Z" fill="#0c1619" fill-opacity=".72" stroke="currentColor" stroke-width="2.5"/>${cls && ICONS["c_" + cls] ? `<g transform="translate(22 20) scale(.109)"><path fill="currentColor" d="${ICONS["c_" + cls]}"/></g>` : ""}</g>
+  <text x="200" y="300" text-anchor="middle" font-family="Cormorant, Georgia, serif" font-size="30" font-weight="700" fill="#e7ede8" opacity=".9">${esc(ini)}</text></svg>`;
+}
+/* Портрет НПС: собирается один раз из параметров, которые мир хранит константой */
+function npcSVG(id, big) {
+  const n = NPCS[id] || { name: "?", hair: "brown", feature: "hood", age: "adult" }; const h = hash((WD?.id || "") + id); const hue = h % 360; const H = big ? 230 : 200;
+  const sk = `hsl(${22 + (h % 14)}, ${28 + (h >> 4) % 14}%, ${n.age === "old" ? 56 : 46 + (h >> 8) % 14}%)`;
+  const hairC = HAIRS[n.hair] || HAIRS.brown; const coat = `hsl(${hue}, 30%, 28%)`; const f = n.feature;
+  let top = "", front = "";
+  if (f !== "bald" && f !== "hood") top = `<path d="M66 90 q34 -42 68 0 q-2 -24 -34 -30 q-32 6 -34 30z" fill="${hairC}"/>`;
+  if (f === "braid") top += `<path d="M132 92 q14 30 4 64" stroke="${hairC}" stroke-width="10" fill="none" stroke-linecap="round"/>`;
+  if (f === "hood") top = `<path d="M58 134 q-6 -84 42 -92 q48 8 42 92 q-8 -40 -42 -46 q-34 6 -42 46z" fill="hsl(${hue}, 18%, 34%)"/>`;
+  if (f === "hat") top += `<ellipse cx="100" cy="66" rx="52" ry="10" fill="hsl(${hue}, 20%, 20%)"/><path d="M74 66 q4 -30 26 -30 q22 0 26 30z" fill="hsl(${hue}, 20%, 22%)"/>`;
+  if (f === "beard") front = `<path d="M70 106 q30 54 60 0 q-6 22 -30 26 q-24 -4 -30 -26z" fill="${hairC}"/>`;
+  if (f === "scarf") front = `<path d="M66 132 q34 18 68 0 v14 q-34 16 -68 0z" fill="hsl(${(hue + 160) % 360}, 45%, 42%)"/>`;
+  if (f === "scar") front = `<path d="M112 84 l10 30" stroke="hsl(0, 40%, 35%)" stroke-width="3" stroke-linecap="round"/>`;
+  if (f === "jewel") front = `<circle cx="100" cy="182" r="5" fill="#f0b35a"/><path d="M72 160 l28 22 l28 -22" stroke="#f0b35a" stroke-width="3" fill="none"/>`;
+  const wr = n.age === "old" ? `<path d="M80 88 q8 -4 14 0 M106 88 q8 -4 14 0" stroke="#3a2a20" stroke-width="1.5" fill="none" opacity=".6"/>` : "";
+  return `<svg viewBox="0 0 200 ${H}" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Портрет: ${esc(n.name)}"><defs><radialGradient id="nb${h}" cx="50%" cy="35%" r="75%"><stop offset="0" stop-color="hsl(${hue},38%,30%)"/><stop offset="1" stop-color="#0c1619"/></radialGradient></defs>
+  <rect width="200" height="${H}" fill="url(#nb${h})"/><path d="M28 ${H} q8 -60 72 -66 q64 6 72 66z" fill="${coat}"/><rect x="88" y="120" width="24" height="22" fill="${sk}"/>
+  <ellipse cx="100" cy="98" rx="34" ry="40" fill="${sk}"/>${top}${wr}<ellipse cx="87" cy="100" rx="3.5" ry="2.5" fill="#1a1a1a"/><ellipse cx="113" cy="100" rx="3.5" ry="2.5" fill="#1a1a1a"/>
+  <path d="M90 120 q10 ${(h % 3) * 3 - 2} 20 0" stroke="#3a1f18" stroke-width="2.5" fill="none" stroke-linecap="round"/>${front}</svg>`;
+}
+
+/* =========================================================================
+   PORTRAITS — фото через Hugging Face (FLUX.1 Krea), хранятся в assets
+   ========================================================================= */
+const HF = { server: "Hugging Face", tool: "dynamic_space", space: "mcp-tools/FLUX.1-Krea-dev", spaceTool: "FLUX_1_Krea_dev_infer" };
+const IMG_KEY = "sh3-imgs";
+const imgCache = lsGet(IMG_KEY) || {};
+const imgPending = new Set();
+let imgNote = "", mcpP = null, assetsP = null, imgQueue = Promise.resolve();
+function getMcp() { if (!mcpP) mcpP = window.claude?.use ? window.claude.use("mcp").catch(() => null) : Promise.resolve(null); return mcpP; }
+function getAssets() { if (!assetsP) assetsP = window.claude?.use ? window.claude.use("assets").catch(() => null) : Promise.resolve(null); return assetsP; }
+function archKey(wd, n) { return `${wd.id}:type:${n.gender === "f" ? "f" : "m"}-${n.age || "adult"}`; }
+function imgKeyFor(wd, id) { const n = wd?.npcs?.[id]; return n && n.minor ? archKey(wd, n) : (wd ? wd.id + ":" + id : ""); }
+function npcImg(id, wd) { const w = wd || WD; if (!w) return ""; const n = w.npcs?.[id]; if (!n) return ""; return n.img || imgCache[imgKeyFor(w, id)] || ""; }
+function photoTag(url) { return url ? `<img class="photo" src="${esc(url)}" alt="" loading="lazy" style="position:absolute;inset:0">` : ""; }
+function npcPh(id, cls, wd) {
+  const w = wd || WD; const key = imgKeyFor(w, id);
+  const prev = WD; if (w && w !== WD) setWorld(w); const svg = npcSVG(id, true); if (prev && w !== prev) setWorld(prev);
+  return `<div class="ph ${cls || ""}">${svg}${photoTag(npcImg(id, w))}${imgPending.has(key) ? '<span class="gen">Портрет пишется…</span>' : ""}</div>`;
+}
+function heroPh(o, cls) { return `<div class="ph ${cls || ""}">${portraitSVG(o.cls, o.race, o.name)}${photoTag(o.img)}${o.gen ? '<span class="gen">Портрет пишется…</span>' : ""}</div>`; }
+document.addEventListener("error", e => { const t = e.target; if (t && t.classList && t.classList.contains("photo")) t.remove(); }, true);
+function b64ToBlob(b64, type) { const bin = atob(String(b64).replace(/^data:[^,]+,/, "")); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new Blob([u], { type: type || "image/png" }); }
+function hfErr(e, text) {
+  const m = String(e?.message || "") + " " + String(text || "");
+  if (/gradio\s*=\s*none|invoke operation is disabled/i.test(m)) return { code: "spaces_off" };
+  if (/quota|zerogpu|exceeded|GPU/i.test(m)) return { code: "quota" };
+  if (["server_not_connected", "needs_reauth", "not_granted", "blocked_by_policy"].includes(e?.code)) return { code: "no_hf" };
+  return { code: e?.code || "img_failed" };
+}
+const IMG_NOTES = {
+  spaces_off: "Коннектор Hugging Face из каталога claude.ai не запускает генераторы. Добавьте свой коннектор: имя «HF Images», адрес https://huggingface.co/mcp?login, войдите в Hugging Face и включите Dynamic Spaces на huggingface.co/settings/mcp. Затем нажмите «Повторить портреты».",
+  no_route: "Генератор портретов не подключён. Добавьте свой коннектор «HF Images» с адресом https://huggingface.co/mcp?login и включите Dynamic Spaces на huggingface.co/settings/mcp, затем нажмите «Повторить портреты».",
+  denied: "Доступ к генератору не разрешён. Разрешите коннектор для этой страницы и нажмите «Повторить портреты».",
+  quota: "Квота GPU Hugging Face для выбранной модели закончилась. Переключите модель портретов на «Авто» или «Pollinations» в настройках — они работают без лимита. Иначе очередь продолжится сама, когда квота восстановится.",
+  busy: "Генератор Pollinations сейчас перегружен. Портреты допишутся через минуту.",
+  url_only: "Генератор вернул ссылку вместо картинки, а внешние ссылки страница загрузить не может.",
+  no_mcp: "Генерация фото недоступна в этом просмотре. Показаны рисованные портреты.",
+  no_image: "Генератор ответил без картинки. Попробуйте ещё раз позже.",
+  img_failed: "Портрет не получился. Попробуйте ещё раз позже."
+};
+function retryPortraits() { portraitPaused = false; imgNote = ""; clearTimeout(retryTimer); runPortraitJobs(); refreshPortraitViews(); }
+function retryBtnHTML() { const q = portraitJobs.length; return imgNote ? `<div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap"><p class="err" style="color:var(--mist);margin:0;flex:1;min-width:220px;overflow-wrap:anywhere">${esc(imgNote)}${q ? ` Ожидают портрета: ${q}.` : ""}</p><button class="btn small" type="button" data-retry-img>Повторить портреты</button></div>` : ""; }
+document.addEventListener("click", e => { if (e.target.closest?.("[data-retry-img]")) retryPortraits(); });
+const ROUTE_KEY = "sh5-img-route";
+const IMG_W = 576, IMG_H = 720, IMG_STEPS = 16;
+/* Модели портретов. Pollinations идёт через CPU-генераторы на Hugging Face и не тратит квоту GPU. */
+const IMG_MODELS = {
+  auto: { name: "Авто", sub: "FLUX Krea, пока есть квота, затем Pollinations без лимита" },
+  krea: { name: "FLUX.1 Krea", sub: "Лучшее качество · бесплатная квота GPU Hugging Face, 5–8 портретов в день" },
+  zimage: { name: "Z-Image Turbo", sub: "Быстрая модель · та же квота GPU Hugging Face" },
+  pollinations: { name: "Pollinations", sub: "Без лимита · качество проще, генерация 5–20 секунд" }
+};
+const MODEL_KEY = "sh5-img-model", KREA_COOLDOWN_KEY = "sh5-krea-cooldown";
+function imgModel() { const m = lsGet(MODEL_KEY); return IMG_MODELS[m] ? m : "auto"; }
+function setImgModel(m) { if (IMG_MODELS[m]) { lsSet(MODEL_KEY, m); portraitPaused = false; imgNote = ""; clearTimeout(retryTimer); runPortraitJobs(); } }
+const dyn = (space, tool, params) => ({ operation: "invoke", space_name: space, tool_name: tool, parameters: JSON.stringify(params) });
+const ROUTE_SETS = {
+  krea: [
+    { server: "HF Images", tools: ["gr1_flux_1_krea_dev_infer", "gr2_flux_1_krea_dev_infer", "gr3_flux_1_krea_dev_infer"], input: (prompt, seed) => ({ prompt, seed, randomize_seed: false, width: IMG_W, height: IMG_H, guidance_scale: 4.5, num_inference_steps: IMG_STEPS }) },
+    { server: "HF Images", tools: ["dynamic_space"], input: (prompt, seed) => dyn(HF.space, HF.spaceTool, { prompt, seed, randomize_seed: false, width: IMG_W, height: IMG_H, guidance_scale: 4.5, num_inference_steps: IMG_STEPS }) },
+    { server: "FLUX Krea", tools: ["FLUX_1_Krea_dev_infer", "infer"], input: (prompt, seed) => ({ prompt, seed, randomize_seed: false, width: IMG_W, height: IMG_H, guidance_scale: 4.5, num_inference_steps: IMG_STEPS }) },
+    { server: HF.server, tools: [HF.tool], input: (prompt, seed) => dyn(HF.space, HF.spaceTool, { prompt, seed, randomize_seed: false, width: IMG_W, height: IMG_H, guidance_scale: 4.5, num_inference_steps: IMG_STEPS }) }
+  ],
+  zimage: [
+    { server: "HF Images", tools: ["gr1_z_image_turbo_generate", "gr2_z_image_turbo_generate", "gr3_z_image_turbo_generate"], input: (prompt, seed) => ({ prompt, seed, random_seed: false, resolution: "864x1152 ( 3:4 )", steps: 8 }) },
+    { server: "HF Images", tools: ["dynamic_space"], input: (prompt, seed) => dyn("mcp-tools/Z-Image-Turbo", "Z_Image_Turbo_generate", { prompt, seed, random_seed: false, resolution: "864x1152 ( 3:4 )", steps: 8 }) }
+  ],
+  pollinations: [
+    { server: "HF Images", tools: ["dynamic_space"], wm: true, input: (prompt, seed) => dyn("mbovy/pollinations-mcp", "pollinations_mcp_generate_image", { prompt, seed, width: IMG_W, height: IMG_H + 48, model: "flux" }) },
+    { server: "HF Images", tools: ["dynamic_space"], wm: true, input: (prompt, seed) => dyn("cedpsam/pollinations_images", "pollinations_images_infer", { prompt, seed, randomize_seed: false, width: IMG_W, height: IMG_H + 48, nologo: true, private: true, nofeed: true }) },
+    { server: HF.server, tools: [HF.tool], wm: true, input: (prompt, seed) => dyn("mbovy/pollinations-mcp", "pollinations_mcp_generate_image", { prompt, seed, width: IMG_W, height: IMG_H + 48, model: "flux" }) }
+  ]
+};
+function parseImage(r) {
+  const blocks = Array.isArray(r?.content) ? r.content : [];
+  for (const b of blocks) {
+    if (b.type === "image" && b.data) return { blob: b64ToBlob(b.data, b.mimeType) };
+    if (b.type === "resource" && b.resource?.blob && /^image\//.test(b.resource.mimeType || "image/")) return { blob: b64ToBlob(b.resource.blob, b.resource.mimeType) };
+  }
+  const text = blocks.filter(b => b.type === "text").map(b => b.text).join("\n") + (typeof r?.payload === "string" ? r.payload : "");
+  if (/gradio\s*=\s*none|invoke operation is disabled/i.test(text)) throw { code: "spaces_off" };
+  if (/quota|exceeded your gpu|zerogpu/i.test(text)) throw { code: "quota" };
+  if (/limite de debit|rate limit|429/i.test(text)) throw { code: "busy" };
+  const dm = text.match(/data:image\/[a-z]+;base64,[A-Za-z0-9+/=]+/); if (dm) return { blob: b64ToBlob(dm[0], dm[0].slice(5, dm[0].indexOf(";"))) };
+  const um = text.match(/https?:\/\/[^\s)"'\]<>]+?\.(?:png|jpe?g|webp)(?:\?[^\s)"'\]<>]*)?/i) || text.match(/https?:\/\/[^\s)"'\]<>]+\/file=[^\s)"'\]<>]+/i);
+  if (um) return { url: um[0] };
+  throw { code: "no_image" };
+}
+function canLoad(url) { return new Promise(res => { const i = new Image(); const t = setTimeout(() => res(false), 9000); i.onload = () => { clearTimeout(t); res(true); }; i.onerror = () => { clearTimeout(t); res(false); }; i.src = url; }); }
+async function tryRoutes(mcp, routes, prompt, seed, key) {
+  const saved = lsGet(ROUTE_KEY) || {}; const pref = saved[key]; let worst = { code: "no_route" };
+  const order = pref != null && routes[pref] ? [routes[pref], ...routes.filter((_, i) => i !== pref)] : routes;
+  for (const route of order) {
+    for (const tool of route.tools) {
+      let r;
+      try { r = await mcp.callTool(route.server, tool, route.input(prompt, seed), { cache: false }); }
+      catch (e) {
+        const msg = String(e?.message || "");
+        if (e?.code === "server_not_connected" || e?.code === "not_in_manifest" || e?.code === "selection_required") break;
+        if (/gradio\s*=\s*none|invoke operation is disabled/i.test(msg)) { if (worst.code === "no_route") worst = { code: "spaces_off" }; break; }
+        if (/quota|zerogpu/i.test(msg)) throw { code: "quota" };
+        if (/limite de debit|rate limit|429|too many/i.test(msg)) { worst = { code: "busy" }; break; }
+        if (/unknown tool|not found|no such tool|tool .* not/i.test(msg) || e?.code === "bad_request") continue;
+        if (["needs_reauth", "not_granted", "blocked_by_policy", "consent_required"].includes(e?.code)) { worst = { code: "denied", server: route.server }; break; }
+        worst = { code: "img_failed" }; break;
+      }
+      let out;
+      try { out = parseImage(r); } catch (e) { if (e.code === "quota") throw e; if (e.code === "spaces_off" && worst.code !== "no_route") break; worst = e; break; }
+      if (out.url && !(await canLoad(out.url))) { worst = { code: "url_only" }; break; }
+      saved[key] = routes.indexOf(route); lsSet(ROUTE_KEY, saved); out.wm = !!route.wm;
+      return out;
+    }
+  }
+  throw worst;
+}
+async function hfImage(prompt, seed) {
+  const mcp = await getMcp(); if (!mcp) throw { code: "no_mcp" };
+  prompt = prompt.slice(0, 600); const m = imgModel();
+  if (m === "pollinations") return pollinate(mcp, prompt, seed);
+  if (m === "krea" || m === "zimage") return tryRoutes(mcp, ROUTE_SETS[m], prompt, seed, m);
+  // авто: лучшая модель, пока у неё есть квота; иначе — без лимита
+  const cool = Number(lsGet(KREA_COOLDOWN_KEY) || 0);
+  if (Date.now() > cool) {
+    try { return await tryRoutes(mcp, ROUTE_SETS.krea, prompt, seed, "krea"); }
+    catch (e) { if (e.code === "quota") lsSet(KREA_COOLDOWN_KEY, Date.now() + 60 * 60 * 1000); else if (!["no_route", "spaces_off", "img_failed", "no_image", "url_only"].includes(e.code)) throw e; }
+  }
+  return pollinate(mcp, prompt, seed);
+}
+let lastPollen = 0;
+async function pollinate(mcp, prompt, seed) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const wait = lastPollen + 4000 - Date.now(); if (wait > 0) await pause(wait);
+    try { const out = await tryRoutes(mcp, ROUTE_SETS.pollinations, prompt, seed, "pollinations"); lastPollen = Date.now(); return out; }
+    catch (e) { lastPollen = Date.now(); if (e.code !== "busy" && e.code !== "img_failed") throw e; await pause(12000 * (attempt + 1)); }
+  }
+  throw { code: "busy" };
+}
+/* убрать водяной знак Pollinations: срезать нижнюю полоску */
+async function cropWatermark(blob) {
+  try { const bmp = await createImageBitmap(blob); const cut = Math.round(bmp.height * 48 / (IMG_H + 48)); const c = document.createElement("canvas"); c.width = bmp.width; c.height = bmp.height - cut;
+    c.getContext("2d").drawImage(bmp, 0, 0); return await new Promise(r => c.toBlob(b => r(b || blob), "image/jpeg", .9)); } catch (e) { return blob; }
+}
+async function shrinkToDataURL(blob) {
+  const bmp = await createImageBitmap(blob); const s = Math.min(1, 420 / bmp.width); const c = document.createElement("canvas");
+  c.width = Math.round(bmp.width * s); c.height = Math.round(bmp.height * s); c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height); return c.toDataURL("image/jpeg", .82);
+}
+async function storeImage(res) {
+  if (res.url) return res.url;
+  if (res.wm) res.blob = await cropWatermark(res.blob);
+  const assets = await getAssets();
+  if (assets) { try { const a = await assets.upload(res.blob); return a.url || ("/_blob/" + a.id); } catch (e) {} }
+  return shrinkToDataURL(res.blob);
+}
+async function makePortrait(prompt, seed) { return storeImage(await hfImage(prompt, seed)); }
+function onImgError(e) { imgNote = IMG_NOTES[e?.code] || IMG_NOTES.img_failed; return e?.code; }
+async function ensurePrompts(wd) {
+  const miss = Object.entries(wd.npcs).filter(([, n]) => !n.photo_prompt); if (!miss.length) return;
+  const sample = await getSample();
+  if (sample) { try {
+    const r = await sample.json(`Write realistic photo portrait prompts in ENGLISH for image generation. World style: ${wd.photo_style}. For each person give 25–40 words: age, gender, face, hair, clothing, expression, a hint of setting. Reply only JSON object {"id":"prompt"}.\n${miss.map(([id, n]) => `${id}: ${n.name}, ${n.role}; ${n.look}; ${n.persona}`).join("\n")}`, { modelTier: "quick", cache: false });
+    miss.forEach(([id, n]) => { if (r && typeof r[id] === "string") n.photo_prompt = str(r[id], 320); });
+  } catch (e) {} }
+  miss.forEach(([id, n]) => { if (!n.photo_prompt) n.photo_prompt = `portrait of ${n.age === "old" ? "an elderly" : n.age === "young" ? "a young" : "an adult"} villager, ${n.hair} hair, simple medieval clothes`; });
+}
+function portraitPrompt(wd, n) { return `${n.photo_prompt}. ${wd.photo_style}. Head and shoulders, looking at camera, photorealistic, highly detailed face, no text`; }
+/* Очередь портретов: сначала то, что игрок видит сейчас. Второстепенные НПС делят типажи (пол × возраст) — максимум 6 картинок на мир. */
+const portraitJobs = [], jobKeys = new Set(); let portraitPaused = false, jobRunning = false, retryTimer = null;
+function archPrompt(wd, n) { return `portrait of ${n.age === "old" ? "an elderly" : n.age === "young" ? "a young" : "a middle-aged"} ${n.gender === "f" ? "woman" : "man"}, an ordinary local commoner in simple worn clothes, weathered face, natural expression. ${wd.photo_style}. Head and shoulders, looking at camera, photorealistic, highly detailed face, no text`; }
+function wantPortrait(wd, id, prio) {
+  if (!wd || !wd.npcs?.[id]) return; const key = imgKeyFor(wd, id); prio = prio ?? 1;
+  if (imgCache[key]) { if (!wd.npcs[id].img) wd.npcs[id].img = imgCache[key]; return; }
+  if (jobKeys.has(key)) { const jb = portraitJobs.find(x => x.key === key); if (jb && prio < jb.prio) { jb.prio = prio; portraitJobs.sort((a, b) => a.prio - b.prio); } return; }
+  jobKeys.add(key); portraitJobs.push({ key, wd, id, prio }); portraitJobs.sort((a, b) => a.prio - b.prio); runPortraitJobs();
+}
+async function runPortraitJobs() {
+  if (jobRunning || portraitPaused) return; jobRunning = true;
+  while (portraitJobs.length && !portraitPaused) {
+    const jb = portraitJobs.shift(); const n = jb.wd.npcs[jb.id]; if (!n || imgCache[jb.key]) { jobKeys.delete(jb.key); continue; }
+    imgPending.add(jb.key); refreshPortraitViews();
+    try {
+      let prompt; if (n.minor) prompt = archPrompt(jb.wd, n); else { await ensurePrompts(jb.wd); prompt = portraitPrompt(jb.wd, n); }
+      const url = await makePortrait(prompt, hash(jb.key) % 100000); imgCache[jb.key] = url; lsSet(IMG_KEY, imgCache); setNpcImg(jb.wd.id, jb.id, url); imgNote = ""; jobKeys.delete(jb.key);
+    } catch (e) {
+      const c = onImgError(e);
+      if (["spaces_off", "no_route", "denied", "no_mcp", "quota", "url_only", "busy"].includes(c)) { portraitJobs.unshift(jb); portraitPaused = true; if (c === "quota" || c === "busy") { clearTimeout(retryTimer); retryTimer = setTimeout(() => { portraitPaused = false; imgNote = ""; runPortraitJobs(); }, c === "busy" ? 60 * 1000 : 10 * 60 * 1000); } }
+      else jobKeys.delete(jb.key);
+    }
+    imgPending.delete(jb.key); refreshPortraitViews();
+  }
+  jobRunning = false;
+}
+function queueWorldPortraits(wd) { if (!wd) return; if (wd.intro_speaker) wantPortrait(wd, wd.intro_speaker, 0); (wd.places?.[wd.start]?.npcs || []).forEach(id => wantPortrait(wd, id, 1)); }
+function setNpcImg(wid, id, url) {
+  [D?.world, ...(D?.worlds || []), S?.wd].forEach(w => { if (!w || w.id !== wid) return; const key = imgKeyFor(w, id); Object.entries(w.npcs).forEach(([nid, n]) => { if (nid === id || imgKeyFor(w, nid) === key) n.img = url; }); });
+  if (S && S.wd.id === wid) save();
+}
+let portraitTimer = null;
+function refreshPortraitViews() {
+  clearTimeout(portraitTimer); portraitTimer = setTimeout(() => {
+    if (!document.getElementById("screen-create").hidden && D) { if (D.step === 0) renderCreate(); }
+    else if (!document.getElementById("screen-game").hidden && S) { if (document.querySelector(".sc-pop:not([hidden])") || busy) { refreshPortraitViews(); return; } renderScene(); renderWorld(); }
+    else if (!document.getElementById("screen-home").hidden) renderHome();
+  }, 120);
+}
+async function genHeroPortrait(btn, st) {
+  btn.disabled = true; D.gen = true; imgNote = ""; st.textContent = "Пишу промпт и портрет. Обычно 20–60 секунд…"; renderHeroCard();
+  try {
+    let prompt = "";
+    const sample = await getSample();
+    const desc = `${D.gender === "f" ? "woman" : "man"}, race ${RACES[D.race]?.name}, class ${CLASSES[D.cls]?.name}, background ${BACKGROUNDS[D.bg]?.name}. Appearance from player: ${D.lookDesc || "—"}. Character: ${personality(D.sl1, D.sl2)}.`;
+    if (sample) { try { const r = await sample.json(`Write ONE realistic photo portrait prompt in ENGLISH (35–55 words) for a fantasy tabletop hero. Keep every detail the player gave about appearance. Translate fantasy race into realistic features (elf: tall, slender, pointed ears; dwarf: short, stocky, braided beard; halfling: small, youthful round face). Show class gear: ${({ fighter: "chainmail and shield", rogue: "dark leather armour, hood, dagger", wizard: "worn robes, staff, spellbook", cleric: "scale armour, holy symbol" })[D.cls]}. Hero: ${desc} World style: ${D.world.photo_style}. Reply only JSON {"prompt":"…"}`, { modelTier: "quick", cache: false }); prompt = str(r?.prompt, 600); } catch (e) {} }
+    if (!prompt) prompt = `portrait of a ${D.gender === "f" ? "woman" : "man"} adventurer, ${({ elf: "elf with pointed ears, slender", dwarf: "stocky dwarf with braided beard", halfling: "small halfling with round youthful face", human: "human" })[D.race]}, ${({ fighter: "chainmail and shield", rogue: "dark leather armour and hood", wizard: "worn robes and staff", cleric: "scale armour and holy symbol" })[D.cls]}`;
+    D.imgPrompt = prompt;
+    D.img = await makePortrait(`${prompt}. ${D.world.photo_style}. Head and shoulders, photorealistic, highly detailed face, no text`, rnd(99999));
+    st.textContent = "Готово. Не нравится — создайте другой вариант.";
+  } catch (e) { onImgError(e); st.textContent = imgNote; }
+  D.gen = false; btn.disabled = false; btn.textContent = D.img ? "Другой вариант" : "Создать фото-портрет"; renderHeroCard();
+}
+
+const D20SVG = '<svg viewBox="0 0 52 52" aria-hidden="true"><path d="M26 2 L48 14 L48 38 L26 50 L4 38 L4 14 Z" fill="var(--shoal)" stroke="currentColor" stroke-width="2"/><path d="M26 2 L14 32 L38 32 Z M14 32 L4 14 M38 32 L48 14 M14 32 L26 50 L38 32 M4 38 L14 32 M48 38 L38 32" fill="none" stroke="currentColor" stroke-width="1" opacity=".45"/></svg>';
+
+/* =========================================================================
+   MAP RENDER
+   ========================================================================= */
+function reveal(cx, cy, r) { const seen = new Set(S.world.seen); for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) if ((x - cx) ** 2 + (y - cy) ** 2 <= r * r) seen.add(x + "," + y); S.world.seen = [...seen]; }
+let mapSel = null;
+/* =========================================================================
+   MAP v5 — иллюстрированная карта в духе Wonderdraft/Inkarnate.
+   Холст: рельеф, береговая рябь, лес и горы с обводкой, дороги, туман.
+   Поверх — DOM-слой меток (медальоны, подписи, значки сюжета), зум и панорама.
+   ========================================================================= */
+const MAP_PAL = {
+  coast: { deep: [44, 86, 104], shallow: [92, 142, 150], paper: [198, 182, 140], grass: [148, 146, 96], grass2: [126, 132, 84], forest: [86, 104, 62], rock: [170, 156, 124], snow: [236, 232, 222], marsh: [112, 122, 84], sand: [216, 196, 146], ink: [46, 36, 24] },
+  marsh: { deep: [52, 80, 78], shallow: [96, 128, 116], paper: [186, 176, 136], grass: [134, 138, 90], grass2: [116, 124, 78], forest: [80, 98, 58], rock: [160, 150, 120], snow: [230, 228, 218], marsh: [102, 116, 78], sand: [200, 186, 140], ink: [42, 36, 24] },
+  mountains: { deep: [46, 80, 104], shallow: [96, 138, 156], paper: [200, 188, 152], grass: [150, 150, 106], grass2: [130, 136, 94], forest: [82, 102, 70], rock: [176, 164, 136], snow: [244, 242, 236], marsh: [112, 122, 88], sand: [214, 198, 154], ink: [44, 36, 26] },
+  forest: { deep: [44, 84, 96], shallow: [90, 138, 140], paper: [194, 180, 136], grass: [138, 142, 88], grass2: [116, 128, 74], forest: [72, 96, 54], rock: [164, 152, 120], snow: [234, 232, 222], marsh: [104, 118, 76], sand: [210, 192, 142], ink: [40, 34, 22] }
+};
+const SEA_NAMES = { coast: "Море", marsh: "Топь", mountains: "Озеро", forest: "Озеро" };
+function makeNoise(seed) {
+  const r = mulberry(seed); const N = 256; const g = new Float32Array(N * N); for (let i = 0; i < g.length; i++) g[i] = r();
+  const v = (x, y) => { const xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi; const i0 = (yi & 255) * N, i1 = ((yi + 1) & 255) * N, x0 = xi & 255, x1 = (xi + 1) & 255;
+    const a = g[i0 + x0], b = g[i0 + x1], c = g[i1 + x0], d = g[i1 + x1]; const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy); return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy; };
+  return (x, y, o) => { let s = 0, amp = .5, f = 1, n = 0; for (let k = 0; k < (o || 4); k++) { s += v(x * f + k * 17.3, y * f - k * 9.1) * amp; n += amp; amp *= .5; f *= 2.03; } return s / n; };
+}
+function tileFields() {
+  const n = MAP_W * MAP_H; const F = { w: new Float32Array(n), f: new Float32Array(n), r: new Float32Array(n), n: new Float32Array(n), m: new Float32Array(n), a: new Float32Array(n), road: new Uint8Array(n) };
+  for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) { const t = tileAt(x, y), i = y * MAP_W + x;
+    F.w[i] = t === "S" || t === "W" ? 1 : 0; F.f[i] = t === "f" ? 1 : 0; F.r[i] = t === "r" || t === "n" ? 1 : 0; F.n[i] = t === "n" ? 1 : 0; F.m[i] = t === "m" ? 1 : 0; F.a[i] = t === "a" ? 1 : 0; F.road[i] = ROAD.has(x + "," + y) ? 1 : 0; }
+  F.pois = Object.values(POIS).filter(isOuter).map(p => [p.x + .5, p.y + .5]); return F;
+}
+function bil(arr, x, y, W, H) {
+  W = W || MAP_W; H = H || MAP_H; x = clamp(x, 0, W - 1.001); y = clamp(y, 0, H - 1.001); const xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi;
+  const x1 = Math.min(W - 1, xi + 1), y1 = Math.min(H - 1, yi + 1); const a = arr[yi * W + xi], b = arr[yi * W + x1], c = arr[y1 * W + xi], d = arr[y1 * W + x1];
+  return a * (1 - fx) * (1 - fy) + b * fx * (1 - fy) + c * (1 - fx) * fy + d * fx * fy;
+}
+const mix = (a, b, t) => a + (b - a) * t;
+const smooth = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };
+function fieldAt(F, nz, u, v) {
+  const wu = u - .5 + (nz(u * .5, v * .5, 3) - .5) * 1.3, wv = v - .5 + (nz(u * .5 + 40, v * .5 + 40, 3) - .5) * 1.3;
+  let w = bil(F.w, wu, wv) + (nz(u * 2.4, v * 2.4, 4) - .5) * .42;
+  const ti = clamp(Math.floor(v), 0, MAP_H - 1) * MAP_W + clamp(Math.floor(u), 0, MAP_W - 1); if (F.road[ti]) w -= .2;
+  for (const p of F.pois) { const d = Math.hypot(u - p[0], v - p[1]); if (d < .8) w -= (.8 - d) * 1.2; }
+  return { w, f: bil(F.f, wu, wv) + (nz(u * 1.7 + 7, v * 1.7, 3) - .5) * .55, r: bil(F.r, wu, wv) + (nz(u * 1.3, v * 1.3 + 9, 3) - .5) * .5, n: bil(F.n, wu, wv), m: bil(F.m, wu, wv), a: bil(F.a, wu, wv) };
+}
+function chamfer(src, W, H) {
+  const d = new Float32Array(W * H); for (let i = 0; i < d.length; i++) d[i] = src[i] ? 0 : 1e6; const D = 1.4142;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const i = y * W + x; let v = d[i]; if (!v) continue;
+    if (x > 0) v = Math.min(v, d[i - 1] + 1); if (y > 0) { v = Math.min(v, d[i - W] + 1); if (x > 0) v = Math.min(v, d[i - W - 1] + D); if (x < W - 1) v = Math.min(v, d[i - W + 1] + D); } d[i] = v; }
+  for (let y = H - 1; y >= 0; y--) for (let x = W - 1; x >= 0; x--) { const i = y * W + x; let v = d[i]; if (!v) continue;
+    if (x < W - 1) v = Math.min(v, d[i + 1] + 1); if (y < H - 1) { v = Math.min(v, d[i + W] + 1); if (x < W - 1) v = Math.min(v, d[i + W + 1] + D); if (x > 0) v = Math.min(v, d[i + W - 1] + D); } d[i] = v; }
+  return d;
+}
+const mapCache = new Map();
+function mapBase(width, Q) {
+  const key = `${WD.id}|${Math.round(width)}|${Q}`; if (mapCache.has(key)) return mapCache.get(key);
+  const W = Math.round(width * Q), H = Math.round(width * Q * MAP_H / MAP_W); const t = width / MAP_W; const px1 = W / 760; // масштаб линий
+  const cv = document.createElement("canvas"); cv.width = W; cv.height = H; const g = cv.getContext("2d");
+  const nz = makeNoise(hash(WD.id)); const F = tileFields(); const P = MAP_PAL[WD.biome] || MAP_PAL.coast;
+  // 1. поля на сетке пониже, затем — на пиксели
+  const FW = Math.min(W, 640), FH = Math.round(FW * MAP_H / MAP_W); const fw = new Float32Array(FW * FH), ff = new Float32Array(FW * FH), fr = new Float32Array(FW * FH), fn = new Float32Array(FW * FH), fm = new Float32Array(FW * FH), fa = new Float32Array(FW * FH), fe = new Float32Array(FW * FH);
+  for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) { const u = (x + .5) / FW * MAP_W, v = (y + .5) / FH * MAP_H; const d = fieldAt(F, nz, u, v); const i = y * FW + x;
+    fw[i] = d.w; ff[i] = d.f; fr[i] = d.r; fn[i] = d.n; fm[i] = d.m; fa[i] = d.a; fe[i] = nz(u * 1.6 + 3, v * 1.6 - 5, 4); }
+  const land = new Uint8Array(W * H), water = new Uint8Array(W * H); const sx = FW / W, sy = FH / H;
+  const WV = new Float32Array(W * H);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const i = y * W + x; const w = bil(fw, x * sx - .5, y * sy - .5, FW, FH); WV[i] = w; if (w > .5) water[i] = 1; else land[i] = 1; }
+  { const lab = new Int32Array(W * H); const minA = Math.pow(t * Q, 2) * .9; const st = []; let id = 0;
+    for (let i0 = 0; i0 < W * H; i0++) { if (!water[i0] || lab[i0]) continue; id++; const comp = []; st.push(i0); lab[i0] = id;
+      while (st.length) { const i = st.pop(); comp.push(i); const x = i % W, y = (i / W) | 0;
+        if (x > 0 && water[i - 1] && !lab[i - 1]) { lab[i - 1] = id; st.push(i - 1); } if (x < W - 1 && water[i + 1] && !lab[i + 1]) { lab[i + 1] = id; st.push(i + 1); }
+        if (y > 0 && water[i - W] && !lab[i - W]) { lab[i - W] = id; st.push(i - W); } if (y < H - 1 && water[i + W] && !lab[i + W]) { lab[i + W] = id; st.push(i + W); } }
+      if (comp.length < minA) for (const i of comp) { water[i] = 0; land[i] = 1; } } }
+  const dW = chamfer(land, W, H), dL = chamfer(water, W, H); // dW — до суши (для воды), dL — до воды (для суши)
+  // 2. пиксели
+  const grain = makeNoise(hash(WD.id + "grain")); const img = g.createImageData(W, H); const D = img.data; const HS = (WD.houses || []).map(([a, b]) => [a + .5, b + .5]);
+  const ripples = [3.2, 7.5, 13, 20, 29].map(r => r * px1);
+  let seaX = 0, seaY = 0, seaN = 0, landX = 0, landY = 0, landN = 0;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const i = y * W + x; const fx = x * sx - .5, fy = y * sy - .5; const gr = grain(x / (6 * px1), y / (6 * px1), 2), gr2 = grain(x / (40 * px1), y / (40 * px1), 3);
+    let c;
+    if (water[i]) {
+      const dw = dW[i]; seaX += x; seaY += y; seaN++;
+      const depth = smooth(0, 90 * px1, dw); c = [mix(P.shallow[0], P.deep[0], depth), mix(P.shallow[1], P.deep[1], depth), mix(P.shallow[2], P.deep[2], depth)];
+      const wash = 1 - smooth(0, 14 * px1, dw); c = c.map((v, k) => mix(v, P.shallow[k] + 26, wash * .55));
+      for (let k = 0; k < ripples.length; k++) { const dd = Math.abs(dw - ripples[k]); const lw = (.9 + k * .15) * px1; if (dd < lw) { const a = (1 - dd / lw) * (.42 - k * .07); c = c.map((v, j) => mix(v, P.ink[j] + 30, a)); } }
+      if (dw < 1.6 * px1) c = c.map((v, j) => mix(v, P.ink[j], .85));
+      c = c.map(v => v + (gr - .5) * 10 + (gr2 - .5) * 14);
+    } else {
+      const dl = dL[i]; landX += x; landY += y; landN++;
+      const f = bil(ff, fx, fy, FW, FH), r = bil(fr, fx, fy, FW, FH), n = bil(fn, fx, fy, FW, FH), m = bil(fm, fx, fy, FW, FH), a = bil(fa, fx, fy, FW, FH), e = bil(fe, fx, fy, FW, FH);
+      const patch = grain(x / (70 * px1) + 11, y / (70 * px1) - 7, 3);
+      c = [mix(P.grass[0], P.grass2[0], patch), mix(P.grass[1], P.grass2[1], patch), mix(P.grass[2], P.grass2[2], patch)];
+      c = c.map((v, k) => mix(v, P.paper[k], clamp(.22 + (e - .5) * .5 + (gr2 - .5) * .3, 0, .7)));
+      if (HS.length) { const X = x / Q / t, Y = y / Q / t; let hd = 9; for (const [hx, hy] of HS) { const dd = Math.hypot(X - hx, Y - hy); if (dd < hd) hd = dd; }
+        if (hd < 1.7 && bil(ff, fx, fy, FW, FH) < .45 && bil(fr, fx, fy, FW, FH) < .45) { const cw = 22 * px1, ch = 15 * px1; const cxk = Math.floor((x + y * .35) / cw), cyk = Math.floor((y - x * .2) / ch); const hh = hash(cxk + ":" + cyk);
+          if (hh % 5 < 2) { const fade = 1 - smooth(1.0, 1.7, hd); const ang = (hh % 2) ? x * .9 + y * .3 : x * .25 - y; const stripe = (Math.floor(ang / (2.6 * px1)) & 1) ? 1 : 0; const tone = (hh >>> 3) % 4;
+            const fc = [[186, 170, 98], [160, 156, 88], [142, 150, 84], [196, 182, 118]][tone]; c = c.map((v, k) => mix(v, fc[k] - stripe * 12, fade * .6));
+            const ex = ((x + y * .35) % cw), ey = ((y - x * .2) % ch); if (ex < .8 * px1 || ey < .8 * px1) c = c.map((v, k) => mix(v, P.ink[k], fade * .18)); } } }
+      const ft = smooth(.42, .78, f); c = c.map((v, k) => mix(v, P.forest[k], ft * .75));
+      const mt = smooth(.4, .75, m); if (mt > 0) { c = c.map((v, k) => mix(v, P.marsh[k], mt * .85)); if (gr > .66 && mt > .5) c = c.map((v, k) => mix(v, P.shallow[k], .55)); }
+      const rt = smooth(.42, .85, r); c = c.map((v, k) => mix(v, P.rock[k], rt * .8));
+      const st = smooth(.5, .85, n); c = c.map((v, k) => mix(v, P.snow[k], st * .9));
+      const beach = Math.max(1 - smooth(1.5 * px1, 7 * px1, dl), smooth(.4, .8, a) * .7); c = c.map((v, k) => mix(v, P.sand[k], beach * .85));
+      const hs = (bil(fe, fx + 1.2, fy, FW, FH) - bil(fe, fx - 1.2, fy, FW, FH)) * 160 * (.35 + rt); c = c.map(v => v + hs);
+      if (dl < 2.4 * px1) c = c.map((v, k) => mix(v, P.ink[k], (1 - dl / (2.4 * px1)) * .9));
+      c = c.map(v => v + (gr - .5) * 14);
+    }
+    const vx = x / W - .5, vy = y / H - .5; const vig = 1 - Math.pow(vx * vx + vy * vy, 1.3) * 1.1; const o = i * 4;
+    D[o] = clamp(c[0] * vig, 0, 255); D[o + 1] = clamp(c[1] * vig, 0, 255); D[o + 2] = clamp(c[2] * vig - (1 - vig) * 8, 0, 255); D[o + 3] = 255;
+  }
+  g.putImageData(img, 0, 0); g.setTransform(Q, 0, 0, Q, 0, 0);
+  const isWater = (X, Y) => { const xi = clamp(Math.round(X * Q), 0, W - 1), yi = clamp(Math.round(Y * Q), 0, H - 1); return water[yi * W + xi]; };
+  const distLand = (X, Y) => { const xi = clamp(Math.round(X * Q), 0, W - 1), yi = clamp(Math.round(Y * Q), 0, H - 1); return dL[yi * W + xi] / Q; };
+  const at = (X, Y) => { const fx = X * Q * sx - .5, fy = Y * Q * sy - .5; return { f: bil(ff, fx, fy, FW, FH), r: bil(fr, fx, fy, FW, FH), n: bil(fn, fx, fy, FW, FH), m: bil(fm, fx, fy, FW, FH) }; };
+  const rr = mulberry(hash(WD.id + "glyph")); const k = clamp(t / 19, .8, 1.7); const Hc = width * MAP_H / MAP_W;
+  const nearPoi = (X, Y, rad) => F.pois.some(([px, py]) => Math.hypot(px * t - X, py * t - Y) < rad);
+  const items = [];
+  // горы
+  const ms = 21 * k;
+  for (let y = 0; y < Hc + ms; y += ms * .62) for (let x = 0; x < width + ms; x += ms * .9) {
+    const X = x + (rr() - .5) * ms * .7, Y = y + (rr() - .5) * ms * .5; if (isWater(X, Y) || distLand(X, Y) < 5 * k) continue; const a = at(X, Y);
+    if (a.r > .68 && rr() > .3 && !nearPoi(X, Y, t * .8)) items.push({ type: "m", X, Y, s: (8.5 + rr() * 5 + (a.r - .6) * 6) * k, snow: a.n > .35 || (a.r > .9 && rr() > .5), q: rr() });
+    else if (a.r > .45 && rr() > .6 && !nearPoi(X, Y, t * .6)) items.push({ type: "h", X, Y, s: (5 + rr() * 3) * k, q: rr() });
+  }
+  // лес
+  const conifer = WD.biome === "mountains" || WD.biome === "coast";
+  const ts = 6.2 * k;
+  for (let y = 0; y < Hc + ts; y += ts * .62) for (let x = 0; x < width + ts; x += ts * .82) {
+    const X = x + (rr() - .5) * ts * .9, Y = y + (rr() - .5) * ts * .7; if (isWater(X, Y) || distLand(X, Y) < 3.5 * k || nearPoi(X, Y, t * .62)) continue; const a = at(X, Y);
+    if (a.f > .55 && a.r < .62) items.push({ type: (conifer && rr() > .25) || a.r > .4 ? "c" : "t", X, Y, s: (3.4 + rr() * 2 + (a.f - .5) * 2) * k, q: rr() });
+    else if (a.f > .32 && rr() > .9) items.push({ type: "t", X, Y, s: (3 + rr()) * k, q: rr() });
+    else if (a.m > .55 && rr() > .55) items.push({ type: "reed", X, Y, s: (2.6 + rr()) * k, q: rr() });
+    else if (a.f < .3 && a.r < .4 && a.m < .3) { const z = rr(); if (z > .988) items.push({ type: "t", X, Y, s: (2.8 + rr()) * k, q: rr() }); else if (z > .95) items.push({ type: "tuft", X, Y, s: (2.2 + rr()) * k, q: rr() }); }
+  }
+  // дома
+  const hr = mulberry(hash(WD.id + "h"));
+  (WD.houses || []).forEach(([hx, hy]) => { for (let j = 0; j < 3; j++) { const X = (hx + .2 + hr() * .6) * t, Y = (hy + .25 + hr() * .55) * t; if (!isWater(X, Y) && !nearPoi(X, Y, t * .5)) items.push({ type: "house", X, Y, s: (2.6 + hr() * 1.2) * k, q: hr() }); } });
+  items.sort((a, b) => a.Y - b.Y);
+  const ink = `rgb(${P.ink.join(",")})`; g.lineJoin = "round"; g.lineCap = "round";
+  for (const it of items) {
+    const { X, Y, s, q } = it;
+    if (it.type === "m") {
+      const lean = (q - .5) * .4 * s;
+      g.fillStyle = "rgba(40,30,18,.22)"; g.beginPath(); g.ellipse(X + s * .4, Y + s * .5, s * 1.25, s * .28, 0, 0, 7); g.fill();
+      g.beginPath(); g.moveTo(X - s * 1.1, Y + s * .5); g.lineTo(X + lean, Y - s); g.lineTo(X + s * 1.1, Y + s * .5); g.closePath(); g.fillStyle = "#d9caa4"; g.fill();
+      g.beginPath(); g.moveTo(X + lean, Y - s); g.lineTo(X + s * 1.1, Y + s * .5); g.lineTo(X + lean * .3 + s * .1, Y + s * .5); g.closePath(); g.fillStyle = "#9d8b68"; g.fill();
+      g.strokeStyle = "rgba(60,46,28,.55)"; g.lineWidth = .7; g.beginPath(); for (let j = 1; j <= 3; j++) { const tt = j / 4; g.moveTo(X + lean + (s * 1.1 - lean) * tt, Y - s + s * 1.5 * tt); g.lineTo(X + lean * .5 + s * .2 + (s * .9) * tt * .4, Y + s * .5); } g.stroke();
+      if (it.snow) { g.beginPath(); g.moveTo(X + lean - s * .38, Y - s * .45); g.lineTo(X + lean, Y - s); g.lineTo(X + lean + s * .4, Y - s * .42); g.lineTo(X + lean + s * .12, Y - s * .55); g.lineTo(X + lean - s * .1, Y - s * .38); g.closePath(); g.fillStyle = "#f6f3ea"; g.fill(); }
+      g.beginPath(); g.moveTo(X - s * 1.1, Y + s * .5); g.lineTo(X + lean, Y - s); g.lineTo(X + s * 1.1, Y + s * .5); g.strokeStyle = ink; g.lineWidth = 1.05; g.stroke();
+    } else if (it.type === "h") {
+      g.beginPath(); g.moveTo(X - s, Y + s * .3); g.quadraticCurveTo(X, Y - s * .9, X + s, Y + s * .3); g.fillStyle = "rgba(170,150,104,.55)"; g.fill(); g.strokeStyle = "rgba(60,46,28,.75)"; g.lineWidth = .9; g.stroke();
+      g.beginPath(); g.moveTo(X + s * .15, Y - s * .3); g.quadraticCurveTo(X + s * .6, Y - s * .1, X + s * .75, Y + s * .2); g.strokeStyle = "rgba(60,46,28,.4)"; g.lineWidth = .6; g.stroke();
+    } else if (it.type === "t") {
+      const base = [74 + q * 18, 98 + q * 16, 54 + q * 10];
+      g.fillStyle = "rgba(30,24,14,.28)"; g.beginPath(); g.ellipse(X + s * .5, Y + s * 1.05, s * 1.05, s * .35, 0, 0, 7); g.fill();
+      g.strokeStyle = ink; g.lineWidth = .8; g.beginPath(); g.moveTo(X, Y + s * .6); g.lineTo(X, Y + s * 1.2); g.stroke();
+      g.beginPath(); g.arc(X, Y - s * .05, s, 0, 7); g.fillStyle = `rgb(${base.join(",")})`; g.fill(); g.lineWidth = .85; g.stroke();
+      g.beginPath(); g.arc(X - s * .32, Y - s * .38, s * .45, 0, 7); g.fillStyle = `rgba(${base[0] + 46},${base[1] + 40},${base[2] + 22},.85)`; g.fill();
+    } else if (it.type === "c") {
+      const base = [58 + q * 14, 84 + q * 14, 52 + q * 8];
+      g.fillStyle = "rgba(30,24,14,.28)"; g.beginPath(); g.ellipse(X + s * .45, Y + s * 1.15, s * .9, s * .3, 0, 0, 7); g.fill();
+      g.beginPath(); g.moveTo(X, Y - s * 1.7); g.lineTo(X + s * .85, Y + s * 1.05); g.lineTo(X - s * .85, Y + s * 1.05); g.closePath(); g.fillStyle = `rgb(${base.join(",")})`; g.fill();
+      g.beginPath(); g.moveTo(X, Y - s * 1.7); g.lineTo(X, Y + s * 1.05); g.lineTo(X - s * .85, Y + s * 1.05); g.closePath(); g.fillStyle = `rgba(${base[0] + 40},${base[1] + 38},${base[2] + 20},.9)`; g.fill();
+      g.beginPath(); g.moveTo(X, Y - s * 1.7); g.lineTo(X + s * .85, Y + s * 1.05); g.lineTo(X - s * .85, Y + s * 1.05); g.closePath(); g.strokeStyle = ink; g.lineWidth = .8; g.stroke();
+    } else if (it.type === "reed") {
+      g.strokeStyle = "rgba(60,58,30,.8)"; g.lineWidth = .7; g.beginPath(); g.moveTo(X - s * .6, Y + s); g.quadraticCurveTo(X - s * .7, Y, X - s * .9, Y - s * .6); g.moveTo(X, Y + s); g.lineTo(X, Y - s); g.moveTo(X + s * .6, Y + s); g.quadraticCurveTo(X + s * .7, Y, X + s, Y - s * .4); g.stroke();
+      g.fillStyle = "rgba(70,90,96,.5)"; g.beginPath(); g.ellipse(X, Y + s * 1.15, s * 1.2, s * .3, 0, 0, 7); g.fill();
+    } else if (it.type === "tuft") {
+      g.strokeStyle = "rgba(70,62,30,.55)"; g.lineWidth = .7; g.beginPath(); g.moveTo(X - s * .7, Y); g.lineTo(X - s * .9, Y - s * .7); g.moveTo(X, Y); g.lineTo(X, Y - s); g.moveTo(X + s * .7, Y); g.lineTo(X + s * .9, Y - s * .7); g.stroke();
+    } else if (it.type === "house") {
+      g.fillStyle = "rgba(30,24,14,.3)"; g.fillRect(X - s + 1, Y - s * .1 + 1.2, s * 2, s * 1.2);
+      g.fillStyle = "#e6d6b0"; g.fillRect(X - s, Y - s * .2, s * 2, s * 1.2); g.strokeStyle = ink; g.lineWidth = .7; g.strokeRect(X - s, Y - s * .2, s * 2, s * 1.2);
+      g.beginPath(); g.moveTo(X - s * 1.25, Y - s * .1); g.lineTo(X, Y - s * 1.3); g.lineTo(X + s * 1.25, Y - s * .1); g.closePath(); g.fillStyle = q > .5 ? "#9c4a32" : "#7d5a3a"; g.fill(); g.stroke();
+    }
+  }
+  // точечная фактура бумаги
+  g.setTransform(1, 0, 0, 1, 0, 0); const sp = mulberry(hash(WD.id + "sp")); g.fillStyle = "rgba(60,40,20,.08)";
+  for (let j = 0; j < W * H / 900; j++) { g.fillRect(sp() * W, sp() * H, 1 + sp() * 1.5, 1 + sp() * 1.5); }
+  const out = { cv, t, water, W, H, Q, sea: seaN > W * H * .06 ? [seaX / seaN / Q / t, seaY / seaN / Q / t] : null, land: landN ? [landX / landN / Q / t, landY / landN / Q / t] : null };
+  if (out.sea) { // точка моря подальше от берега
+    let best = null, bd = -1; for (let j = 0; j < 900; j++) { const X = Math.floor(sp() * W), Y = Math.floor(sp() * H); const i = Y * W + X; if (water[i] && dW[i] > bd && X > W * .2 && X < W * .8 && Y > H * .1 && Y < H * .9 && !F.pois.some(([px, py]) => Math.hypot(px - X / Q / t, py - Y / Q / t) < 2.6)) { bd = dW[i]; best = [X / Q / t, Y / Q / t]; } }
+    if (best && bd > 30 * px1) out.sea = [clamp(best[0], MAP_W * .22, MAP_W * .78), best[1]]; else out.sea = null;
+  }
+  mapCache.set(key, out); if (mapCache.size > 8) mapCache.delete(mapCache.keys().next().value);
+  return out;
+}
+function roadPaths(t) {
+  const start = POIS[WD.start] || Object.values(POIS)[0]; const s0 = [start.x, start.y]; const out = {};
+  outerEntries().forEach(([id, p]) => {
+    if (id === WD.start) return; const prev = new Map(); const q = [s0]; prev.set(s0.join(","), null); let found = false;
+    while (q.length) { const [x, y] = q.shift(); if (x === p.x && y === p.y) { found = true; break; }
+      for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + a, ny = y + b, k = nx + "," + ny; if (prev.has(k) || !(ROAD.has(k) || (nx === p.x && ny === p.y))) continue; prev.set(k, x + "," + y); q.push([nx, ny]); } }
+    if (!found) return; const pts = []; let k = p.x + "," + p.y; while (k) { const [x, y] = k.split(",").map(Number); pts.unshift([x, y]); k = prev.get(k); }
+    let P2 = pts.map(([x, y], i) => { const c = [(x + .5) * t, (y + .5) * t]; if (i === 0 || i === pts.length - 1) return c; const h = hash(WD.id + x + "," + y); return [c[0] + ((h % 1000) / 1000 - .5) * t * .4, c[1] + (((h >> 10) % 1000) / 1000 - .5) * t * .4]; });
+    for (let it = 0; it < 3; it++) { const n = [P2[0]]; for (let i = 0; i < P2.length - 1; i++) { const [ax, ay] = P2[i], [bx, by] = P2[i + 1]; n.push([ax * .75 + bx * .25, ay * .75 + by * .25], [ax * .25 + bx * .75, ay * .25 + by * .75]); } n.push(P2[P2.length - 1]); P2 = n; }
+    out[id] = P2;
+  });
+  return out;
+}
+function placeState(id) {
+  if (!S) return {};
+  const p = POIS[id]; const vis = S.world.visited.includes(id); const foes = (p.enemies || []).filter(e => S.world.enemies[e]); const alive = foes.filter(e => S.world.enemies[e].alive).length;
+  return { visited: vis || (S.world.visited || []).some(v => POIS[v]?.parent === id), here: hereOuter() === id, danger: vis && alive > 0, cleared: vis && foes.length > 0 && alive === 0, clue: !!S.world.flags["clue_" + id], note: S.world.notes?.[id] || "", rumor: !!S.world.rumors?.includes(id) };
+}
+/* холст: рельеф + дороги + туман */
+function paintMap(cv, opts) {
+  const o = opts || {}; const width = Math.max(200, o.width); const t = width / MAP_W; const H = t * MAP_H;
+  const Q = Math.min(o.hires ? 2 : 2, Math.max(1, window.devicePixelRatio || 1) * (o.hires ? 1.25 : 1), 2000 / width);
+  cv.width = Math.round(width * Q); cv.height = Math.round(H * Q); cv.style.height = H + "px";
+  const g = cv.getContext("2d"); const base = mapBase(width, Q);
+  g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(base.cv, 0, 0); g.setTransform(Q, 0, 0, Q, 0, 0);
+  const k = clamp(t / 19, .8, 1.7); const seen = o.fog && S ? new Set(S.world.seen) : null;
+  const paths = roadPaths(t);
+  Object.entries(paths).forEach(([id, pts]) => {
+    const st = placeState(id); const lit = !S || !o.fog || st.visited;
+    const line = () => { g.beginPath(); pts.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); };
+    line(); g.strokeStyle = "rgba(236,222,186,.55)"; g.lineWidth = 3.4 * k; g.lineCap = "round"; g.lineJoin = "round"; g.setLineDash([]); g.stroke();
+    line(); g.strokeStyle = lit ? "rgba(92,62,34,.95)" : "rgba(92,62,34,.55)"; g.lineWidth = 1.5 * k; g.setLineDash([4.5 * k, 3 * k]); g.stroke(); g.setLineDash([]);
+  });
+  if (seen) {
+    const FW = 160, FH = Math.round(FW * MAP_H / MAP_W); const fc = document.createElement("canvas"); fc.width = FW; fc.height = FH; const f = fc.getContext("2d"); const fd = f.createImageData(FW, FH);
+    const S1 = new Float32Array(MAP_W * MAP_H); seen.forEach(key => { const [x, y] = key.split(",").map(Number); if (x >= 0 && y >= 0 && x < MAP_W && y < MAP_H) S1[y * MAP_W + x] = 1; });
+    (S.world.rumors || []).forEach(id => { const p = POIS[id]; if (p) S1[p.y * MAP_W + p.x] = Math.max(S1[p.y * MAP_W + p.x], .62); });
+    const nz = makeNoise(hash(WD.id + "fog"));
+    for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) {
+      const u = (x + .5) / FW * MAP_W, v = (y + .5) / FH * MAP_H; const n = nz(u * .9, v * .9, 4);
+      const sv = bil(S1, u - .5 + (n - .5) * .9, v - .5 + (nz(u * .9 + 30, v * .9, 3) - .5) * .9) + (n - .5) * .35;
+      const a = 1 - smooth(.18, .62, sv); const tone = nz(u * 2.2, v * 2.2, 3); const o4 = (y * FW + x) * 4;
+      fd.data[o4] = 14 + tone * 16; fd.data[o4 + 1] = 22 + tone * 18; fd.data[o4 + 2] = 28 + tone * 20; fd.data[o4 + 3] = a * 236;
+    }
+    f.putImageData(fd, 0, 0); g.imageSmoothingEnabled = true; g.imageSmoothingQuality = "high"; g.drawImage(fc, 0, 0, width, H);
+  }
+  g.strokeStyle = "rgba(46,36,24,.55)"; g.lineWidth = 1.4; g.strokeRect(5, 5, width - 10, H - 10); g.strokeStyle = "rgba(46,36,24,.3)"; g.lineWidth = .8; g.strokeRect(9, 9, width - 18, H - 18);
+  return base;
+}
+const MK_ICON = {
+  inn: '<path d="M4 20V10l8-6 8 6v10"/><path d="M9 20v-6h6v6"/><path d="M7 9h10"/>', house: '<path d="M4 20V10l8-6 8 6v10"/><path d="M10 20v-5h4v5"/>', hut: '<path d="M3 20 12 5l9 15"/><path d="M10 20v-4h4v4"/>',
+  chapel: '<path d="M12 3v6M9 6h6"/><path d="M6 21V13l6-4 6 4v8"/><path d="M10 21v-4a2 2 0 0 1 4 0v4"/>', shrine: '<path d="M5 9h14M7 9v11M17 9v11M4 20h16"/><path d="M3 9l9-5 9 5"/>',
+  tower: '<path d="M8 21 9 9h6l1 12"/><path d="M7 9V5h2v2h2V5h2v2h2V5h2v4z"/><path d="M12 13v2"/>', cave: '<path d="M2 20c2-9 6-14 10-14s8 5 10 14z"/><path d="M8 20c1-4 2.5-6 4-6s3 2 4 6"/>',
+  ruin: '<path d="M5 21V8M10 21V11M15 21v-6M19 21V9"/><path d="M4 7h7M14 8h6M3 21h18"/>', gate: '<path d="M4 21V7h16v14"/><path d="M8 21v-6a4 4 0 0 1 8 0v6"/><path d="M4 7l2-3h12l2 3"/>',
+  camp: '<path d="M3 20 12 5l9 15z"/><path d="M12 5v15M9 20l3-6 3 6"/>', mine: '<path d="M14 4c4 0 6 2 7 5"/><path d="M4 20 15 9"/><path d="M11 5l8 8"/>', farm: '<path d="M7 21V9M12 21V6M17 21V9"/><path d="M7 11 4 8M7 11l3-3M12 9 9 6M12 9l3-3M17 11l-3-3M17 11l3-3"/>',
+  pier: '<path d="M12 4v15"/><circle cx="12" cy="5" r="1.6"/><path d="M8 9h8"/><path d="M5 14c0 4 3 6 7 6s7-2 7-6"/>', wreck: '<path d="M3 15h18l-3 4H6z"/><path d="M11 15V5l-5 9M13 7l5 6"/>',
+  grove: '<path d="M12 3 6 13h3l-3 5h12l-3-5h3z"/><path d="M12 18v3"/>', bridge: '<path d="M2 17c4-7 16-7 20 0"/><path d="M2 12h20M6 12v5M18 12v5"/>', well: '<path d="M6 11h12v9H6z"/><path d="M4 7h16M7 7v4M17 7v4M12 4v3"/>'
+};
+function mkIcon(kind) { return `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${MK_ICON[kind] || '<circle cx="12" cy="12" r="4"/>'}</svg>`; }
+function mapMarkup(id, cls) { return `<div class="map ${cls || ""}" id="${id}"><canvas aria-hidden="true"></canvas><div class="mk-layer"></div></div>`; }
+/* Отрисовать карту в контейнер: холст + слой меток */
+function renderMap(box, o) {
+  if (!box) return; const cv = box.querySelector("canvas"); const width = o.width || box.clientWidth || 320;
+  const base = paintMap(cv, { width, fog: o.fog, hires: o.hires }); const layer = box.querySelector(".mk-layer"); layer.innerHTML = "";
+  const seen = o.fog && S ? new Set(S.world.seen) : null; const pos = (x, y) => `left:${(x / MAP_W * 100).toFixed(3)}%;top:${(y / MAP_H * 100).toFixed(3)}%`;
+  if (base.sea && o.labels !== false) { const s = document.createElement("div"); s.className = "map-sea"; s.style.cssText = pos(base.sea[0], base.sea[1]); s.textContent = (WD.labels && WD.labels[0]?.t) || SEA_NAMES[WD.biome] || "Море"; if (!seen || seen.has(Math.floor(base.sea[0]) + "," + Math.floor(base.sea[1]))) layer.append(s); }
+  if (o.region && base.land && !seen) { const r = document.createElement("div"); r.className = "map-region"; r.style.cssText = pos(base.land[0], Math.max(1.4, base.land[1] - 2.2)); r.textContent = WD.name; layer.append(r); }
+  if (o.markers === false) return;
+  outerEntries().forEach(([id, p]) => {
+    const st = placeState(id); const known = !seen || seen.has(p.x + "," + p.y) || st.visited; const b = document.createElement(o.pick ? "button" : "div");
+    if (o.pick) { b.type = "button"; b.onclick = e => { e.stopPropagation(); o.pick(id); }; }
+    b.style.cssText = pos(p.x + .5, p.y + .5);
+    if (!known && !st.rumor) { b.className = "mk unknown"; b.innerHTML = `<span class="mk-q">?</span>`; b.setAttribute("aria-label", "Неизведанное место"); layer.append(b); return; }
+    b.className = ["mk", st.here && "here", st.visited && "visited", st.danger && "danger", st.cleared && "cleared", st.rumor && !known && "rumor", mapSel === id && "sel"].filter(Boolean).join(" ");
+    b.setAttribute("aria-label", p.name + (st.here ? ", вы здесь" : ""));
+    const badges = (st.danger ? `<i class="mk-b danger" title="Опасно">✕</i>` : st.cleared ? `<i class="mk-b ok" title="Зачищено">✓</i>` : "") + (st.clue || st.note ? `<i class="mk-b clue" title="${esc(st.note || "Найдены улики")}"></i>` : "");
+    b.innerHTML = `<span class="mk-pin">${mkIcon(p.kind)}${badges}</span>${o.labels === false ? "" : `<span class="mk-label">${esc(p.name.replace(/[«»"]/g, ""))}</span>`}`;
+    layer.append(b);
+  });
+}
+function drawMap() { const box = document.getElementById("mapbox"); if (!box || !S) return; renderMap(box, { fog: true, pick: id => { mapSel = mapSel === id ? null : id; renderWorld(); } }); }
+function mapClick() {}
+function placeInfoHTML(id) {
+  const p = POIS[id]; const st = placeState(id); const seen = new Set(S.world.seen); const known = seen.has(p.x + "," + p.y) || st.visited;
+  if (!known && !st.rumor) return { name: "Неизведанное место", text: "Туман скрывает, что здесь. Можно дойти и узнать." };
+  const bits = []; if (st.visited && p.npcs.length) bits.push("Здесь: " + p.npcs.filter(n => NPCS[n]).map(n => NPCS[n].name).join(", "));
+  if (st.danger) bits.push("Опасно: здесь враги"); if (st.cleared) bits.push("Враги повержены"); if (st.clue) bits.push("Найдены улики");
+  if (st.note) bits.push("Пометка: " + st.note); if (st.rumor && !st.visited) bits.push("Известно по слухам");
+  return { name: p.name, text: p.short + (bits.length ? " · " + bits.join(" · ") : "") };
+}
+/* большая карта: зум колесом/кнопками, перетаскивание */
+function openBigMap() {
+  if (!S) return;
+  modal(`<div class="bigmap"><div class="bigmap-head"><div><div class="eyebrow">Карта мира</div><h2>${esc(WD.name)}</h2></div><div class="bm-tools"><button class="btn small" type="button" id="bm-out" aria-label="Отдалить">−</button><button class="btn small" type="button" id="bm-in" aria-label="Приблизить">+</button><button class="btn small" type="button" id="bm-fit">Вся карта</button><button class="btn small" type="button" id="bm-close">Закрыть</button></div></div>
+    <div class="bm-view" id="bm-view"><div class="bm-stage" id="bm-stage">${mapMarkup("bigbox", "big")}</div></div>
+    <div class="bigmap-foot" id="bm-info"><span class="home-note">Нажмите на метку, чтобы узнать о месте или отправиться туда. Колесо мыши и перетаскивание — масштаб и обзор.</span></div>
+    <div class="legend"><span><i class="lg here"></i>вы здесь</span><span><i class="lg visited"></i>посещено</span><span><i class="lg danger">✕</i>опасно</span><span><i class="lg ok">✓</i>зачищено</span><span><i class="lg clue"></i>улики и пометки</span><span><i class="lg rumor"></i>слухи</span><span><i class="lg q">?</i>неизведано</span></div></div>`, root => {
+    root.querySelector(".modal").classList.add("wide");
+    const view = root.querySelector("#bm-view"), stage = root.querySelector("#bm-stage"), box = root.querySelector("#bigbox");
+    let z = 1, tx = 0, ty = 0; const apply = () => { const vw = view.clientWidth, vh = view.clientHeight, sw = vw * z, sh = stage.clientHeight * z;
+      tx = clamp(tx, Math.min(0, vw - sw), 0); ty = clamp(ty, Math.min(0, vh - sh), 0); stage.style.transform = `translate(${tx}px, ${ty}px) scale(${z})`; box.style.setProperty("--z", z); };
+    const zoomAt = (nz, cx, cy) => { nz = clamp(nz, 1, 3); tx = cx - (cx - tx) * nz / z; ty = cy - (cy - ty) * nz / z; z = nz; apply(); };
+    const pick = id => { mapSel = id; draw(); const info = root.querySelector("#bm-info"); const pi = placeInfoHTML(id); const canGo = id !== S.world.loc && !busy && !S.world.combat;
+      info.innerHTML = `<div style="flex:1;min-width:0"><b style="font-family:var(--display);font-size:26px;display:block;line-height:1.05">${esc(pi.name)}</b><span class="home-note" style="color:var(--mist)">${esc(pi.text)}</span></div>${id === S.world.loc ? '<span class="pill mode">Вы здесь</span>' : `<button class="btn primary" type="button" id="bm-go" ${canGo ? "" : "disabled"}>Идти сюда</button>`}`;
+      info.querySelector("#bm-go")?.addEventListener("click", () => { closeModal(); mapSel = null; takeTurn(`Иду: ${POIS[id].name}`, { checks: [], move_to: id }); }); };
+    const mw = () => Math.floor(Math.min(view.clientWidth, Math.max(320, (innerHeight - 290) * MAP_W / MAP_H))); box.style.width = mw() + "px"; box.style.margin = "0 auto";
+    const draw = () => renderMap(box, { width: mw(), fog: true, hires: true, region: true, pick });
+    requestAnimationFrame(() => { draw(); apply(); });
+    view.addEventListener("wheel", e => { e.preventDefault(); const r = view.getBoundingClientRect(); zoomAt(z * (e.deltaY < 0 ? 1.18 : 1 / 1.18), e.clientX - r.left, e.clientY - r.top); }, { passive: false });
+    let drag = null; view.addEventListener("pointerdown", e => { if (e.target.closest(".mk")) return; drag = { x: e.clientX, y: e.clientY, tx, ty, moved: false }; view.setPointerCapture(e.pointerId); view.classList.add("grab"); });
+    view.addEventListener("pointermove", e => { if (!drag) return; tx = drag.tx + e.clientX - drag.x; ty = drag.ty + e.clientY - drag.y; apply(); });
+    const end = () => { drag = null; view.classList.remove("grab"); }; view.addEventListener("pointerup", end); view.addEventListener("pointercancel", end);
+    root.querySelector("#bm-in").onclick = () => zoomAt(z * 1.35, view.clientWidth / 2, view.clientHeight / 2);
+    root.querySelector("#bm-out").onclick = () => zoomAt(z / 1.35, view.clientWidth / 2, view.clientHeight / 2);
+    root.querySelector("#bm-fit").onclick = () => { z = 1; tx = 0; ty = 0; apply(); };
+    root.querySelector("#bm-close").onclick = () => { closeModal(); renderWorld(); };
+    const here = POIS[S.world.loc]; setTimeout(() => { if (view.clientWidth < 700) { const t = view.clientWidth / MAP_W; zoomAt(1.6, (here.x + .5) * t, (here.y + .5) * t); } }, 60);
+  });
+}
+
+/* =========================================================================
+   HOME
+   ========================================================================= */
+function showScreen(id) {
+  ["screen-home", "screen-create", "screen-game"].forEach(s => document.getElementById(s).hidden = s !== id);
+  const inGame = id === "screen-game";
+  document.getElementById("btn-home").hidden = !inGame; document.getElementById("pill-mode").hidden = !inGame; document.getElementById("btn-journal").hidden = !inGame; document.getElementById("btn-settings").hidden = !inGame;
+  document.querySelector(".nav-links").style.visibility = inGame ? "hidden" : "";
+  document.querySelectorAll(".nav-links button").forEach(b => b.removeAttribute("aria-current"));
+  document.querySelector(`.nav-links [data-go=${id === "screen-create" ? "new" : "home"}]`)?.setAttribute("aria-current", "page");
+}
+function ago(ts) { const m = Math.round((Date.now() - ts) / 60000); if (m < 1) return "только что"; if (m < 60) return m + " мин назад"; const h = Math.round(m / 60); if (h < 24) return h + " ч назад"; return Math.round(h / 24) + " дн назад"; }
+function renderHome() {
+  setMood("menu"); setAmbience(null);
+  showScreen("screen-home"); const idx = campIndex(); const el = document.getElementById("home");
+  const sh = makeDefaultWorld(); Object.keys(sh.npcs).forEach(id => { const u = imgCache[sh.id + ":" + id]; if (u) sh.npcs[id].img = u; });
+  const card = (id, cls) => { const n = sh.npcs[id]; return `<figure class="card-f ${cls}" style="margin:0">${npcPh(id, "", sh)}<figcaption class="cap"><b>${esc(n.name)}</b><small>${esc(n.role)}</small></figcaption></figure>`; };
+  el.innerHTML = `<section class="hero"><div class="wrap">
+    <div><div class="eyebrow">ИИ-мастер · правила 5e</div>
+      <h1>Мир, который <em>помнит</em> каждое ваше решение</h1>
+      <p class="lead">Рассказчик создаёт новую местность, тайну и людей для каждой кампании. Вы пишете что угодно, а броски, хиты и ячейки заклинаний честно считает движок правил.</p>
+      <div class="ctas"><button class="btn primary big" type="button" id="h-new">Начать кампанию</button>${idx.length ? `<button class="btn big" type="button" id="h-cont">Продолжить: ${esc(idx[0].hero)}</button>` : `<button class="btn ghost big" type="button" id="h-how">Как это устроено</button>`}</div>
+      <div class="meta"><span><b>4</b>класса</span><span><b>4</b>биома</span><span><b>d20</b>на сервере, не у ИИ</span></div></div>
+    <div class="stage" aria-hidden="true"><div class="stage-map">${mapMarkup("hero-map", "")}</div>${card("marta", "f1")}${card("ilva", "f2")}${card("ost", "f3")}
+      <div class="roll-badge"><div class="d20">${D20SVG}<span>17</span></div><div><b>Проницательность: успех</b><small>d20 (14) +3 = 17 против КС 13</small></div></div></div>
+  </div></section>
+  <section class="band" id="how"><div class="wrap">
+    <div class="band-head"><div><div class="eyebrow">Как это устроено</div><h2>Три шага до первого броска</h2></div><p>Каждая часть делает своё дело: ИИ рассказывает и играет за людей, код отвечает за правила и память.</p></div>
+    <div class="how">
+      <article><span class="n">1</span><h3>Мир</h3><p>Выберите окружение и тон или опишите своё. ИИ придумает злодея, тайну, 7 мест с уликами и жителей с секретами. Карту строит процедурный генератор, портреты пишутся фотографиями.</p><span class="formula">побережье · болота · горы · лес</span></article>
+      <article><span class="n">2</span><h3>Герой</h3><p>Раса, класс, характеристики тремя способами, навыки и предыстория, которая привязывает вас к этому месту. По вашему описанию создаётся фото-портрет героя.</p><span class="formula">4d6, худший отбрасывается</span></article>
+      <article><span class="n">3</span><h3>Игра</h3><p>Пишите действия и реплики своими словами. Рассказчик решает, нужна ли проверка, а исход определяет кубик. Архивариус ведёт летопись, чтобы история не забывалась.</p><span class="formula">d20 + модификатор + мастерство ≥ КС</span></article>
+    </div></div></section>
+  <section class="band" id="camps-band"><div class="wrap">
+    <div class="band-head"><div><div class="eyebrow">Ваши кампании</div><h2>${idx.length ? "Летопись героев" : "Здесь появятся ваши герои"}</h2></div><p class="home-note">Кампании хранятся в этом браузере. Экспорт сохраняет кампанию в файл, чтобы перенести её на другое устройство. <button class="btn small" type="button" id="h-import" style="margin-left:6px">Импорт из файла</button></p></div>
+    <div class="camp-grid" id="camps"></div><p class="home-note" id="h-msg"></p></div></section>
+  <footer class="foot"><div class="wrap"><span>Летописец · прототип ИИ-мастера</span><span>Механика по System Reference Document 5.1 © Wizards of the Coast, лицензия CC-BY-4.0</span></div></footer>`;
+  const grid = el.querySelector("#camps");
+  idx.forEach(e => {
+    const d = document.createElement("article"); d.className = "camp" + (e.dead ? " dead" : ""); d.style.setProperty("--cls", CLASSES[e.cls]?.color || "var(--lantern)");
+    d.innerHTML = `${heroPh({ cls: e.cls, race: e.race, name: e.hero, img: e.img })}<div class="body"><div class="nm">${esc(e.hero)}</div><div class="sub">${esc(RACES[e.race]?.name || "")} · ${esc(CLASSES[e.cls]?.name || "")} · ур. ${e.level}</div><div class="sub">${esc(e.world)}${e.loc ? " · " + esc(e.loc) : ""}</div><div class="meta">${MODES[e.mode]?.name || ""} · ${ago(e.updated)}</div>${e.dead ? '<div class="fallen">Пал в бою</div>' : ""}
+      <div class="row">${e.dead ? "" : `<button class="btn small primary" type="button" data-a="play">Продолжить</button>`}<button class="btn small" type="button" data-a="export">Экспорт</button><button class="btn small ghost" type="button" data-a="del">Удалить</button></div></div>`;
+    d.querySelector("[data-a=play]")?.addEventListener("click", () => openCampaign(e.id));
+    d.querySelector("[data-a=export]").onclick = () => exportCampaign(e.id);
+    d.querySelector("[data-a=del]").onclick = () => modal(`<h2>Удалить кампанию?</h2><p>«${esc(e.hero)}» в мире «${esc(e.world)}» будет удалена из этого браузера. Отменить нельзя.</p><div class="row"><button class="btn" type="button" id="m-no">Оставить</button><button class="btn primary" type="button" id="m-yes">Удалить</button></div>`,
+      r => { r.querySelector("#m-no").onclick = closeModal; r.querySelector("#m-yes").onclick = () => { deleteCamp(e.id); closeModal(); renderHome(); }; });
+    grid.append(d);
+  });
+  const nw = document.createElement("button"); nw.type = "button"; nw.className = "camp new"; nw.innerHTML = `<b>Новая кампания</b><span>Новый мир, новая тайна, новый герой</span>`; nw.onclick = newCampaign; grid.append(nw);
+  el.querySelector("#h-new").onclick = newCampaign;
+  el.querySelector("#h-cont")?.addEventListener("click", () => openCampaign(idx[0].id));
+  el.querySelector("#h-how")?.addEventListener("click", () => document.getElementById("how").scrollIntoView({ behavior: "smooth" }));
+  el.querySelector("#h-import").onclick = () => document.getElementById("import-file").click();
+  requestAnimationFrame(() => { const box = document.getElementById("hero-map"); if (!box) return; const prev = WD; setWorld(sh); renderMap(box, { width: box.clientWidth || 500, fog: false, markers: false }); if (prev) setWorld(prev); else WD = null; });
+}
+function newCampaign() { D = newDraft(); showScreen("screen-create"); renderCreate(); document.getElementById("create-scroll").scrollTop = 0; }
+async function exportCampaign(id) {
+  const s = loadCamp(id); const msg = document.getElementById("h-msg"); if (!s) return;
+  let dl = null; try { dl = window.claude?.use ? await window.claude.use("downloads") : null; } catch (e) {}
+  if (!dl) { msg.textContent = "Экспорт файлов недоступен в этом просмотре."; return; }
+  try { await dl.save({ filename: `${s.char.name}-${s.wd.name}.json`.replace(/[\\/:*?"<>|]/g, ""), data: JSON.stringify(s) }); msg.textContent = "Файл кампании сохранён."; }
+  catch (e) { msg.textContent = e.code === "declined" ? "Сохранение отменено." : "Не удалось сохранить файл."; }
+}
+document.getElementById("import-file").addEventListener("change", ev => {
+  const f = ev.target.files?.[0]; if (!f) return; const rd = new FileReader();
+  rd.onload = () => { try { adoptCampaign(JSON.parse(rd.result)); renderHome(); document.getElementById("h-msg").textContent = "Кампания импортирована."; } catch (e) { renderHome(); document.getElementById("h-msg").textContent = "Это не файл кампании Летописца."; } };
+  rd.readAsText(f); ev.target.value = "";
+});
+function openCampaign(id) { const s = loadCamp(id); if (!s) return; S = s; S.feed = (S.feed || []).filter(e => !(e.t === "narr" && !e.text)).map(e => ({ ...e, streaming: false })); setWorld(S.wd); const wasAway = Date.now() - (S.updated || 0) > 20 * 60 * 1000; startGame(false); if (wasAway) addRecap(); }
+
+/* =========================================================================
+   CREATION
+   ========================================================================= */
+const STEP_NAMES = ["Мир", "Раса", "Класс", "Характеристики", "Прошлое", "Снаряжение", "Облик и характер", "Рассказчик"];
+const STD = [15, 14, 13, 12, 10, 8];
+const PB_COST = { 8: 0, 9: 1, 10: 2, 11: 3, 12: 4, 13: 5, 14: 7, 15: 9 };
+let forgeCtl = null;
+function newDraft() {
+  return { step: 0, world: null, worlds: [makeDefaultWorld()], forge: { biome: "coast", tone: "grim", magic: "rare", genre: "mystery", season: "autumn", culture: "auto", settle: "village", size: "normal", danger: "mid", wish: "", stage: -1, err: "" },
+    race: null, cls: null, method: "array", pool: STD.slice(), assign: {}, pb: { str: 8, dex: 8, con: 8, int: 8, wis: 8, cha: 8 },
+    rolled: null, bg: null, skills: [], name: "", gender: "m", about: "", lookDesc: "", img: "", gen: false, sl1: 50, sl2: 50, sl3: 50, sl4: 50, sl5: 50, sl6: 50, sl7: 50, kit: 0, kitSeed: 0, kitW: null, favored: "humanoids", epithet: "", story: "", mode: "sandbox" };
+}
+function autoAssign() { if (!D.cls) return; const order = CLASSES[D.cls].prio; const vals = D.pool.map((v, i) => [v, i]).sort((a, b) => b[0] - a[0]); D.assign = {}; order.forEach((ab, k) => { D.assign[ab] = vals[k][1]; }); }
+function draftBase() { if (D.method === "pb") return { ...D.pb }; const o = {}; for (const a of ABIL) o[a] = D.assign[a] != null ? D.pool[D.assign[a]] : 8; return o; }
+function draftScores() { return finalScores(draftBase(), D.race || "none"); }
+function lockedSkills() { const s = new Set(); if (D.race) RACES[D.race].skills.forEach(k => s.add(k)); if (D.bg) BACKGROUNDS[D.bg].skills.forEach(k => s.add(k)); return s; }
+function draftSkills() { const s = lockedSkills(); D.skills.forEach(k => s.add(k)); return [...s]; }
+function pbSpent() { return ABIL.reduce((s, a) => s + PB_COST[D.pb[a]], 0); }
+function bgHook(id, wd) { return (wd || D?.world || WD)?.bg_hooks?.[id] || BACKGROUNDS[id].hook; }
+function stepValid(i) {
+  if (i === 0) return !!D.world && D.forge.stage < 0;
+  if (i === 1) return !!D.race;
+  if (i === 2) return !!D.cls;
+  if (i === 3) { if (D.method === "pb") return pbSpent() <= 27; return ABIL.every(a => D.assign[a] != null) && new Set(Object.values(D.assign)).size === 6; }
+  if (i === 4) return !!D.bg && D.skills.length === CLASSES[D.cls].skillCount;
+  if (i === 5) return !!D.cls && !!KITS[D.cls];
+  if (i === 6) return D.name.trim().length >= 2;
+  return true;
+}
+const STEP_HINTS = ["Выберите или сотворите мир", "Выберите расу", "Выберите класс", "Распределите все шесть значений", "Выберите предысторию и навыки класса", "Выберите набор снаряжения", "Введите имя (от 2 букв)", "Готово к приключению"];
+function renderCreate() {
+  const st = document.getElementById("steps"); st.innerHTML = "";
+  STEP_NAMES.forEach((n, i) => {
+    const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button";
+    const reach = i <= D.step || STEP_NAMES.slice(0, i).every((_, k) => stepValid(k));
+    b.className = i === D.step ? "cur" : i < D.step ? "done" : ""; b.disabled = !reach || D.forge.stage >= 0;
+    b.innerHTML = `<span class="n">${i < D.step ? "✓" : i + 1}</span><span class="lab">${n}</span>`; b.onclick = () => { D.step = i; renderCreate(); }; li.append(b); st.append(li);
+  });
+  const body = document.getElementById("step-body"); body.innerHTML = "";
+  [stepWorld, stepRace, stepClass, stepAbil, stepSkills, stepGear, stepLook, stepMode][D.step](body);
+  const back = document.getElementById("btn-back"); back.disabled = D.forge.stage >= 0; back.textContent = D.step === 0 ? "К кампаниям" : "Назад";
+  const nx = document.getElementById("btn-next"); nx.disabled = !stepValid(D.step); nx.textContent = D.step === 7 ? "Начать приключение" : "Далее";
+  document.getElementById("step-hint").textContent = stepValid(D.step) ? (D.step === 7 ? "Мир ждёт" : "Можно дальше") : STEP_HINTS[D.step];
+  document.getElementById("hero-card").hidden = D.step === 0;
+  document.querySelector(".c-grid").style.gridTemplateColumns = D.step === 0 && innerWidth > 980 ? (innerWidth > 1240 ? "220px minmax(0, 1fr)" : "200px minmax(0, 1fr)") : "";
+  if (D.step > 0) renderHeroCard();
+}
+function head(body, eb, h, lead) { body.insertAdjacentHTML("beforeend", `<div class="eyebrow">${eb}</div><h2>${h}</h2><p class="lead">${lead}</p>`); }
+function choiceGrid(body, items, sel, onPick) {
+  const g = document.createElement("div"); g.className = "choices" + (items.length === 4 ? " two" : "");
+  items.forEach(it => { const b = document.createElement("button"); b.type = "button"; b.className = "choice"; b.setAttribute("aria-pressed", String(sel === it.id));
+    b.innerHTML = `<div class="ch-head">${it.icon || ""}<div><div class="ch-name">${it.name}</div><div class="ch-sub">${it.sub}</div></div></div>${it.rec ? `<span class="rec">${esc(it.rec)}</span>` : ""}${it.list.length ? `<ul>${it.list.map(x => `<li>${x}</li>`).join("")}</ul>` : ""}`;
+    b.onclick = () => onPick(it.id); g.append(b); });
+  body.append(g);
+}
+function optRow(label, dict, key) {
+  const wrap = document.createElement("div"); wrap.className = "opt-group"; wrap.innerHTML = `<span>${label}</span><div class="opts"></div>`;
+  Object.entries(dict).forEach(([k, v]) => { const b = document.createElement("button"); b.type = "button"; b.textContent = v; b.setAttribute("aria-pressed", String(D.forge[key] === k)); b.disabled = D.forge.stage >= 0;
+    b.onclick = () => { D.forge[key] = k; renderCreate(); }; wrap.querySelector(".opts").append(b); });
+  return wrap;
+}
+function stepWorld(body) {
+  head(body, "Шаг 1", "Где начнётся история?", "Готовый мир доступен всегда. Новый мир сочиняет ИИ: тайну, злодея, места, людей и улики. Карту и врагов строит движок, чтобы числа оставались честными.");
+  const forge = document.createElement("div"); forge.className = "forge";
+  const left = document.createElement("div"); left.className = "forge-box";
+  left.innerHTML = `<h3>Сотворить новый мир</h3><p>Займёт около минуты. Каждый раз получается другая история.</p>`;
+  left.append(optRow("Окружение", BIOMES, "biome"), optRow("Жанр", GENRES, "genre"), optRow("Тон", TONES, "tone"));
+  const more = document.createElement("div"); more.className = "forge-more";
+  more.innerHTML = [["Время года", SEASONS, "season"], ["Культура и имена", CULTURES, "culture"], ["Поселение", SETTLES, "settle"], ["Размер мира", SIZES, "size"], ["Опасность", DANGERS, "danger"], ["Магия", MAGICS, "magic"]]
+    .map(([l, dict, k]) => `<label class="fm"><span>${l}</span><select data-k="${k}" ${D.forge.stage >= 0 ? "disabled" : ""}>${Object.entries(dict).map(([v, t]) => `<option value="${v}" ${D.forge[k] === v ? "selected" : ""}>${t}</option>`).join("")}</select></label>`).join("");
+  more.querySelectorAll("select").forEach(sel => sel.onchange = () => { D.forge[sel.dataset.k] = sel.value; }); left.append(more);
+  left.insertAdjacentHTML("beforeend", `<div class="field" style="margin-bottom:12px"><label for="f-wish">Пожелания (необязательно)</label><textarea id="f-wish" maxlength="300" placeholder="Например: ведьма на болотах, пропавшие дети, никаких драконов" ${D.forge.stage >= 0 ? "disabled" : ""}>${esc(D.forge.wish)}</textarea></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="button" id="f-forge" ${D.forge.stage >= 0 ? "disabled" : ""}>Сотворить мир</button>${D.forge.stage >= 0 ? `<button class="btn" type="button" id="f-cancel">Отменить</button>` : ""}</div>
+    ${D.forge.err ? `<p class="err">${esc(D.forge.err)}</p>` : ""}${retryBtnHTML()}
+    ${D.forge.stage >= 0 ? `<ol class="stages">${FORGE_STAGES.map((s, i) => `<li class="${i < D.forge.stage ? "ok" : i === D.forge.stage ? "run" : ""}"><i>${i < D.forge.stage ? "✓" : ""}</i>${s}</li>`).join("")}</ol>` : ""}`);
+  left.querySelector("#f-wish").oninput = e => { D.forge.wish = e.target.value; };
+  left.querySelector("#f-forge").onclick = runForge; left.querySelector("#f-cancel")?.addEventListener("click", () => forgeCtl?.abort());
+  const right = document.createElement("div"); right.className = "forge-box";
+  right.innerHTML = `<h3>Выбрать мир</h3><p>Ваши сотворённые миры и готовый мир для быстрого старта.</p><div class="world-list" id="wlist"></div>`;
+  const list = right.querySelector("#wlist");
+  D.worlds.forEach((w, i) => {
+    const b = document.createElement("button"); b.type = "button"; b.className = "world-pick"; b.setAttribute("aria-pressed", String(D.world === w)); b.disabled = D.forge.stage >= 0;
+    b.innerHTML = `<span class="eyebrow">${i === D.worlds.length - 1 ? "Готовый мир" : "Сотворён ИИ"} · ${BIOMES[w.biome] || ""}</span><b>${esc(w.name)}</b>${w.tagline ? `<span class="tagline">${esc(w.tagline)}</span>` : ""}<small>${esc(w.public)}</small>
+      ${D.world === w ? `${mapMarkup("mini-map", "mini")}<small><b style="font-family:var(--ui);font-size:12.5px">Задание:</b> ${esc(w.quest)}</small>` : ""}`;
+    b.onclick = () => { D.world = w; D.bg = null; queueWorldPortraits(w); renderCreate(); };
+    list.append(b);
+    if (D.world === w) { const cast = document.createElement("div"); cast.className = "cast"; cast.innerHTML = Object.entries(w.npcs).map(([id, n]) => `<figure>${npcPh(id, "", w)}<figcaption>${esc(n.name)}<br><span style="color:var(--dim)">${esc(n.role)}</span></figcaption></figure>`).join(""); b.append(cast); }
+    if (D.world === w) requestAnimationFrame(() => { const box = b.querySelector(".map"); if (!box) return; const prev = WD; setWorld(w); renderMap(box, { fog: false }); if (prev) setWorld(prev); });
+  });
+  forge.append(left, right); body.append(forge);
+}
+async function runForge() {
+  D.forge.err = ""; D.forge.stage = 0; renderCreate(); forgeCtl = new AbortController();
+  try {
+    const w = await forgeWorld(D.forge, s => { D.forge.stage = s; renderCreate(); }, forgeCtl.signal);
+    D.worlds.unshift(w); D.world = w; D.bg = null; D.forge.stage = -1; queueWorldPortraits(w);
+  } catch (e) {
+    D.forge.stage = -1;
+    D.forge.err = e?.code === "no_ai" || e?.code === "not_granted" ? "ИИ недоступен в этом просмотре. Выберите готовый мир справа." : e?.code === "cancelled" ? "" : e?.code === "rate_limited" ? "ИИ сейчас перегружен. Попробуйте через минуту." : "Мир не сложился. Попробуйте ещё раз или измените пожелания.";
+    if (e?.code === "not_granted") { aiOff = true; }
+  }
+  forgeCtl = null; renderCreate();
+}
+function stepAbil(body) {
+  head(body, "Шаг 4", "Сильные и слабые стороны", "Модификатор = (значение − 10) / 2, с округлением вниз. Он прибавляется к броскам d20. Расовые бонусы уже учтены.");
+  const m = document.createElement("div"); m.className = "method";
+  [["array", "Стандартный набор"], ["pb", "Покупка очков"], ["roll", "Бросить 4d6"]].forEach(([k, t]) => { const b = document.createElement("button"); b.type = "button"; b.textContent = t; b.setAttribute("aria-pressed", String(D.method === k));
+    b.onclick = () => { D.method = k; if (k === "array") { D.pool = STD.slice(); autoAssign(); } if (k === "roll") { if (!D.rolled) rollStats(); else { D.pool = D.rolled.slice(); autoAssign(); } } renderCreate(); }; m.append(b); });
+  body.append(m);
+  if (D.method === "roll") { const r = document.createElement("div"); r.className = "rolled"; r.innerHTML = D.pool.map(v => `<div class="die">${v}</div>`).join("") + `<button class="btn small" type="button" id="reroll">Перебросить</button><small style="color:var(--dim)">4d6, худший куб отбрасывается</small>`; body.append(r); r.querySelector("#reroll").onclick = () => { rollStats(); renderCreate(); }; }
+  if (D.method === "pb") body.insertAdjacentHTML("beforeend", `<div class="budget">Потрачено <b>${pbSpent()}</b> из <b>27</b> очков · значения 8–15</div>`);
+  const g = document.createElement("div"); g.className = "abil-grid"; const sc = draftScores();
+  ABIL.forEach(a => {
+    const cell = document.createElement("div"); cell.className = "abil-cell"; const rb = D.race ? (RACES[D.race].bonus[a] || 0) : 0;
+    cell.innerHTML = `<div class="lbl"><b>${ABIL_RU[a]}</b><small>${ABIL_FULL[a]}</small></div><div class="val"><span class="total">${sc[a]}</span><span class="mod">${fmt(mod(sc[a]))}</span>${rb ? `<span class="race">раса +${rb}</span>` : ""}</div>`;
+    if (D.method === "pb") {
+      const s = document.createElement("div"); s.className = "stepper"; const v = D.pb[a];
+      const minus = document.createElement("button"); minus.type = "button"; minus.textContent = "−"; minus.setAttribute("aria-label", `Уменьшить ${ABIL_FULL[a]}`); minus.disabled = v <= 8; minus.onclick = () => { D.pb[a]--; renderCreate(); };
+      const plus = document.createElement("button"); plus.type = "button"; plus.textContent = "+"; plus.setAttribute("aria-label", `Увеличить ${ABIL_FULL[a]}`); plus.disabled = v >= 15 || pbSpent() - PB_COST[v] + PB_COST[v + 1] > 27; plus.onclick = () => { D.pb[a]++; renderCreate(); };
+      s.append(minus, Object.assign(document.createElement("span"), { className: "num", textContent: `база ${v} · ${PB_COST[v]} оч.` }), plus); cell.append(s);
+    } else {
+      const sel = document.createElement("select"); sel.id = "as-" + a; sel.setAttribute("aria-label", ABIL_FULL[a]);
+      sel.innerHTML = `<option value="">—</option>` + D.pool.map((v, i) => `<option value="${i}" ${D.assign[a] === i ? "selected" : ""}>${v}</option>`).join("");
+      sel.onchange = () => { const i = sel.value === "" ? null : +sel.value; const other = ABIL.find(b => b !== a && D.assign[b] === i); if (other && i != null) D.assign[other] = D.assign[a] ?? null; D.assign[a] = i; renderCreate(); };
+      cell.append(sel);
+    }
+    g.append(cell);
+  });
+  body.append(g);
+}
+function rollStats() { D.rolled = Array.from({ length: 6 }, () => { const r = [rnd(6), rnd(6), rnd(6), rnd(6)].sort((a, b) => b - a); return r[0] + r[1] + r[2]; }).sort((a, b) => b - a); D.pool = D.rolled.slice(); autoAssign(); }
+function personality(sl1, sl2) { const a = sl1 < 35 ? "честный" : sl1 > 65 ? "хитрый" : "себе на уме"; const b = sl2 < 35 ? "осторожный" : sl2 > 65 ? "безрассудный" : "рассудительный"; return `${a}, ${b}`; }
+function templateStory() {
+  const r = RACES[D.race]?.name || "Путник"; const c = CLASSES[D.cls]?.name?.toLowerCase() || "искатель"; const b = BACKGROUNDS[D.bg];
+  return `${r}-${c}${b ? `, в прошлом ${b.name.toLowerCase()}` : ""}. ${b ? "Вы " + bgHook(D.bg) + "." : ""} Люди говорят, что вы ${personality(D.sl1, D.sl2)}. ${D.about ? D.about.trim() : "О прошлом вы рассказываете неохотно."}`;
+}
+async function writeBackstory(btn, st) {
+  const sample = await getSample();
+  if (!sample) { D.story = templateStory(); D.epithet = ""; st.textContent = "ИИ недоступен — история собрана по шаблону."; renderHeroCard(); return; }
+  btn.disabled = true; st.textContent = "Рассказчик пишет…";
+  try {
+    const r = await sample.json(`Ты пишешь короткую предысторию героя для настольной ролевой игры. Пиши по-русски, 3 предложения, от второго лица («ты»), без клише про «избранного». Добавь прозвище из 2–3 слов.
+Герой: ${D.name || "без имени"} (${D.gender === "f" ? "женщина" : "мужчина"}), раса ${RACES[D.race]?.name}, класс ${CLASSES[D.cls]?.name}, предыстория ${BACKGROUNDS[D.bg]?.name}: вы ${bgHook(D.bg)}. Характер: ${personality(D.sl1, D.sl2)}. От игрока: ${D.about || "—"}.
+Мир «${D.world.name}»: ${D.world.public}
+Свяжи историю с этим местом одним намёком. Ответь только JSON: {"epithet": "…", "story": "…"}`, { modelTier: "quick", cache: false });
+    D.story = str(r.story, 600); D.epithet = str(r.epithet, 40); st.textContent = "Готово. Можно сочинить заново.";
+  } catch (e) { D.story = templateStory(); st.textContent = e.code === "not_granted" ? "Доступ к ИИ не разрешён — история по шаблону." : "Не получилось — история собрана по шаблону."; }
+  btn.disabled = false; renderHeroCard();
+}
+function finishCreation() {
+  const sc = draftScores(); const cls = CLASSES[D.cls]; const hp = maxHP(D.cls, D.race, sc);
+  const slots = {}; Object.entries(slotsFor(D.cls, 1)).forEach(([l, n]) => slots[l] = [n, n]);
+  const wd = JSON.parse(JSON.stringify(D.world)); setWorld(wd);
+  const char = { name: D.name.trim(), gender: D.gender, race: D.race, cls: D.cls, bg: D.bg, level: 1, xp: 0, scores: sc, skills: draftSkills(),
+    hp, maxHp: hp, ac: 10, hitDice: 1, slots, spells: (cls.spells || []).slice(), weapons: [], wdefs: {}, secondWind: D.cls === "fighter",
+    items: [], gold: 10, silver: 0, epithet: D.epithet, story: D.story || templateStory(), persona: traitWords(D), about: D.about, look: D.lookDesc, img: D.img, hook: bgHook(D.bg, wd),
+    traits: Object.fromEntries(TRAITS.map(t => [t.k, D[t.k] ?? 50])), favored: D.cls === "ranger" ? (D.favored || "humanoids") : null };
+  { const dk = draftKit(); const K = dk.kit; dk.list.forEach(d => giveWeapon(char, { ...d }));
+    if (K.armor) char.items.push({ name: ITEMS[K.armor].n, id: K.armor, desc: ITEMS[K.armor].d }); if (K.shield) char.items.push({ name: "Щит", id: "shield", desc: ITEMS.shield.d });
+    (CLASS_GEAR[D.cls] || []).forEach(n => char.items.push({ name: n })); const bg = BACKGROUNDS[D.bg]; if (bg.item) char.items.push({ name: bg.item, ...(ITEM_BY_NAME[bg.item.toLowerCase()] ? { id: ITEM_BY_NAME[bg.item.toLowerCase()] } : {}) });
+    char.items.push({ name: "Зелье лечения", id: "potion", potion: true, heal: "2d4+2" }, { name: "Факел", id: "torch" }, { name: "Верёвка, 15 м", id: "rope" });
+    char.gear = { armor: K.armor || null, shield: !!K.shield }; recalcAC(char); setPurse(char, (bg.gold || 10) * 10); char.res = resMax(char); }
+  Object.keys(wd.npcs).forEach(id => { const u = imgCache[wd.id + ":" + id]; if (u) wd.npcs[id].img = u; });
+  const enemies = {}; Object.entries(ENEMIES).forEach(([id, E]) => enemies[id] = { hp: E.hp, alive: true, asleep: false });
+  const npcs = {}; Object.keys(NPCS).forEach(id => npcs[id] = { att: baseAttitude(id, char), mem: [] });
+  S = { v: 2, id: uid(), wd, char, mode: D.mode, secondChance: D.mode === "sandbox", dying: null, dead: false, log: [], feed: [], turn: 0, summary: "",
+    world: { loc: wd.start, visited: [wd.start], seen: [], enemies, npcs, combat: false, facts: [], quest: wd.quest, flags: {}, time: { day: 1, part: 0 }, threat: 0, met: [], notes: {}, rumors: [], rep: traitFx(char.traits).rep }, suggestions: [], settings: { len: "normal", voice: false } };
+  reveal(POIS[wd.start].x, POIS[wd.start].y, 3);
+  save(); startGame(true);
+}
+
+/* =========================================================================
+   GAME UI
+   ========================================================================= */
+let sheetTab = "act";
+function startGame(fresh) {
+  registerWeapons(S.char); gearOf(S.char); resOf(S.char);
+  showScreen("screen-game"); renderAll(); renderFeed(); queueWorldPortraits(S.wd);
+  if (fresh) takeTurn("[НАЧАЛО КАМПАНИИ]", { checks: [], intro: true });
+  else { scrollFeed(); if (S.dying) renderDeath(); }
+  initSample();
+}
+function renderAll() { refreshPeople(); renderTop(); renderSheet(); renderWorld(); renderSugg(); }
+function renderTop() { renderScene(); document.getElementById("pill-mode").textContent = "Режим: " + MODES[S.mode].name; }
+function renderScene() {
+  if (!S) return; const loc = POIS[S.world.loc]; const el = document.getElementById("scene");
+  el.innerHTML = `<div class="scene-inner"><div style="min-width:0;flex:1"><div class="eyebrow">${esc(WD.name)}${S.world.combat ? " · бой" : ""}</div><h2>${esc(loc.name)}</h2><p>${esc(loc.short || "")}</p></div><div class="people" id="scene-people"></div></div>`;
+  const tm = worldTime(); const th = S.world.threat || 0; S.world.met = S.world.met || [];
+  el.querySelector(".scene-inner").insertAdjacentHTML("beforeend", `<div class="clockbox" title="Время и часы угрозы"><span class="eyebrow">День ${tm.day} · ${DAY_PARTS[tm.part]}</span><span class="threat ${th >= 5 ? "hot" : ""}" aria-label="Угроза ${th} из 6">${Array.from({ length: 6 }, (_, i) => `<i class="${i < th ? "on" : ""}"></i>`).join("")}</span><small>угроза</small></div>`);
+  { const cb = el.querySelector(".clockbox"); const rv = S.world.rep || 0; if (cb) cb.insertAdjacentHTML("beforeend", `<span class="rep-l ${rv <= -10 ? "bad" : rv >= 10 ? "good" : ""}" title="Репутация в поселении: ${rv}">${weatherNow().name} · ${repLabel(rv)}</span>`); }
+  loc.npcs.forEach(id => { if (NPCS[id]) { wantPortrait(WD, id, 1); if (!S.world.met.includes(id) && S.world.visited.includes(S.world.loc) && (!NPCS[id].bld || POIS[S.world.loc].inner)) S.world.met.push(id); } });
+  const pp = el.querySelector("#scene-people");
+  loc.npcs.filter(id => NPCS[id]).forEach(id => { const b = document.createElement("button"); b.type = "button"; b.className = "person"; b.title = `Обратиться: ${NPCS[id].name}`;
+    b.innerHTML = `${npcPh(id)}<small>${esc(NPCS[id].name)}</small>`; b.onclick = () => { const inp = document.getElementById("act-input"); inp.value = `${NPCS[id].name}, `; inp.focus(); }; pp.append(b); });
+}
+function renderSheet() {
+  const c = C(); const cls = CLASSES[c.cls]; const el = document.getElementById("sheet"); el.style.setProperty("--cls", cls.color);
+  const hpP = c.hp / c.maxHp; const hpCol = hpP > .5 ? "var(--kelp)" : hpP > .25 ? "var(--lantern)" : "var(--ember)"; const nx = nextXP(c); const canLevel = nx != null && c.xp >= nx; const prevX = XP_LEVELS[c.level - 1] || 0;
+  let html = `<div class="who">${heroPh(c)}<div><div class="nm">${esc(c.name)}</div>${c.epithet ? `<div class="sub" style="color:var(--lantern);font-style:italic">${esc(c.epithet)}</div>` : ""}<div class="sub">${RACES[c.race].name} · ${cls.name} · ур. ${c.level}</div></div></div>
+  ${canLevel ? `<button class="levelup" type="button" id="btn-lvl">Новый уровень! Повысить до ${c.level + 1}-го</button>` : ""}
+  <div class="hp-block"><div class="row"><span class="eyebrow">Хиты</span><span class="hpn">${c.hp}<small> / ${c.maxHp}</small></span></div><div class="bar hp-bar"><i style="width:${hpP * 100}%;background:${hpCol}"></i></div>
+  <div class="bar" style="height:4px;margin-top:4px"><i style="width:${nx ? Math.min(100, (c.xp - prevX) / (nx - prevX) * 100) : 100}%;background:var(--lantern)"></i></div><div class="xp-row"><span>${nx ? `Опыт ${c.xp} / ${nx}` : `Опыт ${c.xp} · максимум прототипа`}</span><span>${fmtMoney(purse(c))}</span></div></div>
+  <div class="vit"><div><b>${c.ac}</b><small>КД</small></div><div><b>${fmt(mod(c.scores.dex))}</b><small>ИНИЦ.</small></div><div><b>${RACES[c.race].speed}</b><small>СКОР.</small></div><div><b>${fmt(prof(c.level))}</b><small>МАСТ.</small></div></div>
+  <div class="abil6">${ABIL.map(a => `<div title="${ABIL_FULL[a]}${cls.saves.includes(a) ? " · владение спасброском" : ""}">${cls.saves.includes(a) ? '<span class="sv"></span>' : ""}<b>${fmt(mod(c.scores[a]))}</b><small>${ABIL_RU[a]}</small><span class="sc" style="display:block">${c.scores[a]}</span></div>`).join("")}</div>`;
+  if (cls.spells) html += `<div class="slots"><span class="eyebrow">Ячейки заклинаний</span>${Object.entries(c.slots).map(([l, [mx, cur]]) => `<div class="slot-row"><span>${l} круг</span><span class="pips">${Array.from({ length: mx }, (_, i) => `<span class="pip ${i < cur ? "full" : ""}"></span>`).join("")}</span><span class="num">${cur}/${mx}</span></div>`).join("")}<div class="slot-row"><span>Заговоры</span><span>без ограничений</span></div></div>`;
+  html += `<div class="tabs" role="tablist">${[["act", "Действия"], ["skills", "Навыки"], ["inv", "Инвентарь"]].map(([k, t]) => `<button type="button" role="tab" data-tab="${k}" aria-selected="${sheetTab === k}">${t}</button>`).join("")}</div><div class="tab-body" id="tab-body"></div>`;
+  el.innerHTML = html;
+  el.querySelectorAll("[data-tab]").forEach(b => b.onclick = () => { sheetTab = b.dataset.tab; renderSheet(); });
+  if (canLevel) el.querySelector("#btn-lvl").onclick = levelUp;
+  const tb = el.querySelector("#tab-body"); const foes = aliveEnemiesHere(); const tgt = foes[0];
+  if (sheetTab === "act") {
+    c.weapons.forEach(wid => { if (!WEAPONS[wid]) return; const a = weaponAtk(wid); const d = wDef(wid); const b = actBtn(`${a.w.name}`, `${weaponLine(c, wid)}${weaponProf(c, wid) ? "" : " · нет владения"}`, tgt ? `→ ${ENEMIES[tgt].name}` : "нет цели", !tgt || busy,
+      () => takeTurn(`Атакую: ${ENEMIES[tgt].name} (${a.w.name.toLowerCase()})`, { checks: [{ kind: "attack", target: tgt, weapon: wid, reason: "Атака оружием" }] })); b.classList.add("w-act"); b.style.setProperty("--wc", d.col || "#d8ccb0"); b.insertAdjacentHTML("afterbegin", weaponTile(d, 34)); tb.append(b); });
+    (c.spells || []).forEach(sid => { const sp = SPELLS[sid]; if (!sp) return; const self = ["heal", "buff", "smite"].includes(sp.kind); const lvlOk = hasSlot(sp.lvl, c); const needT = !self && sp.kind !== "sleep";
+      tb.append(actBtn(sp.name, sp.desc, sp.lvl ? `${sp.lvl} круг` : "заговор", busy || !lvlOk || (needT && !tgt) || (sp.kind === "sleep" && !foes.length),
+        () => takeTurn(`Применяю «${sp.name}»${needT ? ": " + ENEMIES[tgt].name : self ? " на себя" : ""}`, { checks: [{ kind: "spell", spell: sid, target: needT ? tgt : null, reason: sp.desc }] }))); });
+    merchantsHere().slice(0, 2).forEach(m => tb.prepend(actBtn(`Торговать: ${m.name}`, `${MERCH[m.type].title} · товар, цены, торг`, "лавка", busy || S.world.combat, () => openShop(m))));
+    { const rs = resOf(c); const inC = !!S.world.combat;
+      if (c.cls === "barbarian") tb.append(actBtn(c.rage ? "В ярости" : "Ярость", "+2 к урону силой, вдвое меньше урона до конца боя", `${rs.rage} раз`, busy || !inC || c.rage || rs.rage < 1, () => { rs.rage--; c.rage = true; pushFeed({ t: "chips", items: [{ c: "dmg", x: "Ярость! +2 к урону, урон по вам вдвое меньше" }] }); sfx("horn"); after(); }));
+      if (c.cls === "paladin") tb.append(actBtn("Наложение рук", `Запас исцеления: ${rs.lay} HP`, "касание", busy || rs.lay < 1 || c.hp >= c.maxHp, () => { const amt = Math.min(rs.lay, c.maxHp - c.hp); rs.lay -= amt; const got = healHero(amt); pushFeed({ t: "chips", items: [{ c: "heal", x: `+${got} HP · Наложение рук` }] }); sfx("heal"); after(); }));
+      if (c.cls === "bard") tb.append(actBtn(c.insp ? "Вдохновлены" : "Вдохновение", `+${c.level >= 5 ? "1d8" : "1d6"} к следующему броску`, `${rs.insp} раз`, busy || !!c.insp || rs.insp < 1, () => { rs.insp--; c.insp = c.level >= 5 ? "1d8" : "1d6"; pushFeed({ t: "chips", items: [{ c: "xp", x: `Вдохновение: +${c.insp} к следующему броску` }] }); sfx("chime"); after(); }));
+      if (RACES[c.race]?.breath) tb.append(actBtn("Оружие дыхания", `${c.level >= 5 ? "3d6" : "2d6"} огнём по всем врагам, спасбросок ЛОВ`, rs.breath ? "1 раз" : "потрачено", busy || !inC || !rs.breath, () => takeTurn("Выдыхаю пламя на врагов", { checks: [{ kind: "breath" }] }))); }
+    if (c.cls === "fighter") tb.append(actBtn("Второе дыхание", "Восстановить 1d10 + уровень HP", c.secondWind ? "1 раз" : "потрачено", busy || !c.secondWind || c.hp >= c.maxHp, () => {
+      const d = rollDice("1d10"); const got = healHero(d.total + c.level); c.secondWind = false; pushFeed({ t: "chips", items: [{ c: "heal", x: `+${got} HP · Второе дыхание (${d.text} +${c.level})` }] }); after(); }));
+    tb.append(actBtn("Короткий отдых", "Потратить кость хитов: 1d" + cls.hd + fmt(mod(c.scores.con)), `костей: ${c.hitDice}`, busy || S.world.combat || c.hitDice < 1 || c.hp >= c.maxHp, shortRest));
+    tb.append(actBtn("Долгий отдых", POIS[S.world.loc].rest ? "Полное восстановление" : "Только в безопасном месте для ночлега", "8 часов", busy || S.world.combat || !POIS[S.world.loc].rest, longRest));
+  } else if (sheetTab === "skills") {
+    Object.keys(SKILLS).sort((a, b) => SKILLS[a][0].localeCompare(SKILLS[b][0], "ru")).forEach(k => tb.insertAdjacentHTML("beforeend", `<div class="sk ${c.skills.includes(k) ? "pro" : ""}"><span>${SKILLS[k][0]} <small style="color:var(--dim)">${ABIL_RU[SKILLS[k][1]]}</small></span><span class="b">${fmt(skillBonus(k))}</span></div>`));
+    tb.insertAdjacentHTML("beforeend", `<div class="sk"><span>Пассивная Внимательность</span><span class="b">${10 + skillBonus("perception")}</span></div>`);
+  } else {
+    renderInventory(tb);
+    tb.insertAdjacentHTML("beforeend", `<p class="empty" style="margin-top:8px">${esc(c.story)}</p>`);
+  }
+}
+function actBtn(t, d, k, dis, fn) { const b = document.createElement("button"); b.type = "button"; b.className = "act"; b.disabled = !!dis; b.innerHTML = `<span><span class="t">${esc(t)}</span><span class="d">${esc(d)}</span></span><span class="k">${esc(k)}</span>`; b.onclick = fn; return b; }
+function attLabel(v) { return v >= 25 ? ["доверяет", "pos"] : v >= 8 ? ["дружелюбно", "pos"] : v <= -25 ? ["враждебно", "neg"] : v <= -8 ? ["настороженно", "neg"] : ["нейтрально", "neu"]; }
+/* =========================================================================
+   ПЛАН ЛОКАЦИИ — вид сверху: мебель, люди, враги, предметы
+   ========================================================================= */
+const SC_W = 18, SC_H = 12, CS = 32;
+const SC_BY_KIND = { street: "street", inn: "inn", house: "house", hut: "hut", chapel: "chapel", shrine: "shrine", tower: "tower", cave: "cave", mine: "mine", ruin: "ruin", camp: "camp", farm: "farm", pier: "pier", wreck: "wreck", grove: "forest", bridge: "bridge", well: "square", gate: "gate" };
+const SC_KW = [[/таверн|трактир|корчм|постоял|харчевн|кабак/i, "inn"], [/часовн|храм|собор|церк|молельн|монастыр/i, "chapel"], [/святилищ|капищ|круг камн|алтарь/i, "shrine"], [/пещер|грот|логов|подзем|склеп|катакомб/i, "cave"], [/шахт|рудник|копи\b/i, "mine"], [/маяк|башн/i, "tower"], [/пристан|причал|порт\b|гаван|док/i, "pier"], [/крушен|облом|остов/i, "wreck"], [/мост/i, "bridge"], [/руин|развалин/i, "ruin"], [/лагер|стоянк|бивак/i, "camp"], [/ферм|хутор|мельниц/i, "farm"], [/хижин|лачуг|землянк/i, "hut"], [/лес|рощ|чащ|опушк|бор\b/i, "forest"], [/дом|усадьб|лавк|кузниц|мастерск/i, "house"], [/ворот|застав/i, "gate"], [/площад|рын|улиц|колод/i, "square"]];
+const SC_NAMES = { inn: "Таверна", house: "Дом", hut: "Хижина", chapel: "Святилище", shrine: "Капище", tower: "Башня", cave: "Пещера", mine: "Шахта", ruin: "Руины", camp: "Лагерь", farm: "Хутор", pier: "Пристань", wreck: "Берег", forest: "Лес", bridge: "Переправа", square: "Площадь", gate: "Ворота" };
+// подпись, винительный падеж, можно ли обыскать
+const OBJ = {
+  bar: ["стойка", "стойку"], shelf: ["полки", "полки", 1], barrel: ["бочка", "бочку", 1], table: ["стол", "стол", 1], rtable: ["стол", "стол", 1], hearth: ["очаг", "очаг"],
+  stairs: ["лестница", "лестницу"], bed: ["кровать", "кровать", 1], chest: ["сундук", "сундук", 1], cabinet: ["шкаф", "шкаф", 1], bookcase: ["книжные полки", "книжные полки", 1],
+  altar: ["алтарь", "алтарь", 1], pew: ["скамья", "скамью"], statue: ["статуя", "статую"], font: ["чаша с водой", "чашу с водой"], brazier: ["жаровня", "жаровню"], crate: ["ящики", "ящики", 1],
+  sack: ["мешки", "мешки", 1], tent: ["палатка", "палатку", 1], campfire: ["костёр", "костёр"], bedroll: ["лежанка", "лежанку", 1], hay: ["стог сена", "стог сена", 1], well: ["колодец", "колодец"],
+  cart: ["телега", "телегу", 1], stall: ["прилавок", "прилавок", 1], boat: ["лодка", "лодку", 1], net: ["сети", "сети", 1], hull: ["остов корабля", "остов корабля", 1], rubble: ["завал", "завал", 1],
+  stone: ["менгир", "менгир"], grave: ["надгробие", "надгробие"], minecart: ["вагонетка", "вагонетку", 1], table_map: ["стол с картами", "стол с картами", 1], cauldron: ["котёл", "котёл", 1],
+  herbs: ["сушёные травы", "сушёные травы", 1], lantern: ["фонарь", "фонарь"], bell: ["колокол", "колокол"], body: ["тело", "тело", 1], item: ["находка", "находку", 1], anvil: ["наковальня", "наковальню"]
+};
+const OBJ_LIGHT = { hearth: [150, "warm"], campfire: [170, "warm"], brazier: [130, "warm"], candle: [70, "warm"], torch: [120, "warm"], lantern: [110, "warm"], lamppost: [120, "warm"], font: [50, "cold"], item: [36, "gold"] };
+const SC_CROWD = {
+  inn: [["рыбак", "рыбачка", "старый моряк", "пьянчужка", "служанка", "путник", "подмастерье", "торговец"], [3, 3, 6, 2]], house: [["домочадец", "слуга"], [1, 1, 1, 0]], hut: [[], [0, 0, 0, 0]],
+  chapel: [["прихожанка", "старик", "вдова", "послушник"], [2, 1, 1, 0]], shrine: [["паломник"], [1, 0, 0, 0]], tower: [[], [0, 0, 0, 0]], cave: [[], [0, 0, 0, 0]], mine: [["рудокоп"], [1, 1, 0, 0]],
+  ruin: [[], [0, 0, 0, 0]], camp: [["охотник", "наёмник", "дровосек"], [1, 1, 2, 1]], farm: [["батрак", "крестьянка", "мальчишка-пастух"], [2, 2, 1, 0]],
+  pier: [["рыбак", "грузчик", "мальчишка", "торговка рыбой", "лодочник"], [3, 3, 1, 0]], wreck: [["мародёр"], [0, 0, 0, 0]], forest: [[], [0, 0, 0, 0]], bridge: [["путник"], [1, 1, 0, 0]],
+  square: [["торговка", "стражник", "мальчишка", "нищий", "горожанин", "горожанка", "водонос"], [4, 5, 3, 1]], gate: [["стражник", "стражник", "путник", "возница"], [2, 3, 2, 2]]
+};
+const SC_AMB = { inn: "campfire", house: "campfire", hut: "campfire", camp: "campfire", pier: "ship", wreck: "ship", forest: "birds", shrine: "birds", farm: "birds", bridge: "birds", ruin: "birds" };
+function sceneTpl(id) { return tplOfPlace(POIS[id]); }
+class ScGrid {
+  constructor() { this.c = new Uint8Array(SC_W * 2 * SC_H * 2); }
+  cells(x, y, w, h, f) { const x0 = Math.max(0, Math.floor((x - w / 2) * 2)), x1 = Math.min(SC_W * 2 - 1, Math.ceil((x + w / 2) * 2) - 1), y0 = Math.max(0, Math.floor((y - h / 2) * 2)), y1 = Math.min(SC_H * 2 - 1, Math.ceil((y + h / 2) * 2) - 1);
+    for (let j = y0; j <= y1; j++) for (let i = x0; i <= x1; i++) if (f(j * SC_W * 2 + i) === false) return false; return true; }
+  mark(x, y, w, h) { this.cells(x, y, w, h, k => { this.c[k] = 1; }); }
+  free(x, y, w, h) { if (x - w / 2 < 0 || y - h / 2 < 0 || x + w / 2 > SC_W || y + h / 2 > SC_H) return false; return this.cells(x, y, w, h, k => !this.c[k]); }
+  block(fn) { for (let j = 0; j < SC_H * 2; j++) for (let i = 0; i < SC_W * 2; i++) if (fn((i + .5) / 2, (j + .5) / 2)) this.c[j * SC_W * 2 + i] = 1; }
+}
+function scAdd(sc, k, x, y, w, h, o = {}) {
+  const d = OBJ[k]; const ob = { k, x, y, w, h, r: o.r || 0, v: o.v ?? sc.R(), label: o.label || d?.[0] || "", acc: o.acc || d?.[1] || o.label || "", search: o.search ?? !!d?.[2], act: o.act ?? (!!d || !!o.label), id: "o" + sc.objs.length, under: !!o.under, bld: o.bld, d: o.d };
+  sc.objs.push(ob); if (!o.ghost) sc.g.mark(x, y, o.bw ?? w, o.bh ?? h); const L = OBJ_LIGHT[k]; if (L && !o.nolight) sc.lights.push({ x, y, r: L[0], c: L[1] }); return ob;
+}
+function scScatter(sc, k, n, box, w, h, o = {}) {
+  const out = []; const R = sc.R; const pad = o.pad ?? .5;
+  for (let t = 0; out.length < n && t < n * 40; t++) {
+    const ww = o.vary ? w * (.75 + R() * .5) : w, hh = o.vary ? h * (.75 + R() * .5) : h;
+    const x = box[0] + ww / 2 + R() * (box[2] - box[0] - ww), y = box[1] + hh / 2 + R() * (box[3] - box[1] - hh);
+    if (o.avoid && o.avoid(x, y)) continue;
+    if (o.spread && sc.objs.some(q => q.k === k && Math.hypot(q.x - x, q.y - y) < o.spread)) continue;
+    if (o.nofree ? (x - ww / 2 > -1.5 && y - hh / 2 > -1.5 && x + ww / 2 < SC_W + 1.5 && y + hh / 2 < SC_H + 1.5) : sc.g.free(x, y, ww + pad, hh + pad)) out.push(scAdd(sc, k, x, y, ww, hh, { ...o, r: o.rot ? Math.round(R() * 360) : (o.r || 0) }));
+  }
+  return out;
+}
+function scRoom(sc, x0, y0, x1, y1, o = {}) {
+  sc.rooms.push({ x0, y0, x1, y1, mat: o.mat || "wood", door: o.door ?? (x0 + x1) / 2, windows: o.windows || [], round: false });
+  sc.g.block((x, y) => x < x0 + .35 || x > x1 - .35 || y < y0 + .35 || y > y1 - .35);
+}
+function scChairsAround(sc, t, n, dist, k) {
+  for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2 + sc.R() * .5; const x = t.x + Math.cos(a) * dist, y = t.y + Math.sin(a) * dist;
+    if (x < 1 || x > SC_W - 1 || y < 1 || y > SC_H - 1) continue; scAdd(sc, k || "stool", x, y, .55, .55, { ghost: true, act: false, r: Math.round(a * 57) }); sc.anchors.sit.push({ x, y }); }
+}
+const SC_BUILD = {
+  inn(sc) {
+    const R = sc.R; sc.floor = [{ t: "planks", box: [0, 0, SC_W, SC_H] }]; scRoom(sc, .5, .5, 17.5, 11.5, { door: 9, windows: [{ s: "t", p: 12.5 }, { s: "t", p: 15 }, { s: "l", p: 6 }] });
+    scAdd(sc, "shelf", 5, 1.3, 7, .55); scAdd(sc, "bar", 5, 2.65, 7.2, .95); scAdd(sc, "barrel", 9.8, 1.5, .95, .95); scAdd(sc, "barrel", 10.85, 1.5, .95, .95);
+    sc.anchors.work.push({ x: 4.2, y: 1.95 }, { x: 6.6, y: 1.95 });
+    scAdd(sc, "rug", 14.9, 6, 2.6, 3.4, { ghost: true, act: false, under: true }); scAdd(sc, "hearth", 16.75, 6, 1.1, 2.6); sc.anchors.stand.push({ x: 15.4, y: 4.8 }, { x: 15.4, y: 7.2 });
+    scAdd(sc, "stairs", 2.1, 9.7, 2.2, 2.8, { r: 0 });
+    const ts = scScatter(sc, "rtable", 5, [3.6, 4.3, 14.6, 10.4], 1.35, 1.35, { pad: 1.7 }); ts.forEach(t => scChairsAround(sc, t, 3 + (R() < .5 ? 1 : 0), 1.05));
+    if (ts.length < 4) scScatter(sc, "table", 1, [3.5, 4, 14, 10.5], 2.4, 1.2, { pad: 1.4 }).forEach(t => scChairsAround(sc, t, 4, 1.25, "chair"));
+    scAdd(sc, "candle", 5, 2.65, .2, .2, { ghost: true, act: false }); ts.slice(0, 2).forEach(t => sc.lights.push({ x: t.x, y: t.y, r: 60, c: "warm" }));
+    sc.spawn = { x: 9, y: 10.6 }; sc.foes = { x: 9, y: 5 };
+  },
+  house(sc) {
+    sc.floor = [{ t: "grass", box: [0, 0, SC_W, SC_H] }, { t: "path", pts: [[9, 10.5], [9.4, 11.4], [8.6, 12.2]] }, { t: "planks", box: [2.5, 1.5, 15.5, 10.5] }];
+    scRoom(sc, 2.5, 1.5, 15.5, 10.5, { door: 9, windows: [{ s: "t", p: 5 }, { s: "t", p: 12 }, { s: "r", p: 7.5 }] });
+    sc.g.block((x, y) => !(x > 2.85 && x < 15.15 && y > 1.85 && y < 10.15) && !(y > 10.4));
+    scAdd(sc, "hearth", 3.45, 5.2, 1, 2.2); sc.anchors.stand.push({ x: 4.7, y: 4.4 });
+    const t = scAdd(sc, "table", 7, 5.8, 2.5, 1.35); scChairsAround(sc, { x: 7, y: 5.8 }, 4, 1.2, "chair"); scAdd(sc, "candle", 7.3, 5.7, .2, .2, { ghost: true, act: false }); void t;
+    scAdd(sc, "bed", 13.7, 3.6, 1.7, 2.6); scAdd(sc, "chest", 13.7, 5.6, 1.25, .8); scAdd(sc, "shelf", 6.8, 2.2, 3.2, .5); scAdd(sc, "cabinet", 10.6, 2.25, 1.6, .65);
+    scAdd(sc, "rug", 10.2, 7.6, 3.2, 2, { ghost: true, act: false, under: true }); scAdd(sc, "barrel", 14.6, 9.4, .9, .9); scAdd(sc, "crate", 3.7, 9.3, 1, 1);
+    scScatter(sc, "tree", 4, [0, 0, SC_W, SC_H], 2.4, 2.4, { pad: 0, ghost: true, act: false, nofree: true, spread: 2, avoid: (x, y) => x > 1.6 && x < 16.4 && y > .7 && y < 11.5 || (x > 7 && x < 11 && y > 10) });
+    sc.spawn = { x: 9, y: 9.6 }; sc.foes = { x: 9, y: 4 }; sc.outdoorTrim = true;
+  },
+  hut(sc) {
+    const R = sc.R; sc.floor = [{ t: "grass", box: [0, 0, SC_W, SC_H], dark: true }, { t: "dirt", box: [4.5, 2.5, 13.5, 9.5] }];
+    scRoom(sc, 4.5, 2.5, 13.5, 9.5, { door: 9, mat: "log", windows: [{ s: "t", p: 7 }] });
+    sc.g.block((x, y) => !(x > 4.85 && x < 13.15 && y > 2.85 && y < 9.15) && !(y > 9.4));
+    scAdd(sc, "campfire", 9, 6, 1.3, 1.3, { label: "очаг", acc: "очаг" }); scAdd(sc, "cauldron", 10.3, 6.9, .9, .9); scAdd(sc, "bedroll", 12, 4.1, 1.2, 2, { label: "лежанка", acc: "лежанку" });
+    scAdd(sc, "table", 6.3, 4, 1.8, 1, { label: "стол с травами", acc: "стол с травами" }); scAdd(sc, "herbs", 6.3, 3.05, 2.4, .35, { ghost: true }); scAdd(sc, "sack", 5.6, 8.4, 1, .9); scAdd(sc, "shelf", 11.5, 2.95, 2.2, .45);
+    sc.anchors.stand.push({ x: 8, y: 5.2 }, { x: 10, y: 5.1 });
+    scScatter(sc, "tree", 7, [0, 0, SC_W, SC_H], 2.6, 2.6, { pad: 0, ghost: true, act: false, nofree: true, spread: 2, avoid: (x, y) => x > 3.4 && x < 14.6 && y > 1.6 && y < 10.8 });
+    scScatter(sc, "bush", 6, [0, 0, SC_W, SC_H], 1.2, 1.2, { pad: 0, ghost: true, act: false, nofree: true, spread: 2, avoid: (x, y) => x > 3.8 && x < 14.2 && y > 1.9 && y < 10.6 });
+    void R; sc.spawn = { x: 9, y: 8.6 }; sc.foes = { x: 9, y: 4 };
+  },
+  chapel(sc) {
+    sc.floor = [{ t: "grass", box: [0, 0, SC_W, SC_H] }, { t: "flag", box: [2.5, .5, 15.5, 11.5] }];
+    scRoom(sc, 2.5, .5, 15.5, 11.5, { mat: "stone", door: 9, windows: [{ s: "l", p: 4.5, c: "#8fb7d8" }, { s: "l", p: 8, c: "#d8b48f" }, { s: "r", p: 4.5, c: "#d88f9c" }, { s: "r", p: 8, c: "#8fd8b4" }] });
+    sc.g.block((x, y) => x < 2.85 || x > 15.15);
+    scAdd(sc, "statue", 9, 1.25, 1.1, .9, { ghost: true }); scAdd(sc, "altar", 9, 2.35, 3, 1.05); scAdd(sc, "candle", 7.15, 2.1, .25, .25, { ghost: true, act: false }); scAdd(sc, "candle", 10.85, 2.1, .25, .25, { ghost: true, act: false });
+    scAdd(sc, "rug", 9, 7.2, 1.5, 8.2, { ghost: true, act: false, under: true, v: .9 });
+    for (const y of [4.4, 5.8, 7.2, 8.6]) { scAdd(sc, "pew", 5.8, y, 3.9, .55); scAdd(sc, "pew", 12.2, y, 3.9, .55); sc.anchors.sit.push({ x: 4.6, y: y - .02 }, { x: 13.4, y }, { x: 6.9, y }, { x: 11.1, y }); }
+    for (const [x, y] of [[3.6, 3.2], [14.4, 3.2], [3.6, 10], [14.4, 10]]) scAdd(sc, "pillar", x, y, .8, .8, { act: false });
+    scAdd(sc, "font", 12.7, 10.3, 1, 1); scAdd(sc, "candle", 3.6, 6.6, .25, .25, { ghost: true, act: false }); scAdd(sc, "candle", 14.4, 6.6, .25, .25, { ghost: true, act: false });
+    for (let i = 0; i < 5; i++) { const x = i < 3 ? .9 + (i % 2) * .7 : 16.4 + (i % 2) * .7, y = 2 + i * 2.1; scAdd(sc, "grave", x, y, .7, .45, { v: i / 5 }); }
+    sc.anchors.work.push({ x: 9, y: 3.45 }); sc.spawn = { x: 9, y: 10.6 }; sc.foes = { x: 9, y: 4 };
+  },
+  shrine(sc) {
+    sc.floor = [{ t: "grass", box: [0, 0, SC_W, SC_H] }, { t: "path", pts: [[9, 12.4], [9.6, 9.5], [9, 8.2]] }, { t: "dirtc", c: [9, 6], r: 3.2 }];
+    for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2 - Math.PI / 2 + .45; scAdd(sc, "stone", 9 + Math.cos(a) * 3.4, 6 + Math.sin(a) * 2.9, 1.15, .85, { r: Math.round(a * 57 + 90) }); }
+    scAdd(sc, "altar", 9, 6, 1.6, 1.1, { label: "жертвенник", acc: "жертвенник" }); scAdd(sc, "candle", 8.4, 5.6, .25, .25, { ghost: true, act: false }); scAdd(sc, "candle", 9.6, 5.6, .25, .25, { ghost: true, act: false });
+    scScatter(sc, "tree", 11, [0, 0, SC_W, SC_H], 2.6, 2.6, { pad: 0, ghost: true, act: false, nofree: true, spread: 2, avoid: (x, y) => ((x - 9) / 6.2) ** 2 + ((y - 6) / 4.8) ** 2 < 1 || (x > 7.5 && x < 11 && y > 8) });
+    scScatter(sc, "bush", 6, [0, 0, SC_W, SC_H], 1.1, 1.1, { pad: .1, ghost: true, act: false, nofree: true, spread: 1, avoid: (x, y) => ((x - 9) / 4.8) ** 2 + ((y - 6) / 3.9) ** 2 < 1 });
+    sc.anchors.work.push({ x: 9, y: 7.1 }); sc.spawn = { x: 9, y: 10.8 }; sc.foes = { x: 9, y: 3 };
+  },
+  tower(sc) {
+    sc.floor = [{ t: "rockg", box: [0, 0, SC_W, SC_H] }, { t: "flagc", c: [9, 6], r: 5.1 }]; sc.round = { cx: 9, cy: 6, r: 5.4, door: 90 };
+    sc.g.block((x, y) => Math.hypot(x - 9, y - 6) > 5 && !(Math.abs(x - 9) < .8 && y > 10));
+    for (let i = 0; i < 11; i++) { const a = (-70 + i * 14) * Math.PI / 180; scAdd(sc, "step", 9 + Math.cos(a) * 4.35, 6 + Math.sin(a) * 4.35, 1.1, .5, { r: Math.round(a * 57 + 90), act: false, v: i / 11 }); }
+    sc.objs.push({ k: "stairs_label", x: 13.2, y: 6, w: 1, h: 1, act: true, label: "винтовая лестница", acc: "винтовую лестницу", id: "ostair", hidden: true });
+    scAdd(sc, "table_map", 6.6, 4.4, 1.9, 1.1); scAdd(sc, "chair", 6.6, 5.4, .55, .55, { ghost: true, act: false }); scAdd(sc, "brazier", 9, 6.3, 1, 1);
+    scAdd(sc, "crate", 6, 8.2, 1, 1); scAdd(sc, "crate", 6.9, 8.9, .9, .9, { r: 20 }); scAdd(sc, "barrel", 11.3, 9, .9, .9); scAdd(sc, "sack", 10.5, 9.6, .9, .7);
+    scScatter(sc, "rock", 7, [0, 0, SC_W, SC_H], 1.2, 1, { pad: 0, ghost: true, act: false, vary: true, rot: true, avoid: (x, y) => Math.hypot(x - 9, y - 6) < 6.3 });
+    sc.anchors.stand.push({ x: 7.6, y: 6.8 }, { x: 10.4, y: 5.2 }); sc.spawn = { x: 9, y: 10.3 }; sc.foes = { x: 9, y: 3.4 }; sc.dark = .25;
+  },
+  cave(sc, mine) {
+    const R = sc.R; const ph = [R() * 6, R() * 6, R() * 6];
+    const rad = a => { const b = 1 + .1 * Math.sin(a * 3 + ph[0]) + .07 * Math.sin(a * 5 + ph[1]) + .05 * Math.sin(a * 9 + ph[2]); return b; };
+    sc.cave = { cx: 9, cy: 5.8, rx: 7.6, ry: 4.7, rad }; sc.floor = [{ t: "cave", box: [0, 0, SC_W, SC_H] }];
+    const inside = (x, y) => { const dx = (x - 9) / 7.6, dy = (y - 5.8) / 4.7; const a = Math.atan2(dy, dx); return Math.hypot(dx, dy) < rad(a) * .93 || (Math.abs(x - 9) < 1.2 && y > 8.5); };
+    sc.g.block((x, y) => !inside(x, y));
+    scScatter(sc, "puddle", 3, [3, 2, 15, 9], 1.6, .9, { ghost: true, act: false, vary: true, under: true });
+    scScatter(sc, "rock", 6, [2, 1.5, 16, 9.5], 1, .9, { act: false, vary: true, rot: true, pad: .6 });
+    if (mine) {
+      sc.floor.push({ t: "rails", pts: [[1, 6.3], [6, 6.3], [9.5, 7.5]] }); scAdd(sc, "minecart", 5.2, 6.3, 1.5, 1, { ghost: true }); scAdd(sc, "anvil", 12.5, 3.6, .9, .6);
+      for (const x of [4, 8, 12]) { scAdd(sc, "beam", x, 2.6, .5, .5, { act: false }); scAdd(sc, "beam", x, 9.2, .5, .5, { act: false }); }
+      scAdd(sc, "lantern", 8, 2.9, .4, .4, { ghost: true, act: false }); scAdd(sc, "lantern", 12, 8.9, .4, .4, { ghost: true, act: false });
+    }
+    const stash = Object.values(ENEMIES).some(E => E.loc === sc.id && /bandit|thug|cultist|goblin/.test(E.type || "")) || R() < .45;
+    if (stash) { scScatter(sc, "crate", 3, [10, 2, 15.5, 6], 1, 1, { pad: .1, rot: false }); scScatter(sc, "sack", 2, [10, 2, 15.5, 7], .9, .75, { pad: .1 }); scAdd(sc, "lantern", 12.4, 4.4, .4, .4, { ghost: true, act: false }); }
+    for (const [x, y] of [[3.2, 4], [14.6, 7.6]]) sc.lights.push({ x, y, r: 105, c: "warm" });
+    scAdd(sc, "torch", 3, 3.7, .3, .3, { ghost: true, act: false, nolight: true }); scAdd(sc, "torch", 14.8, 7.9, .3, .3, { ghost: true, act: false, nolight: true });
+    sc.spawn = { x: 9, y: 10.4 }; sc.foes = { x: 9.5, y: 3.4 }; sc.dark = .36;
+  },
+  mine(sc) { SC_BUILD.cave(sc, true); },
+  ruin(sc) {
+    sc.floor = [{ t: "grass", box: [0, 0, SC_W, SC_H] }, { t: "flag", box: [3, 2, 15, 10], broken: true }];
+    const W = [[3, 2, 7, 2.5], [3, 2, 3.5, 6], [11, 2, 15, 2.5], [14.5, 2, 15, 7.5], [3, 8.5, 3.5, 10], [12, 9.5, 15, 10]];
+    W.forEach(([x0, y0, x1, y1]) => scAdd(sc, "wallseg", (x0 + x1) / 2, (y0 + y1) / 2, x1 - x0, y1 - y0, { act: false }));
+    for (const [x, y, f] of [[6, 4.5], [12, 4.5], [6, 7.6, 1], [12, 7.6]]) f ? scAdd(sc, "colfall", x + .9, y, 2.6, .7, { r: 25, label: "упавшая колонна", acc: "упавшую колонну" }) : scAdd(sc, "pillar", x, y, .9, .9, { act: false });
+    scAdd(sc, "statue", 9, 3.6, 1.1, 1.1, { label: "разбитая статуя", acc: "разбитую статую" }); scScatter(sc, "rubble", 4, [3, 2, 15, 10], 1.3, 1.1, { vary: true, rot: true });
+    scScatter(sc, "tree", 5, [0, 0, SC_W, SC_H], 2.5, 2.5, { pad: 0, ghost: true, act: false, nofree: true, spread: 2, avoid: (x, y) => x > 2 && x < 16 && y > 1 && y < 11 });
+    scScatter(sc, "bush", 6, [0, 0, SC_W, SC_H], 1.1, 1.1, { pad: .1, ghost: true, act: false, nofree: true, spread: 1, avoid: (x, y) => x > 4 && x < 14 && y > 3 && y < 9 });
+    sc.spawn = { x: 9, y: 10.8 }; sc.foes = { x: 9, y: 5.2 };
+  },
+  camp(sc) {
+    sc.floor = [{ t: "grass", box: [0, 0, SC_W, SC_H] }, { t: "dirtc", c: [9, 6.2], r: 4 }];
+    scAdd(sc, "campfire", 9, 6.2, 1.4, 1.4); for (const a of [0.3, 2.3, 4.2]) scAdd(sc, "log", 9 + Math.cos(a) * 1.75, 6.2 + Math.sin(a) * 1.5, 1.6, .5, { r: Math.round(a * 57 + 90), act: false });
+    for (const a of [3.6, 5.3, 1.3]) scAdd(sc, "tent", 9 + Math.cos(a) * 4.1, 6.2 + Math.sin(a) * 3.3, 2.2, 1.8, { r: Math.round(a * 57 + 90) });
+    scAdd(sc, "bedroll", 12.4, 8.6, .9, 1.8, { r: 15 }); scAdd(sc, "crate", 5.4, 8.8, 1, 1); scAdd(sc, "sack", 6.3, 9.3, .9, .7);
+    sc.anchors.sit.push({ x: 9 + Math.cos(.3) * 1.75, y: 6.2 + Math.sin(.3) * 1.5 }, { x: 9 + Math.cos(2.3) * 1.75, y: 6.2 + Math.sin(2.3) * 1.5 }, { x: 9 + Math.cos(4.2) * 1.75, y: 6.2 + Math.sin(4.2) * 1.5 });
+    scScatter(sc, "tree", 9, [0, 0, SC_W, SC_H], 2.6, 2.6, { pad: 0, ghost: true, act: false, nofree: true, spread: 2, avoid: (x, y) => ((x - 9) / 6.6) ** 2 + ((y - 6.2) / 5) ** 2 < 1 });
+    sc.spawn = { x: 9, y: 10.6 }; sc.foes = { x: 9, y: 2.6 };
+  },
+  farm(sc) {
+    sc.floor = [{ t: "grass", box: [0, 0, SC_W, SC_H] }, { t: "field", box: [.6, .6, 7.8, 11.4] }, { t: "path", pts: [[10, 12.4], [10.4, 8], [12, 5.5]] }];
+    sc.g.block((x, y) => x < 7.9); for (let y = 1; y < 11.5; y += 1.4) scAdd(sc, "fencep", 8.4, y, .25, .25, { ghost: true, act: false });
+    sc.objs.push({ k: "fence", x: 8.4, y: 6, w: .2, h: 10.8, act: false, id: "ofence" });
+    scBlds(sc); scAdd(sc, "hay", 10.4, 2.4, 1.6, 1.1); scAdd(sc, "hay", 10.6, 3.8, 1.3, .9, { r: 10 });
+    scAdd(sc, "well", 13.2, 7.8, 1.3, 1.3); scAdd(sc, "cart", 15.8, 10.2, 1.4, 2.4, { r: 80 }); scAdd(sc, "barrel", 11.8, 9.8, .9, .9);
+    sc.anchors.work.push({ x: 7, y: 4 }, { x: 6, y: 8 }); sc.spawn = { x: 10.4, y: 10.8 }; sc.foes = { x: 13, y: 5.5 };
+    scScatter(sc, "tree", 2, [9, 5, 18, 12], 2.4, 2.4, { pad: 0, ghost: true, act: false, nofree: true, spread: 2, avoid: (x, y) => Math.abs(x - 10.4) < 2 || Math.hypot(x - 13.6, y - 7.8) < 2 });
+  },
+  pier(sc) {
+    const shore = y => 6.6 + Math.sin(y * .55 + 1.2) * .7;
+    sc.floor = [{ t: "dirt", box: [0, 0, SC_W, SC_H] }, { t: "sand", shore: y => shore(y) + 3.2 }, { t: "water", shore }, { t: "deck", box: [.6, 4.1, 9.4, 6.3] }, { t: "deck", box: [2.2, 8.4, 6.8, 9.5] }];
+    sc.g.block((x, y) => x < shore(y) + .2 && !(x > .6 && x < 9.4 && y > 4.1 && y < 6.3) && !(x > 2.2 && x < 6.8 && y > 8.4 && y < 9.5));
+    for (let x = 1; x < 9.4; x += 2) { scAdd(sc, "post", x, 4, .3, .3, { ghost: true, act: false }); scAdd(sc, "post", x, 6.4, .3, .3, { ghost: true, act: false }); }
+    scAdd(sc, "boat", 3.4, 3.05, 3, 1.2, { ghost: true }); scAdd(sc, "boat", 4.6, 7.35, 2.7, 1.1, { ghost: true, r: 180, v: .3 }); scAdd(sc, "boat", 1.6, 10.6, 2.6, 1.1, { ghost: true, r: -20, v: .7 });
+    scAdd(sc, "net", 6.4, 5.2, 1.6, 1.2, { r: 12 }); scAdd(sc, "lamppost", 1.1, 4.4, .4, .4, { act: false }); scAdd(sc, "barrel", 10.4, 3.4, .9, .9); scAdd(sc, "barrel", 11.2, 2.7, .9, .9); scAdd(sc, "crate", 10.6, 7.7, 1.05, 1.05, { r: 8 });
+    scAdd(sc, "net", 12.4, 9.6, 1.8, 1.3, { label: "сохнущие сети", acc: "сохнущие сети", r: -8 }); scBlds(sc);
+    scScatter(sc, "rock", 4, [0, 0, 9, SC_H], 1, .8, { ghost: true, act: false, vary: true, rot: true, pad: 0, avoid: (x, y) => x > shore(y) - .2 || (y > 3 && y < 7.6) || (y > 8 && y < 9.9 && x > 1.8) });
+    sc.anchors.work.push({ x: 7.6, y: 5.2 }, { x: 11.9, y: 8.8 }); sc.spawn = { x: 13.6, y: 9.4 }; sc.foes = { x: 9.6, y: 5.2 };
+  },
+  wreck(sc) {
+    const shore = x => 7.6 - x * .42 + Math.sin(x * .8) * .5;
+    sc.floor = [{ t: "sand", box: [0, 0, SC_W, SC_H] }, { t: "waterTop", shore }];
+    sc.g.block((x, y) => y < shore(x) - .2);
+    scAdd(sc, "hull", 8.4, 6.3, 6.6, 2.5, { r: -22 }); scScatter(sc, "plank", 6, [2, 4, 17, 11.5], 1.6, .3, { rot: true, act: false, pad: .3 });
+    scScatter(sc, "crate", 5, [3, 5, 17, 11.5], 1, 1, { rot: true, label: "разбитый ящик", acc: "разбитый ящик", pad: .5 }); scAdd(sc, "barrel", 13.4, 9.2, .9, .9);
+    scScatter(sc, "rock", 6, [0, 0, SC_W, SC_H], 1.2, 1, { vary: true, rot: true, act: false, pad: .3, ghost: true });
+    scScatter(sc, "kelp", 5, [0, 3, SC_W, SC_H], 1.4, .6, { ghost: true, act: false, rot: true, under: true, pad: 0 });
+    sc.spawn = { x: 14.6, y: 10.6 }; sc.foes = { x: 6, y: 8.2 };
+  },
+  forest(sc) {
+    sc.floor = [{ t: "grass", box: [0, 0, SC_W, SC_H], dark: true }, { t: "path", pts: [[8.4, 12.4], [9.8, 8.6], [7.6, 5], [9.4, -0.4]], w: 1.3 }];
+    const near = (x, y) => [[8.4, 12], [9.8, 8.6], [7.6, 5], [9.4, 0]].some(([px, py]) => Math.hypot(x - px, y - py) < 2.2) || Math.abs(x - (8.6 + Math.sin(y * .5) * 1.2)) < 1.3;
+    scScatter(sc, "tree", 17, [-1, -1, SC_W + 1, SC_H + 1], 2.8, 2.8, { pad: -.4, ghost: true, act: false, nofree: true, spread: 2.1, avoid: near });
+    scScatter(sc, "rock", 3, [1, 1, 17, 11], 1.3, 1.1, { vary: true, rot: true, act: false, avoid: near }); scScatter(sc, "stump", 2, [1, 1, 17, 11], .8, .8, { act: false, avoid: near });
+    scScatter(sc, "bush", 9, [0, 0, SC_W, SC_H], 1.1, 1.1, { pad: .1, ghost: true, act: false, nofree: true, spread: 1, avoid: near }); sc.g.block((x, y) => !near(x, y) && sc.objs.some(o => o.k === "tree" && Math.hypot(o.x - x, o.y - y) < .9));
+    sc.spawn = { x: 8.8, y: 10.8 }; sc.foes = { x: 8.2, y: 4.4 }; sc.dark = .12;
+  },
+  bridge(sc) {
+    sc.floor = [{ t: "grass", box: [0, 0, SC_W, SC_H] }, { t: "river", x0: 7.2, x1: 10.8 }, { t: "path", pts: [[-0.4, 6], [6.8, 6.1]] }, { t: "path", pts: [[11.2, 6.1], [18.4, 6.3]] }, { t: "deck", box: [6.5, 5.1, 11.5, 7.1], vert: true }];
+    sc.g.block((x, y) => x > 7 && x < 11 && !(y > 5.1 && y < 7.1));
+    for (const x of [6.7, 8.4, 10, 11.3]) { scAdd(sc, "post", x, 5.05, .3, .3, { ghost: true, act: false }); scAdd(sc, "post", x, 7.15, .3, .3, { ghost: true, act: false }); }
+    scScatter(sc, "tree", 7, [0, 0, SC_W, SC_H], 2.6, 2.6, { pad: 0, ghost: true, act: false, nofree: true, spread: 2, avoid: (x, y) => (x > 6 && x < 12) || Math.abs(y - 6.1) < 2 });
+    scScatter(sc, "rock", 5, [6.4, 0, 11.6, SC_H], .9, .8, { vary: true, rot: true, act: false, ghost: true, pad: 0, avoid: (x, y) => Math.abs(y - 6.1) < 1.6 });
+    scScatter(sc, "reeds", 6, [6, 0, 12, SC_H], 1, 1, { ghost: true, act: false, pad: 0, avoid: (x, y) => Math.abs(y - 6.1) < 1.8 || (x > 7.6 && x < 10.4) });
+    sc.spawn = { x: 2.4, y: 6.6 }; sc.foes = { x: 14.6, y: 6.1 };
+  },
+  square(sc) {
+    sc.floor = [{ t: "cobble", box: [0, 0, SC_W, SC_H] }];
+    scBlds(sc).forEach(sl => scAdd(sc, "roof", sl.x, sl.y, sl.w, sl.h, { label: "дом", acc: "дом", act: false, v: sl.x / 18 }));
+    scAdd(sc, "well", 9, 6.6, 1.5, 1.5); scAdd(sc, "stall", 4.4, 8.4, 2.6, 1.4, { v: .2 }); scAdd(sc, "stall", 13.8, 8.6, 2.6, 1.4, { v: .7 }); scAdd(sc, "cart", 15.8, 5.6, 1.4, 2.4, { r: 80 });
+    scAdd(sc, "barrel", 6.2, 9.6, .85, .85); scAdd(sc, "crate", 12, 9.7, 1, 1); scAdd(sc, "lamppost", 6.6, 4.4, .4, .4, { act: false }); scAdd(sc, "lamppost", 11.6, 4.4, .4, .4, { act: false });
+    scAdd(sc, "tree", 1.6, 10.2, 2.6, 2.6, { ghost: true, act: false }); sc.anchors.work.push({ x: 4.4, y: 7.25 }, { x: 13.8, y: 7.45 }); sc.anchors.stand.push({ x: 8, y: 8.2 }, { x: 10.6, y: 5.6 }, { x: 3.4, y: 5.4 }, { x: 12.6, y: 4.6 }); sc.spawn = { x: 9, y: 10.8 }; sc.foes = { x: 9, y: 4.6 };
+  },
+  gate(sc) {
+    sc.floor = [{ t: "dirt", box: [0, 0, SC_W, SC_H] }, { t: "cobble", box: [0, 3, SC_W, SC_H] }, { t: "path", pts: [[9, -0.4], [9, 3.6]], w: 2 }];
+    scAdd(sc, "citywall", 4, 2.4, 8, 1.1, { act: false }); scAdd(sc, "citywall", 14, 2.4, 8, 1.1, { act: false }); scAdd(sc, "towerb", 7.4, 2.4, 1.9, 1.9, { act: false }); scAdd(sc, "towerb", 10.6, 2.4, 1.9, 1.9, { act: false });
+    sc.g.block((x, y) => y < 2.95 && !(x > 8.4 && x < 9.6)); scAdd(sc, "torch", 8.15, 3.2, .3, .3, { ghost: true, act: false }); scAdd(sc, "torch", 9.85, 3.2, .3, .3, { ghost: true, act: false });
+    scAdd(sc, "table", 4.2, 5.4, 1.8, 1, { label: "стол стражи", acc: "стол стражи" }); scAdd(sc, "barrel", 3, 6.4, .9, .9); scAdd(sc, "brazier", 5.8, 6.2, .9, .9); scAdd(sc, "cart", 12.4, 8.6, 1.4, 2.4, { r: 95 }); scBlds(sc);
+    scAdd(sc, "crate", 14.8, 9.4, 1, 1); sc.anchors.work.push({ x: 8.2, y: 4 }, { x: 9.8, y: 4 }); sc.spawn = { x: 9, y: 10.6 }; sc.foes = { x: 9, y: .9 };
+  }
+};
+const sceneCache = new Map();
+function sceneOf(id) {
+  const key = WD.id + ":" + id; let sc = sceneCache.get(key); if (sc) return sc;
+  sc = { id, tpl: sceneTpl(id), objs: [], rooms: [], lights: [], floor: [], anchors: { work: [], sit: [], stand: [], sleep: [] }, doors: {}, g: new ScGrid(), R: mulberry(hash(key)), spawn: { x: 9, y: 10.5 }, foes: { x: 9, y: 4 }, dark: 0 };
+  SC_BUILD[sc.tpl](sc); sceneCache.set(key, sc); return sc;
+}
+function scState(id) { S.scenes = S.scenes || {}; return S.scenes[id] || (S.scenes[id] = { add: [], removed: [], player: null, crowd: null }); }
+function scFreeNear(sc, taken, x, y, maxR) {
+  for (let r = 0; r <= (maxR || 4); r += .5) for (let k = 0; k < 12; k++) { const a = k / 12 * Math.PI * 2 + r; const px = x + Math.cos(a) * r, py = y + Math.sin(a) * r;
+    if (sc.g.free(px, py, .8, .8) && !taken.some(t => Math.hypot(t.x - px, t.y - py) < 1)) return { x: px, y: py }; if (r === 0) break; }
+  return { x, y };
+}
+/* динамическая часть: игрок, персонажи, фоновые люди, враги, добавленные предметы */
+function scenePeople(id) {
+  const sc = sceneOf(id), st = scState(id), loc = POIS[id], t = worldTime(); const R = mulberry(hash(id + ":" + t.day + ":" + t.part)); const taken = []; const out = [];
+  const pl = st.player || sc.spawn; const pp = scFreeNear(sc, [], pl.x, pl.y, 3); taken.push(pp); out.push({ type: "hero", x: pp.x, y: pp.y });
+  const pools = { work: [...sc.anchors.work], sit: [...sc.anchors.sit], stand: [...sc.anchors.stand], sleep: [...sc.anchors.sleep] };
+  const pick = kind => { const p = pools[kind] || []; while (p.length) { const i = Math.floor(R() * p.length); const a = p.splice(i, 1)[0]; if (!taken.some(q => Math.hypot(q.x - a.x, q.y - a.y) < .9)) return a; } return null; };
+  const asleep = loc.inner && bldAsleep(id);
+  (loc.npcs || []).filter(nid => NPCS[nid]).forEach(nid => { const n = NPCS[nid]; const zz = asleep ? pick("sleep") : null; if (zz) { taken.push(zz); out.push({ type: "npc", id: nid, x: zz.x, y: zz.y, asleep: true }); return; } const worker = /хозя|трактир|корчм|бармен|торгов|продав|кузнец|лавоч|жри|свящ|монах|сестр|отец|староста|страж|смотрит/i.test(n.role || "");
+    const a = (worker && pick("work")) || pick("stand") || pick("sit") || null; const p = a || scFreeNear(sc, taken, sc.spawn.x + (R() - .5) * 8, sc.spawn.y - 2 - R() * 5, 5);
+    taken.push(p); out.push({ type: "npc", id: nid, x: p.x, y: p.y }); });
+  const [labels, counts] = SC_CROWD[sc.tpl] || [[], [0, 0, 0, 0]]; const foesHere = Object.keys(ENEMIES).some(e => ENEMIES[e].loc === id && S.world.enemies[e]?.alive);
+  let n = st.crowd != null ? st.crowd : (labels.length && !foesHere ? counts[t.part] : 0); n = clamp(n - (loc.npcs || []).filter(x => NPCS[x]?.bld).length, 0, 8);
+  for (let i = 0; i < n; i++) { const a = pick("sit") || pick("stand") || pick("work"); const p = a && !taken.some(q => Math.hypot(q.x - a.x, q.y - a.y) < .9) ? a : scFreeNear(sc, taken, 2 + R() * 14, 2 + R() * 8);
+    taken.push(p); out.push({ type: "crowd", id: "c" + i, label: labels.length ? labels[Math.floor(R() * labels.length)] : "местный", x: p.x, y: p.y }); }
+  const foes = Object.keys(ENEMIES).filter(e => ENEMIES[e].loc === id && S.world.enemies[e]);
+  foes.forEach((e, i) => { const es = S.world.enemies[e]; if (!es.alive) { const p = scFreeNear(sc, [], sc.foes.x + (i - foes.length / 2) * 1.6, sc.foes.y + (i % 2) * .8, 3); out.push({ type: "corpse", id: e, x: p.x, y: p.y }); return; }
+    if (!S.world.combat) return; const p = scFreeNear(sc, taken.concat(out.filter(q => q.type === "foe")), sc.foes.x + (i - (foes.length - 1) / 2) * 2.4, sc.foes.y + (i % 2) * 1.3, 4); taken.push(p); out.push({ type: "foe", id: e, x: p.x, y: p.y }); });
+  return out;
+}
+function sceneObjects(id) {
+  const sc = sceneOf(id), st = scState(id); const gone = new Set((st.removed || []).map(s => s.toLowerCase()));
+  return [...sc.objs, ...(st.add || []).map((a, i) => ({ ...a, id: "a" + i, act: true, search: true, w: a.w || .9, h: a.h || .9, v: .5 }))].filter(o => !gone.has(String(o.label).toLowerCase()));
+}
+const SC_ADD_KINDS = { chest: [1.1, .75], crate: [1, 1], barrel: [.9, .9], table: [1.8, 1], bed: [1.5, 2.3], altar: [1.8, 1], statue: [1, 1], body: [1.4, .7], item: [.6, .6], fire: [1.2, 1.2], lantern: [.4, .4], boat: [2.6, 1.1], rock: [1, .9], bell: [1.1, 1.1], cart: [1.4, 2.4], cauldron: [.9, .9], sack: [.9, .75] };
+function sceneEffects(e) {
+  if (!e || typeof e !== "object" || !S) return; const id = S.world.loc; const st = scState(id); const sc = sceneOf(id);
+  (Array.isArray(e.add) ? e.add : []).slice(0, 3).forEach((a, i) => { const label = str(a?.label, 32); if (!label || sceneObjects(id).some(o => String(o.label).toLowerCase() === label.toLowerCase())) return;
+    let k = String(a.kind || "item"); if (k === "fire") k = "campfire"; if (!SC_ADD_KINDS[a.kind] && !SC_ADD_KINDS[k]) k = "item"; const [w, h] = SC_ADD_KINDS[a.kind] || SC_ADD_KINDS[k] || [.6, .6];
+    const R = mulberry(hash(label + i)); const taken = (st.add || []).map(o => ({ x: o.x, y: o.y })); const p = scFreeNear(sc, taken, 4 + R() * 10, 3 + R() * 6, 6);
+    st.add.push({ k, label, acc: str(a.acc, 40) || label, x: +p.x.toFixed(2), y: +p.y.toFixed(2), w, h }); pushFeed({ t: "chips", items: [{ c: "item", x: `На плане: ${label}` }] }); });
+  (Array.isArray(e.remove) ? e.remove : []).slice(0, 3).forEach(l => { const s = str(l, 32); if (!s) return; const i = st.add.findIndex(a => a.label.toLowerCase() === s.toLowerCase()); if (i >= 0) st.add.splice(i, 1); else if (!st.removed.includes(s)) st.removed.push(s); });
+  if (e.crowd != null && Number.isFinite(Number(e.crowd))) st.crowd = clamp(Math.round(Number(e.crowd)), 0, 8);
+}
+function sceneBriefLine() {
+  const id = S.world.loc; const objs = sceneObjects(id).filter(o => o.act && !o.hidden && o.k !== "bldroof" && o.k !== "door"); const ppl = scenePeople(id); const hero = ppl[0];
+  const near = objs.map(o => [o, Math.hypot(o.x - hero.x, o.y - hero.y) - Math.max(o.w, o.h) / 2]).sort((a, b) => a[1] - b[1])[0];
+  const crowd = ppl.filter(p => p.type === "crowd").map(p => p.label);
+  return `ПЛАН СЦЕНЫ (видит игрок): предметы и мебель — ${[...new Set(objs.map(o => o.label))].join(", ") || "почти пусто"}; безымянные люди фоном — ${crowd.length ? crowd.length + " (" + [...new Set(crowd)].join(", ") + ")" : "нет"}${near && near[1] < 1.6 ? `; герой стоит рядом: ${near[0].label}` : ""}.`;
+}
+
+/* ---------- отрисовка ---------- */
+let scSeq = 0;
+const SCP = { wood: ["#6f4c2f", "#8b6340", "#3d2a1a"], dwood: ["#4f3420", "#6b4a2e", "#2a1b10"], stone: ["#6f7471", "#8d928c", "#3f4341"], cloth: ["#7b2f2a", "#a8843c"], leaf: ["#24391f", "#2f4a2a", "#3e5f34", "#4e7340"] };
+const f1 = n => Math.round(n * 10) / 10;
+function scFloorSVG(sc, P, R) {
+  let s = ""; const W = SC_W * CS, H = SC_H * CS;
+  const planks = (b, vert) => { const [x0, y0, x1, y1] = b.map(v => v * CS); let o = `<g clip-path="url(#${P}-c${Math.round(x0)}_${Math.round(y0)})">`; const bh = 14;
+    if (!vert) for (let y = y0; y < y1; y += bh) { let x = x0 - R() * 60; while (x < x1) { const len = 50 + R() * 90; const L = 20 + R() * 9; o += `<rect x="${f1(x)}" y="${f1(y)}" width="${f1(len)}" height="${bh}" fill="hsl(28,${30 + R() * 8 | 0}%,${L | 0}%)"/>`; if (R() < .35) o += `<line x1="${f1(x + 6)}" y1="${f1(y + bh * .45)}" x2="${f1(x + len - 8)}" y2="${f1(y + bh * .5)}" stroke="#1b120a" stroke-opacity=".25"/>`; o += `<line x1="${f1(x)}" y1="${f1(y)}" x2="${f1(x)}" y2="${f1(y + bh)}" stroke="#1c130b" stroke-width="1.2"/>`; x += len; } o += `<line x1="${x0}" y1="${f1(y)}" x2="${x1}" y2="${f1(y)}" stroke="#1c130b" stroke-width="1.4"/>`; }
+    else for (let x = x0; x < x1; x += bh) { let y = y0 - R() * 40; while (y < y1) { const len = 40 + R() * 70; const L = 22 + R() * 9; o += `<rect x="${f1(x)}" y="${f1(y)}" width="${bh}" height="${f1(len)}" fill="hsl(30,${28 + R() * 8 | 0}%,${L | 0}%)"/><line x1="${f1(x)}" y1="${f1(y)}" x2="${f1(x + bh)}" y2="${f1(y)}" stroke="#1c130b" stroke-width="1.2"/>`; y += len; } o += `<line x1="${f1(x)}" y1="${y0}" x2="${f1(x)}" y2="${y1}" stroke="#1c130b" stroke-width="1.4"/>`; }
+    return `<clipPath id="${P}-c${Math.round(x0)}_${Math.round(y0)}"><rect x="${x0}" y="${y0}" width="${x1 - x0}" height="${y1 - y0}"/></clipPath>${o}</g>`; };
+  const flags = (b, broken, circ) => { const [x0, y0, x1, y1] = b.map(v => v * CS); const id = `${P}-f${Math.round(x0)}`; let o = `<g clip-path="url(#${id})"><rect x="${x0}" y="${y0}" width="${x1 - x0}" height="${y1 - y0}" fill="#232628"/>`;
+    for (let y = y0, r = 0; y < y1; y += 30, r++) for (let x = x0 - (r % 2) * 18; x < x1; x += 36) { if (broken && R() < .22) continue; const L = 28 + R() * 12; o += `<rect x="${f1(x + 1.5)}" y="${f1(y + 1.5)}" width="${f1(33 - R() * 4)}" height="${f1(27 - R() * 3)}" rx="3" fill="hsl(${190 + R() * 30 | 0},${4 + R() * 5 | 0}%,${L | 0}%)"/>`; if (R() < .12) o += `<path d="M${f1(x + 6)} ${f1(y + 8)} l${f1(8 + R() * 8)} ${f1(5 + R() * 6)} l${f1(4 + R() * 6)} ${f1(-2)}" stroke="#1d2022" fill="none"/>`; }
+    const clip = circ ? `<circle cx="${circ[0] * CS}" cy="${circ[1] * CS}" r="${circ[2] * CS}"/>` : `<rect x="${x0}" y="${y0}" width="${x1 - x0}" height="${y1 - y0}"/>`;
+    return `<clipPath id="${id}">${clip}</clipPath>${o}</g>`; };
+  const blobs = (b, cols, n, rmin, rmax, op) => { const [x0, y0, x1, y1] = b.map(v => v * CS); let o = ""; for (let i = 0; i < n; i++) o += `<circle cx="${f1(x0 + R() * (x1 - x0))}" cy="${f1(y0 + R() * (y1 - y0))}" r="${f1(rmin + R() * (rmax - rmin))}" fill="${cols[Math.floor(R() * cols.length)]}" opacity="${op}"/>`; return o; };
+  const strip = (pts, w, fill, edge) => { const d = "M" + pts.map(p => `${f1(p[0] * CS)} ${f1(p[1] * CS)}`).join(" L"); return `<path d="${d}" stroke="${edge}" stroke-width="${w * CS + 8}" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity=".7"/><path d="${d}" stroke="${fill}" stroke-width="${w * CS}" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`; };
+  for (const f of sc.floor) {
+    if (f.t === "shade") s += `<rect width="${W}" height="${H}" fill="#05080a" opacity=".55"/>`;
+    else if (f.t === "planks") s += planks(f.box);
+    else if (f.t === "deck") s += `<rect x="${f.box[0] * CS - 3}" y="${f.box[1] * CS + 5}" width="${(f.box[2] - f.box[0]) * CS + 6}" height="${(f.box[3] - f.box[1]) * CS}" fill="#000" opacity=".35"/>` + planks(f.box, true);
+    else if (f.t === "flag") s += flags(f.box, f.broken);
+    else if (f.t === "flagc") s += flags([f.c[0] - f.r, f.c[1] - f.r, f.c[0] + f.r, f.c[1] + f.r], false, [f.c[0], f.c[1], f.r]);
+    else if (f.t === "grass" || f.t === "rockg") { const dark = f.dark || f.t === "rockg"; s += `<rect width="${W}" height="${H}" fill="${f.t === "rockg" ? "#2d3a2c" : dark ? "#283d25" : "#334d2c"}"/>` + blobs(f.box, f.t === "rockg" ? ["#3b4637", "#24301f", "#4a5148"] : ["#3d5a33", "#2a4224", "#466839", "#22361d"], 120, 12, 46, .35);
+      s += seasonTint(f.box); for (let i = 0; i < 160; i++) { const x = R() * W, y = R() * H; s += `<path d="M${f1(x)} ${f1(y)} l-2 -6 M${f1(x)} ${f1(y)} l2 -7 M${f1(x)} ${f1(y)} l5 -5" stroke="${R() < .5 ? "#5c8247" : "#3f6334"}" stroke-width="1.1" opacity=".55"/>`; } }
+    else if (f.t === "dirt") s += `<rect x="${f.box[0] * CS}" y="${f.box[1] * CS}" width="${(f.box[2] - f.box[0]) * CS}" height="${(f.box[3] - f.box[1]) * CS}" fill="#4a3a29"/>` + blobs(f.box, ["#5a4632", "#3c2f21", "#64503a"], 70, 8, 30, .45) + blobs(f.box, ["#7a6a55"], 60, 1, 2.4, .7) + (f.box[2] - f.box[0] >= SC_W - .1 ? seasonTint(f.box) : "");
+    else if (f.t === "dirtc") s += `<ellipse cx="${f.c[0] * CS}" cy="${f.c[1] * CS}" rx="${f.r * CS * 1.15}" ry="${f.r * CS * .9}" fill="#4d3d2a" opacity=".85"/>` + blobs([f.c[0] - f.r, f.c[1] - f.r * .7, f.c[0] + f.r, f.c[1] + f.r * .7], ["#5d4a35", "#3c2f21"], 30, 8, 22, .4);
+    else if (f.t === "cave") { s += `<rect width="${W}" height="${H}" fill="#3b352c"/>` + blobs(f.box, ["#463f34", "#2c2822", "#504839", "#35302a"], 110, 10, 44, .55) + blobs(f.box, ["#6e6656", "#24201b"], 120, 1, 2.8, .6); }
+    else if (f.t === "cobble") { s += `<rect width="${W}" height="${H}" fill="#2c2a27"/>`; for (let y = 0; y < H; y += 13) for (let x = -(y % 26 ? 7 : 0); x < W; x += 15) s += `<rect x="${f1(x + 1 + R() * 2)}" y="${f1(y + 1 + R() * 2)}" width="${f1(11 + R() * 2)}" height="${f1(9 + R() * 2)}" rx="4" fill="hsl(${25 + R() * 20 | 0},${5 + R() * 6 | 0}%,${30 + R() * 12 | 0}%)"/>`; s += WD?.season === "winter" ? seasonTint([0, 0, SC_W, SC_H]) : ""; }
+    else if (f.t === "path") s += strip(f.pts, f.w || 1.1, "#5b4834", "#3d3022");
+    else if (f.t === "field") { const [x0, y0, x1, y1] = f.box.map(v => v * CS); s += `<rect x="${x0}" y="${y0}" width="${x1 - x0}" height="${y1 - y0}" fill="#4a3826" rx="4"/>`; for (let x = x0 + 8; x < x1 - 4; x += 16) { s += `<line x1="${x}" y1="${y0 + 6}" x2="${x}" y2="${y1 - 6}" stroke="#2e2216" stroke-width="5" stroke-linecap="round"/>`; for (let y = y0 + 10; y < y1 - 8; y += 9 + R() * 4) s += `<circle cx="${f1(x + 8 + (R() - .5) * 3)}" cy="${f1(y)}" r="${f1(2.2 + R() * 1.6)}" fill="${R() < .5 ? "#6f8a3b" : "#8a9a44"}"/>`; } }
+    else if (f.t === "sand") { const pts = []; if (f.shore) { for (let y = 0; y <= SC_H; y += .25) pts.push(`${f1(f.shore(y) * CS)},${f1(y * CS)}`); s += `<polygon points="0,0 ${pts.join(" ")} 0,${H}" fill="#a8916a"/>`; } else s += `<rect width="${W}" height="${H}" fill="#a8916a"/>`;
+      s += blobs([0, 0, SC_W, SC_H], ["#b9a37c", "#96805b"], 60, 10, 40, .35).replace(/<circle/g, `<circle clip-path="url(#${P}-sand)"`); for (let i = 0; i < 30; i++) { const x = R() * W, y = R() * H; s += `<path d="M${f1(x)} ${f1(y)} q14 -5 28 0" stroke="#c7b48e" fill="none" opacity=".35" clip-path="url(#${P}-sand)"/>`; }
+      s += `<clipPath id="${P}-sand">${f.shore ? `<polygon points="0,0 ${pts.join(" ")} 0,${H}"/>` : `<rect width="${W}" height="${H}"/>`}</clipPath>`; }
+    else if (f.t === "water" || f.t === "waterTop" || f.t === "river") {
+      let poly; if (f.t === "water") { const p = []; for (let y = 0; y <= SC_H; y += .25) p.push(`${f1(f.shore(y) * CS)},${f1(y * CS)}`); poly = `0,0 ${p.join(" ")} 0,${H}`; }
+      else if (f.t === "waterTop") { const p = []; for (let x = 0; x <= SC_W; x += .25) p.push(`${f1(x * CS)},${f1(f.shore(x) * CS)}`); poly = `0,0 ${p.join(" ")} ${W},0`; }
+      else { const l = [], r = []; for (let y = 0; y <= SC_H; y += .25) { const w = Math.sin(y * .7) * .35; l.push(`${f1((f.x0 + w) * CS)},${f1(y * CS)}`); r.unshift(`${f1((f.x1 + w) * CS)},${f1(y * CS)}`); } poly = [...l, ...r].join(" "); }
+      s += `<clipPath id="${P}-wclip"><polygon points="${poly}"/></clipPath><polygon points="${poly}" fill="none" stroke="#c9b98f" stroke-width="10" opacity=".5"/><polygon points="${poly}" fill="url(#${P}-water)" stroke="#1a3a44" stroke-width="3"/>`;
+      s += `<g clip-path="url(#${P}-wclip)">`; for (let i = 0; i < 26; i++) { const x = R() * W, y = R() * H; s += `<path class="sc-wave" style="animation-delay:-${(R() * 6).toFixed(1)}s" d="M${f1(x)} ${f1(y)} q10 -4 20 0 t20 0" stroke="#8fc3cf" stroke-width="1.4" fill="none" opacity=".35"/>`; } s += `</g>`;
+    }
+  }
+  return s;
+}
+function scRoomSVG(sc) {
+  let s = "";
+  for (const r of sc.rooms) {
+    const [x0, y0, x1, y1] = [r.x0, r.y0, r.x1, r.y1].map(v => v * CS); const col = r.mat === "stone" ? "#5b605d" : r.mat === "log" ? "#4a3220" : "#3b2a1c"; const hi = r.mat === "stone" ? "#878c86" : "#6b4c31"; const t = r.mat === "stone" ? 13 : 11;
+    const dx = r.door * CS, dw = 46;
+    const seg = (a, b, c, d) => `<line x1="${a}" y1="${b}" x2="${c}" y2="${d}" stroke="${col}" stroke-width="${t}" stroke-linecap="square"/><line x1="${a}" y1="${b}" x2="${c}" y2="${d}" stroke="${hi}" stroke-width="2" stroke-opacity=".7" transform="translate(0,-${t / 2 - 1.5})"/>`;
+    s += `<g filter="url(#SCP-wsh)">${seg(x0, y0, x1, y0)}${seg(x0, y0, x0, y1)}${seg(x1, y0, x1, y1)}${seg(x0, y1, dx - dw / 2, y1)}${seg(dx + dw / 2, y1, x1, y1)}</g>`;
+    if (r.mat === "log") for (let x = x0; x <= x1; x += 18) s += `<circle cx="${x}" cy="${y0}" r="4" fill="#5c4029" stroke="#2b1c10"/>`;
+    s += `<path d="M${dx - dw / 2} ${y1} a${dw} ${dw} 0 0 0 ${dw * .72} ${-dw * .68}" fill="none" stroke="#a88a5c" stroke-width="1" stroke-dasharray="3 3" opacity=".6"/><line x1="${dx - dw / 2}" y1="${y1}" x2="${dx - dw / 2 + 6}" y2="${y1 - dw + 4}" stroke="#7b5634" stroke-width="5" stroke-linecap="round"/>`;
+    for (const w of r.windows) { const c = w.c || "#a9cbe0"; if (w.s === "t") s += `<rect x="${w.p * CS - 16}" y="${y0 - 3}" width="32" height="6" fill="${c}" opacity=".85"/>`; else { const xx = w.s === "l" ? x0 : x1; s += `<rect x="${xx - 3}" y="${w.p * CS - 16}" width="6" height="32" fill="${c}" opacity=".85"/>`; } }
+  }
+  if (sc.round) { const { cx, cy, r } = sc.round; s += `<g filter="url(#SCP-wsh)"><circle cx="${cx * CS}" cy="${cy * CS}" r="${r * CS}" fill="none" stroke="#585c58" stroke-width="18" stroke-dasharray="${(2 * Math.PI * r * CS) - 50} 50" stroke-dashoffset="${.75 * 2 * Math.PI * r * CS - 25}"/><circle cx="${cx * CS}" cy="${cy * CS}" r="${r * CS - 8}" fill="none" stroke="#8a8e88" stroke-width="2" opacity=".5" stroke-dasharray="${(2 * Math.PI * (r * CS - 8)) - 50} 50" stroke-dashoffset="${.75 * 2 * Math.PI * (r * CS - 8) - 25}"/></g>`; }
+  if (sc.cave) { const { cx, cy, rx, ry, rad } = sc.cave; const pts = []; for (let a = 0; a < Math.PI * 2; a += .08) { let rr = rad(a); const bottom = Math.abs(a - Math.PI / 2) < .18; pts.push(`${f1((cx + Math.cos(a) * rx * rr) * CS)},${f1((cy + Math.sin(a) * ry * rr * (bottom ? 1.35 : 1)) * CS)}`); }
+    s += `<path d="M0 0 H${SC_W * CS} V${SC_H * CS} H0 Z M${pts.join(" L")} Z" fill-rule="evenodd" fill="url(#${"SCP"}-rock)" stroke="#7a7262" stroke-width="3.5" stroke-linejoin="round" filter="url(#SCP-rim)"/><path d="M${pts.join(" L")} Z" fill="none" stroke="#000" stroke-opacity=".45" stroke-width="16" transform="translate(0,0)" style="mix-blend-mode:multiply"/>`; }
+  return s;
+}
+function scObjSVG(o, R) {
+  const w = o.w * CS, h = o.h * CS, hw = w / 2, hh = h / 2, v = o.v ?? .5; let s = "";
+  const wood = (l = 0) => `hsl(28,${34 - l * 4}%,${27 + l * 8 + v * 5}%)`;
+  switch (o.k) {
+    case "bar": s = `<rect x="${-hw}" y="${-hh}" width="${w}" height="${h}" rx="3" fill="#4a3220" stroke="#22160c" stroke-width="2"/><rect x="${-hw + 3}" y="${-hh + 3}" width="${w - 6}" height="${h * .42}" fill="#6b4a2e"/>${[...Array(5)].map((_, i) => `<circle cx="${f1(-hw + 18 + i * (w - 36) / 4)}" cy="${f1(hh * .25)}" r="4" fill="#c9b27a" stroke="#5b4320"/>`).join("")}`; break;
+    case "shelf": s = `<rect x="${-hw}" y="${-hh}" width="${w}" height="${h}" fill="#3a271a" stroke="#1d130b"/>${[...Array(Math.floor(w / 9))].map((_, i) => `<circle cx="${f1(-hw + 6 + i * 9)}" cy="${f1((R() - .5) * 3)}" r="${f1(2.6 + R() * 1.2)}" fill="${["#3f6b3a", "#6b3a2a", "#8a6a2a", "#2f4f5f", "#6a2a4a"][Math.floor(R() * 5)]}"/>`).join("")}`; break;
+    case "barrel": s = `<circle r="${hw}" fill="#7a5434" stroke="#2b1d12" stroke-width="2"/><circle r="${hw * .72}" fill="none" stroke="#3b2a1b" stroke-width="2.4"/><circle r="${hw * .42}" fill="#8e6640"/><line x1="${-hw * .4}" y1="0" x2="${hw * .4}" y2="0" stroke="#5a3e26"/>`; break;
+    case "rtable": s = `<circle r="${hw}" fill="${wood(0)}" stroke="#2a1c11" stroke-width="2"/><circle r="${hw * .78}" fill="none" stroke="#2a1c11" stroke-opacity=".35"/>${R() < .7 ? `<circle cx="${f1(hw * .3)}" cy="${f1(-hw * .25)}" r="4.5" fill="#b8a37a" stroke="#5b4a2a"/>` : ""}${R() < .6 ? `<circle cx="${f1(-hw * .35)}" cy="${f1(hw * .2)}" r="6" fill="#d8d0bd" stroke="#8a826f"/>` : ""}`; break;
+    case "table": case "table_map": s = `<rect x="${-hw}" y="${-hh}" width="${w}" height="${h}" rx="3" fill="${wood(0)}" stroke="#2a1c11" stroke-width="2"/>${[1, 2].map(i => `<line x1="${-hw + 3}" y1="${f1(-hh + i * h / 3)}" x2="${hw - 3}" y2="${f1(-hh + i * h / 3)}" stroke="#2a1c11" stroke-opacity=".3"/>`).join("")}${o.k === "table_map" ? `<rect x="${-hw * .7}" y="${-hh * .6}" width="${w * .55}" height="${h * .6}" fill="#d9c9a0" transform="rotate(-6)"/><path d="M${-hw * .5} ${-hh * .2} q8 -6 16 2 t14 -2" stroke="#7a5a3a" fill="none"/><circle cx="${hw * .55}" cy="${-hh * .3}" r="3" fill="#f4e3b0"/>` : `<rect x="${-6}" y="${-4}" width="12" height="8" rx="2" fill="#a8956a" opacity=".8"/>`}`; break;
+    case "stool": s = `<circle r="${hw}" fill="#5a3d26" stroke="#24170d" stroke-width="1.5"/>`; break;
+    case "chair": s = `<rect x="${-hw}" y="${-hh}" width="${w}" height="${h}" rx="2" fill="#5a3d26" stroke="#24170d" stroke-width="1.5"/><rect x="${-hw}" y="${-hh}" width="${w}" height="4" fill="#3b2817"/>`; break;
+    case "hearth": s = `<rect x="${-hw}" y="${-hh}" width="${w}" height="${h}" rx="4" fill="#55534e" stroke="#2c2b28" stroke-width="2"/><rect x="${-hw + 6}" y="${-hh + 8}" width="${w - 14}" height="${h - 16}" rx="3" fill="#1a110b"/><g class="sc-fire"><ellipse cx="${-2}" cy="0" rx="${w * .22}" ry="${h * .28}" fill="#e8642c"/><ellipse cx="${-2}" cy="1" rx="${w * .13}" ry="${h * .17}" fill="#ffc35a"/></g>`; break;
+    case "stairs": s = `<rect x="${-hw}" y="${-hh}" width="${w}" height="${h}" fill="#3e2b1b" stroke="#1f150c" stroke-width="2"/>${[...Array(8)].map((_, i) => `<rect x="${-hw + 2}" y="${f1(-hh + 2 + i * (h - 4) / 8)}" width="${w - 4}" height="${f1((h - 4) / 8 - 2)}" fill="hsl(28,30%,${20 + i * 2.6}%)"/>`).join("")}`; break;
+    case "rug": s = `<rect x="${-hw}" y="${-hh}" width="${w}" height="${h}" rx="3" fill="${v > .8 ? "#5b2430" : "#6e2b26"}" opacity=".92"/><rect x="${-hw + 5}" y="${-hh + 5}" width="${w - 10}" height="${h - 10}" fill="none" stroke="#b08f45" stroke-width="2" stroke-dasharray="6 3" opacity=".8"/><rect x="${-hw + 11}" y="${-hh + 11}" width="${Math.max(0, w - 22)}" height="${Math.max(0, h - 22)}" fill="none" stroke="#3a1512" stroke-width="2"/>`; break;
+    case "bed": s = `<rect x="${-hw}" y="${-hh}" width="${w}" height="${h}" rx="3" fill="#4a3220" stroke="#22160c" stroke-width="2"/><rect x="${-hw + 3}" y="${-hh + 3}" width="${w - 6}" height="${h - 6}" rx="2" fill="#cdbf9f"/><rect x="${-hw + 6}" y="${-hh + 6}" width="${w - 12}" height="${h * .2}" rx="5" fill="#ece3cf"/><rect x="${-hw + 3}" y="${-hh + h * .36}" width="${w - 6}" height="${h * .6}" rx="3" fill="#36536b"/><path d="M${-hw + 6} ${-hh + h * .5} H${hw - 6}" stroke="#4a6b86" stroke-width="2"/>`; break;
+    case "bedroll": s = `<rect x="${-hw}" y="${-hh}" width="${w}" height="${h}" rx="${hw}" fill="#6b5a3d" stroke="#2f2618"/><rect x="${-hw + 2}" y="${-hh + h * .3}" width="${w - 4}" height="${h * .66}" rx="${hw - 2}" fill="#4d5b3a"/>`; break;
+    case "chest": s = `<rect x="${-hw}" y="${-hh}" width="${w}" height="${h}" rx="3" fill="#6a4523" stroke="#2a1a0c" stroke-width="2"/><rect x="${-hw}" y="${-hh + h * .38}" width="${w}" height="3" fill="#b08a3c"/><line x1="${-hw + w * .22}" y1="${-hh}" x2="${-hw + w * .22}" y2="${hh}" stroke="#b08a3c" stroke-width="2.5"/><line x1="${hw - w * .22}" y1="${-hh}" x2="${hw - w * .22}" y2="${hh}" stroke="#b08a3c" stroke-width="2.5"/><rect x="-3" y="${-hh + h * .3}" width="6" height="7" rx="1" fill="#e0bf63"/>`; break;
+    case "cabinet": case "bookcase": s = `<rect x="${-hw}" y="${-hh}" width="${w}" height="${h}" fill="#3a271a" stroke="#1d130b" stroke-width="2"/>${[...Array(Math.floor((w - 4) / 6))].map((_, i) => `<rect x="${f1(-hw + 2 + i * 6)}" y="${-hh + 2}" width="5" height="${h - 4}" fill="${["#6b2a2a", "#2a4a6b", "#5a6b2a", "#7a5a2a", "#4a2a5a"][Math.floor(R() * 5)]}" opacity=".85"/>`).join("")}`; break;
+    case "altar": s = `<rect x="${-hw}" y="${-hh}" width="${w}" height="${h}" rx="2" fill="#8e908a" stroke="#4a4c48" stroke-width="2"/><rect x="${-hw * .3}" y="${-hh}" width="${w * .3}" height="${h}" fill="${o.label === "жертвенник" ? "#5a2a24" : "#2f4d72"}"/><rect x="${-hw + 3}" y="${-hh + 3}" width="${w - 6}" height="3" fill="#b5b7b0" opacity=".6"/>${o.label === "жертвенник" ? `<ellipse cx="${hw * .5}" cy="2" rx="6" ry="4" fill="#5a1a14" opacity=".8"/>` : `<circle r="4" cx="${hw * .55}" fill="#d8c27a"/>`}`; break;
+    case "pew": s = `<rect x="${-hw}" y="${-hh}" width="${w}" height="${h}" rx="2" fill="#5a3d26" stroke="#24170d" stroke-width="1.5"/><rect x="${-hw}" y="${hh - 4}" width="${w}" height="4" fill="#3b2817"/>`; break;
+    case "statue": s = `<rect x="${-hw}" y="${-hh}" width="${w}" height="${h}" rx="4" fill="#5d615e" stroke="#33363a"/><ellipse cx="0" cy="3" rx="${hw * .62}" ry="${hh * .5}" fill="#9a9d96"/><circle cx="0" cy="${-hh * .32}" r="${hw * .3}" fill="#b4b6ae"/>${o.label.includes("разбит") ? `<path d="M${-hw * .5} ${-hh * .1} l${hw * .5} ${hh * .3} l${hw * .4} ${-hh * .5}" stroke="#3a3d3a" stroke-width="1.6" fill="none"/>` : ""}`; break;
+    case "font": s = `<circle r="${hw}" fill="#7a7d78" stroke="#3a3c39" stroke-width="2"/><circle r="${hw * .62}" fill="#3d7b8e"/><circle r="${hw * .3}" cx="-3" cy="-3" fill="#8fc8d6" opacity=".5"/>`; break;
+    case "pillar": s = `<circle r="${hw}" fill="#7b7f7b" stroke="#3b3e3c" stroke-width="2"/><circle r="${hw * .62}" fill="none" stroke="#a3a7a1" stroke-opacity=".6"/><circle r="${hw * .3}" cx="${-hw * .25}" cy="${-hw * .25}" fill="#aeb2ab" opacity=".6"/>`; break;
+    case "colfall": s = `<rect x="${-hw}" y="${-hh}" width="${w}" height="${h}" rx="${hh}" fill="#7b7f7b" stroke="#3b3e3c" stroke-width="2"/>${[1, 2, 3].map(i => `<line x1="${f1(-hw + i * w / 4)}" y1="${-hh}" x2="${f1(-hw + i * w / 4)}" y2="${hh}" stroke="#4a4d4a"/>`).join("")}<rect x="${-hw}" y="${-hh}" width="${w}" height="${h * .35}" rx="${hh * .35}" fill="#a3a7a1" opacity=".35"/>`; break;
+    case "candle": s = `<circle r="3.5" fill="#efe4c4"/><circle r="2" cy="-1" fill="#ffd27a" class="sc-flame"/>`; break;
+    case "torch": s = `<circle r="4" fill="#4a3220"/><circle r="3.4" fill="#ff9a3a" class="sc-flame"/>`; break;
+    case "lantern": case "lamppost": s = `<rect x="-5" y="-5" width="10" height="10" rx="2" fill="#2b2a26" stroke="#7a6a3a"/><circle r="3" fill="#ffd27a" class="sc-flame"/>`; break;
+    case "brazier": s = `<circle r="${hw}" fill="#2b2a28" stroke="#6b665c" stroke-width="2"/><g class="sc-fire"><circle r="${hw * .62}" fill="#d8572a"/><circle r="${hw * .34}" fill="#ffc35a"/></g>`; break;
+    case "crate": s = `<rect x="${-hw}" y="${-hh}" width="${w}" height="${h}" fill="#8a6a40" stroke="#3f2d17" stroke-width="2"/><rect x="${-hw + 4}" y="${-hh + 4}" width="${w - 8}" height="${h - 8}" fill="none" stroke="#5a4426" stroke-width="2"/><path d="M${-hw + 4} ${-hh + 4} L${hw - 4} ${hh - 4} M${hw - 4} ${-hh + 4} L${-hw + 4} ${hh - 4}" stroke="#5a4426" stroke-width="2.4"/>${o.label.includes("разбит") ? `<path d="M${-hw} ${hh * .2} l${w * .3} ${-hh * .5} l${w * .2} ${hh * .6}" stroke="#2a1d0f" stroke-width="2.4" fill="none"/>` : ""}`; break;
+    case "sack": s = `<ellipse rx="${hw}" ry="${hh}" fill="#a08a62" stroke="#5a4a30" stroke-width="1.5"/><ellipse rx="${hw * .5}" ry="${hh * .4}" cx="${-hw * .2}" cy="${-hh * .2}" fill="#b49e74" opacity=".7"/><circle cx="${hw * .55}" cy="${-hh * .45}" r="3" fill="#6a5636"/>`; break;
+    case "rock": { const n = 7; const p = [...Array(n)].map((_, i) => { const a = i / n * Math.PI * 2; const rr = .75 + R() * .3; return `${f1(Math.cos(a) * hw * rr)},${f1(Math.sin(a) * hh * rr)}`; }).join(" "); s = `<polygon points="${p}" fill="#6a6b66" stroke="#34352f" stroke-width="2"/><polygon points="${p}" fill="#8f918a" opacity=".55" transform="translate(-2,-2) scale(.6)"/>`; break; }
+    case "stone": s = `<ellipse rx="${hw}" ry="${hh}" fill="#7d807b" stroke="#3a3c38" stroke-width="2"/><ellipse rx="${hw * .55}" ry="${hh * .45}" cx="-2" cy="-2" fill="#a3a69f" opacity=".6"/><path d="M-4 -1 l3 -3 l3 3 M-1 -4 v7" stroke="#4fa3a0" stroke-width="1.2" opacity=".8"/>`; break;
+    case "grave": s = `<rect x="${-hw}" y="${-hh}" width="${w}" height="${h}" rx="${hh}" fill="#6f726d" stroke="#363834"/><rect x="${-hw}" y="${hh}" width="${w}" height="${h * 1.4}" fill="#3a2f22" opacity=".55"/>`; break;
+    case "tree": { const c = SCP.leaf; s = `<ellipse cx="6" cy="9" rx="${hw * .95}" ry="${hh * .85}" fill="#000" opacity=".35"/>${[...Array(6)].map((_, i) => { const a = i / 6 * Math.PI * 2 + R(); const d = hw * .38; return `<circle cx="${f1(Math.cos(a) * d)}" cy="${f1(Math.sin(a) * d)}" r="${f1(hw * (.45 + R() * .15))}" fill="${c[1]}" stroke="${c[0]}" stroke-width="1.5"/>`; }).join("")}<circle r="${f1(hw * .5)}" fill="${c[2]}"/><circle cx="${f1(-hw * .2)}" cy="${f1(-hw * .22)}" r="${f1(hw * .25)}" fill="${c[3]}" opacity=".8"/>`; break; }
+    case "bush": s = `${[...Array(4)].map((_, i) => `<circle cx="${f1((R() - .5) * hw)}" cy="${f1((R() - .5) * hh)}" r="${f1(hw * (.45 + R() * .2))}" fill="${SCP.leaf[1 + (i % 2)]}" stroke="${SCP.leaf[0]}"/>`).join("")}`; break;
+    case "reeds": s = [...Array(6)].map(() => { const x = (R() - .5) * w, y = (R() - .5) * h; return `<path d="M${f1(x)} ${f1(y)} l${f1((R() - .5) * 6)} -10" stroke="#7d8a4a" stroke-width="1.6"/>`; }).join(""); break;
+    case "stump": s = `<circle r="${hw}" fill="#6b4a2e" stroke="#2f1f12" stroke-width="2"/><circle r="${hw * .7}" fill="#b28c5e"/><circle r="${hw * .42}" fill="none" stroke="#8a6a40"/><circle r="${hw * .18}" fill="none" stroke="#8a6a40"/>`; break;
+    case "tent": s = `<rect x="${-hw}" y="${-hh}" width="${w}" height="${h}" rx="3" fill="#9c8a62" stroke="#4a3f2a" stroke-width="2"/><rect x="${-hw}" y="0" width="${w}" height="${hh}" rx="2" fill="#7f6f4c"/><line x1="${-hw}" y1="0" x2="${hw}" y2="0" stroke="#4a3f2a" stroke-width="2.4"/><path d="M${hw} ${-hh * .5} l10 -6 M${hw} ${hh * .5} l10 6 M${-hw} ${-hh * .5} l-10 -6 M${-hw} ${hh * .5} l-10 6" stroke="#c9b98f" opacity=".6"/>`; break;
+    case "campfire": s = `${[...Array(9)].map((_, i) => { const a = i / 9 * Math.PI * 2; return `<circle cx="${f1(Math.cos(a) * hw * .82)}" cy="${f1(Math.sin(a) * hw * .82)}" r="${f1(hw * .2)}" fill="#6d6c66" stroke="#2f2f2b"/>`; }).join("")}<rect x="${-hw * .6}" y="-3" width="${w * .6}" height="6" rx="3" fill="#4a3220" transform="rotate(30)"/><rect x="${-hw * .6}" y="-3" width="${w * .6}" height="6" rx="3" fill="#4a3220" transform="rotate(-35)"/><g class="sc-fire"><circle r="${hw * .45}" fill="#e8642c"/><circle r="${hw * .26}" fill="#ffc35a"/></g>`; break;
+    case "log": s = `<rect x="${-hw}" y="${-hh}" width="${w}" height="${h}" rx="${hh}" fill="#5c4029" stroke="#2b1c10" stroke-width="2"/><ellipse cx="${hw - 4}" cy="0" rx="3" ry="${hh - 2}" fill="#a07c50"/>`; break;
+    case "hay": s = `<rect x="${-hw}" y="${-hh}" width="${w}" height="${h}" rx="${hh * .8}" fill="#c4a352" stroke="#7a6428" stroke-width="2"/>${[...Array(9)].map(() => `<line x1="${f1((R() - .5) * w * .8)}" y1="${f1((R() - .5) * h * .7)}" x2="${f1((R() - .5) * w * .8)}" y2="${f1((R() - .5) * h * .7)}" stroke="#e0c46e" opacity=".7"/>`).join("")}`; break;
+    case "fence": s = `<rect x="-2" y="${-hh}" width="4" height="${h}" fill="#6b4a2e"/>`; break;
+    case "fencep": s = `<rect x="-4" y="-4" width="8" height="8" fill="#4a3220"/>`; break;
+    case "well": s = `<circle r="${hw}" fill="#6d706b" stroke="#33352f" stroke-width="2"/>${[...Array(10)].map((_, i) => { const a = i / 10 * Math.PI * 2; return `<line x1="${f1(Math.cos(a) * hw * .7)}" y1="${f1(Math.sin(a) * hw * .7)}" x2="${f1(Math.cos(a) * hw)}" y2="${f1(Math.sin(a) * hw)}" stroke="#3f423d"/>`; }).join("")}<circle r="${hw * .62}" fill="#122329"/><circle r="${hw * .3}" cx="-3" cy="-3" fill="#2b5563" opacity=".7"/><rect x="${-hw - 4}" y="-3" width="${w + 8}" height="6" fill="#6b4a2e" stroke="#2f1f12"/>`; break;
+    case "cart": s = `<rect x="${-hw - 4}" y="${-hh * .5}" width="5" height="${h * .26}" rx="2" fill="#2b1d12"/><rect x="${hw - 1}" y="${-hh * .5}" width="5" height="${h * .26}" rx="2" fill="#2b1d12"/><rect x="${-hw}" y="${-hh}" width="${w}" height="${h * .78}" rx="2" fill="#7a5434" stroke="#2f1f12" stroke-width="2"/>${[1, 2, 3].map(i => `<line x1="${-hw + 2}" y1="${f1(-hh + i * h * .78 / 4)}" x2="${hw - 2}" y2="${f1(-hh + i * h * .78 / 4)}" stroke="#4a3220"/>`).join("")}<path d="M${-hw * .5} ${hh * .56} L${-hw * .3} ${hh} M${hw * .5} ${hh * .56} L${hw * .3} ${hh}" stroke="#5a3d26" stroke-width="3"/><rect x="${-hw * .6}" y="${-hh * .8}" width="${w * .5}" height="${h * .3}" rx="3" fill="#a08a62" opacity=".9"/>`; break;
+    case "stall": { const col = v > .5 ? "#7a2a2a" : "#2a4a6a"; s = `<rect x="${-hw}" y="${-hh}" width="${w}" height="${h}" fill="#e2d6b8"/>${[...Array(6)].map((_, i) => i % 2 ? "" : `<rect x="${f1(-hw + i * w / 6)}" y="${-hh}" width="${f1(w / 6)}" height="${h}" fill="${col}"/>`).join("")}<rect x="${-hw}" y="${-hh}" width="${w}" height="${h}" fill="none" stroke="#2a2016" stroke-width="2"/><rect x="${-hw}" y="${hh - 4}" width="${w}" height="8" fill="#6b4a2e"/>${[...Array(5)].map((_, i) => `<circle cx="${f1(-hw + 8 + i * (w - 16) / 4)}" cy="${hh + 1}" r="3" fill="${["#c9502a", "#d8b43a", "#6a9a3a"][i % 3]}"/>`).join("")}`; break; }
+    case "roof": { const col = v < .3 ? "#4c3a2a" : v < .6 ? "#6a3328" : "#4a4440"; s = `<rect x="${-hw}" y="${-hh}" width="${w}" height="${h}" fill="${col}" stroke="#1d1510" stroke-width="3"/>${[...Array(Math.floor(h / 9))].map((_, i) => `<line x1="${-hw}" y1="${f1(-hh + i * 9)}" x2="${hw}" y2="${f1(-hh + i * 9)}" stroke="#1d1510" stroke-opacity=".4"/>`).join("")}<line x1="${-hw}" y1="0" x2="${hw}" y2="0" stroke="#2a1d14" stroke-width="5"/><rect x="${-hw}" y="${-hh}" width="${w}" height="${hh}" fill="#fff" opacity=".06"/><rect x="${hw * .45}" y="${-hh * .7}" width="12" height="12" fill="#3a3a38" stroke="#1d1510"/>`; break; }
+    case "boat": s = `<path d="M${-hw} 0 Q${-hw * .4} ${-hh * 1.15} ${hw * .7} ${-hh * .8} L${hw} 0 L${hw * .7} ${hh * .8} Q${-hw * .4} ${hh * 1.15} ${-hw} 0 Z" fill="#6f4c2f" stroke="#2a1b10" stroke-width="2"/><path d="M${-hw * .78} 0 Q${-hw * .3} ${-hh * .78} ${hw * .6} ${-hh * .55} L${hw * .78} 0 L${hw * .6} ${hh * .55} Q${-hw * .3} ${hh * .78} ${-hw * .78} 0 Z" fill="#8b6844"/>${[-.3, .15].map(f => `<rect x="${f1(hw * f - 3)}" y="${f1(-hh * .6)}" width="6" height="${f1(h * .6)}" fill="#5a3d26"/>`).join("")}`; break;
+    case "net": s = `<rect x="${-hw}" y="${-hh}" width="${w}" height="${h}" rx="6" fill="#6b5a3d" opacity=".35"/><g stroke="#b39e72" stroke-width="1" opacity=".75">${[...Array(7)].map((_, i) => `<line x1="${f1(-hw + i * w / 6)}" y1="${-hh}" x2="${f1(-hw + i * w / 6 + 6)}" y2="${hh}"/><line x1="${-hw}" y1="${f1(-hh + i * h / 6)}" x2="${hw}" y2="${f1(-hh + i * h / 6 - 4)}"/>`).join("")}</g><circle cx="${-hw + 4}" cy="${-hh + 4}" r="3.5" fill="#c9502a"/><circle cx="${hw - 4}" cy="${hh - 4}" r="3.5" fill="#c9502a"/>`; break;
+    case "post": s = `<circle r="5" fill="#3b2a1c" stroke="#1a110a"/>`; break;
+    case "hull": s = `<path d="M${-hw} ${hh * .1} Q${-hw * .5} ${-hh * 1.1} ${hw * .5} ${-hh * .9} L${hw} ${-hh * .2} L${hw * .7} ${hh * .5} L${hw * .3} ${hh * .2} L${hw * .1} ${hh * .9} Q${-hw * .6} ${hh * 1.1} ${-hw} ${hh * .1} Z" fill="#4f3420" stroke="#21150b" stroke-width="3"/>${[...Array(7)].map((_, i) => `<path d="M${f1(-hw * .8 + i * w * .23)} ${f1(-hh * .75)} q4 ${hh * .7} 0 ${f1(hh * 1.4)}" stroke="#7a5434" stroke-width="3.5" fill="none"/>`).join("")}<path d="M${-hw * .9} 0 L${hw * .9} ${-hh * .15}" stroke="#2f1f12" stroke-width="5"/><line x1="${-hw * .1}" y1="${-hh * .5}" x2="${hw * .55}" y2="${hh * 1.6}" stroke="#3b2a1c" stroke-width="5"/>`; break;
+    case "plank": s = `<rect x="${-hw}" y="${-hh}" width="${w}" height="${Math.max(5, h)}" fill="#6f4c2f" stroke="#2a1b10"/>`; break;
+    case "kelp": s = `<path d="M${-hw} 0 q${hw * .5} ${-hh * 2} ${hw} 0 t${hw} 0" stroke="#2f4a2a" stroke-width="4" fill="none" opacity=".8"/>`; break;
+    case "rubble": s = [...Array(6)].map(() => { const x = (R() - .5) * w * .8, y = (R() - .5) * h * .8, r = 3 + R() * 6; return `<rect x="${f1(x - r)}" y="${f1(y - r)}" width="${f1(r * 2)}" height="${f1(r * 1.6)}" rx="2" fill="hsl(200,4%,${34 + R() * 14 | 0}%)" stroke="#2a2c2b" transform="rotate(${R() * 60 | 0} ${f1(x)} ${f1(y)})"/>`; }).join(""); break;
+    case "wallseg": s = `<rect x="${-hw}" y="${-hh}" width="${w}" height="${h}" fill="#686c69" stroke="#2f3231" stroke-width="2"/><rect x="${-hw}" y="${-hh}" width="${w}" height="4" fill="#8f938e" opacity=".6"/>`; break;
+    case "citywall": s = `<rect x="${-hw}" y="${-hh}" width="${w}" height="${h}" fill="#5e625f" stroke="#2c2f2d" stroke-width="2"/>${[...Array(Math.floor(w / 16))].map((_, i) => `<rect x="${f1(-hw + i * 16 + 3)}" y="${-hh}" width="9" height="6" fill="#7d817c"/>`).join("")}`; break;
+    case "towerb": s = `<circle r="${hw}" fill="#5e625f" stroke="#2c2f2d" stroke-width="3"/><circle r="${hw * .7}" fill="#454846"/>${[...Array(8)].map((_, i) => { const a = i / 8 * Math.PI * 2; return `<rect x="${f1(Math.cos(a) * hw * .85 - 3)}" y="${f1(Math.sin(a) * hw * .85 - 3)}" width="6" height="6" fill="#7d817c"/>`; }).join("")}`; break;
+    case "step": s = `<rect x="${-hw}" y="${-hh}" width="${w}" height="${h}" fill="hsl(30,6%,${30 + v * 22 | 0}%)" stroke="#2a2b29"/>`; break;
+    case "puddle": s = `<ellipse rx="${hw}" ry="${hh}" fill="#1f3f4a" opacity=".55"/><ellipse rx="${hw * .5}" ry="${hh * .4}" cx="-3" cy="-2" fill="#6aa0b0" opacity=".25"/>`; break;
+    case "beam": s = `<rect x="-6" y="-6" width="12" height="12" fill="#5c4029" stroke="#2b1c10" stroke-width="2"/>`; break;
+    case "minecart": s = `<rect x="${-hw}" y="${-hh}" width="${w}" height="${h}" rx="3" fill="#4a4a46" stroke="#22221f" stroke-width="2"/><rect x="${-hw + 4}" y="${-hh + 4}" width="${w - 8}" height="${h - 8}" fill="#2a2724"/>${[...Array(5)].map(() => `<circle cx="${f1((R() - .5) * (w - 14))}" cy="${f1((R() - .5) * (h - 12))}" r="${f1(3 + R() * 2)}" fill="#6a665e"/>`).join("")}`; break;
+    case "anvil": s = `<path d="M${-hw} ${-hh} H${hw} L${hw * .5} 0 L${hw * .6} ${hh} H${-hw * .6} L${-hw * .5} 0 Z" fill="#3e4143" stroke="#1c1e1f" stroke-width="2"/>`; break;
+    case "cauldron": s = `<circle r="${hw}" fill="#1f1f1e" stroke="#4a4a46" stroke-width="2"/><circle r="${hw * .72}" fill="#4f6b2f"/><circle r="${hw * .25}" cx="-3" cy="-2" fill="#8fb04f" opacity=".7" class="sc-bubble"/>`; break;
+    case "herbs": s = `<line x1="${-hw}" y1="0" x2="${hw}" y2="0" stroke="#4a3220" stroke-width="2"/>${[...Array(6)].map((_, i) => `<path d="M${f1(-hw + 6 + i * (w - 12) / 5)} 0 l-3 6 m3 -6 l3 6" stroke="${["#6a8a3a", "#8a6a3a", "#7a8a5a"][i % 3]}" stroke-width="2"/>`).join("")}`; break;
+    case "bell": s = `<circle r="${hw}" fill="#9a7a3a" stroke="#4a3818" stroke-width="2"/><circle r="${hw * .6}" fill="none" stroke="#d8b860" stroke-width="2"/><circle r="${hw * .2}" fill="#4a3818"/><rect x="${-hw * 1.1}" y="${-hh * 1.1}" width="${w * 1.1}" height="${h * .9}" fill="#a08a62" opacity=".45" transform="rotate(-12)"/>`; break;
+    case "body": s = `<ellipse rx="${hw * 1.1}" ry="${hh * 1.2}" cx="6" fill="#5a1410" opacity=".55"/><ellipse rx="${hw * .6}" ry="${hh * .55}" fill="#3a3530" stroke="#1a1714"/><circle cx="${hw * .62}" r="${hh * .38}" fill="#5a524a" stroke="#1a1714"/><line x1="${-hw * .2}" y1="${-hh * .5}" x2="${-hw * .7}" y2="${-hh * 1.1}" stroke="#3a3530" stroke-width="4"/>`; break;
+    case "item": s = `<circle r="${hw * 1.3}" fill="none" stroke="#f2b45c" stroke-width="1.5" class="sc-pulse"/><rect x="${-hw * .6}" y="${-hh * .45}" width="${w * .6}" height="${h * .8}" rx="2" fill="#d9c9a0" stroke="#6b5a3d" transform="rotate(-10)"/>`; break;
+    case "bldroof": { const b = POIS[o.bld] || {}; const col = { house: "#5a3f2c", poor: "#77653f", rich: "#5c2a26", fisher: "#4c3a2a", farmhouse: "#5a3f2c", shop: "#7a4a24", smithy: "#3e3b38", barn: "#6b2f22", shed: "#4c3a2a", guard: "#4a4f55" }[b.bk] || "#5a3f2c";
+      const thatch = b.bk === "poor"; const horiz = w >= h; const st = S ? bstate(o.bld) : {};
+      s = `<rect x="${-hw}" y="${-hh}" width="${w}" height="${h}" rx="${thatch ? 8 : 1.5}" fill="${col}" stroke="#1d1510" stroke-width="3"/>`;
+      s += horiz ? [...Array(Math.floor(h / 8))].map((_, i) => `<line x1="${-hw + 2}" y1="${f1(-hh + 4 + i * 8)}" x2="${hw - 2}" y2="${f1(-hh + 4 + i * 8)}" stroke="#1d1510" stroke-opacity="${thatch ? .25 : .4}" ${thatch ? 'stroke-dasharray="3 2"' : ""}/>`).join("") + `<line x1="${-hw}" y1="0" x2="${hw}" y2="0" stroke="#2a1d14" stroke-width="5"/><rect x="${-hw}" y="${-hh}" width="${w}" height="${hh}" fill="#fff" opacity=".07"/>`
+        : [...Array(Math.floor(w / 8))].map((_, i) => `<line y1="${-hh + 2}" x1="${f1(-hw + 4 + i * 8)}" y2="${hh - 2}" x2="${f1(-hw + 4 + i * 8)}" stroke="#1d1510" stroke-opacity=".4"/>`).join("") + `<line y1="${-hh}" x1="0" y2="${hh}" x2="0" stroke="#2a1d14" stroke-width="5"/><rect x="${-hw}" y="${-hh}" width="${hw}" height="${h}" fill="#fff" opacity=".07"/>`;
+      if (!["barn", "shed"].includes(b.bk)) { const cx = horiz ? hw * .5 : -hw * .45, cy = horiz ? -hh * .5 : -hh * .5; s += `<rect x="${f1(cx - 5)}" y="${f1(cy - 5)}" width="10" height="10" fill="#3a3a38" stroke="#1d1510"/>`;
+        if (S && bldHome(o.bld).length) s += [0, 1].map(i => `<circle class="sc-smoke" style="animation-delay:-${i * 1.7}s" cx="${f1(cx)}" cy="${f1(cy - 4)}" r="5" fill="#c9c4b8" opacity=".3"/>`).join(""); }
+      const dp = { b: [0, hh], t: [0, -hh], l: [-hw, 0], r: [hw, 0] }[o.d || "b"]; const vert = o.d === "l" || o.d === "r";
+      s += `<rect x="${f1(dp[0] - (vert ? 4 : 10))}" y="${f1(dp[1] - (vert ? 10 : 4))}" width="${vert ? 8 : 20}" height="${vert ? 20 : 8}" fill="${st.broken ? "#24120a" : "#7a5434"}" stroke="#2a1a0e" stroke-width="1.5"/>`;
+      if (st.broken) s += `<path d="M${f1(dp[0] - 8)} ${f1(dp[1] - 3)} l5 4 l4 -5 l5 6" stroke="#a07a4a" stroke-width="2" fill="none"/>`;
+      if (S && st.known === tkey() && bldLocked(o.bld)) s += `<g transform="translate(${f1(dp[0] + (vert ? 0 : 16))},${f1(dp[1] + (vert ? 16 : 0))})"><rect x="-4" y="-2" width="8" height="7" rx="1" fill="#e0bf63" stroke="#5a4320"/><path d="M-2.5 -2 v-2.5 a2.5 2.5 0 0 1 5 0 v2.5" stroke="#e0bf63" stroke-width="1.6" fill="none"/></g>`;
+      if (b.bk === "shop" || b.bk === "smithy") s += `<rect x="${f1(dp[0] + (vert ? -14 : 14))}" y="${f1(dp[1] + (vert ? 12 : -14))}" width="12" height="9" rx="1.5" fill="#c9a45a" stroke="#4a3418"/>`;
+      break; }
+    case "workbench": s = `<rect x="${-hw}" y="${-hh}" width="${w}" height="${h}" rx="2" fill="#7a5434" stroke="#2f1f12" stroke-width="2"/><path d="M${-hw * .7} ${-hh * .3} h${hw * .8} M${-hw * .6} ${hh * .3} l6 -6" stroke="#b9b2a2" stroke-width="2"/><rect x="${hw * .2}" y="${-3}" width="10" height="5" fill="#5a5f63"/><circle cx="${hw * .6}" cy="${hh * .35}" r="2.4" fill="#d9c9a0"/>`; break;
+    case "loom": s = `<rect x="${-hw}" y="${-hh}" width="${w * .6}" height="${h}" fill="none" stroke="#5a3d26" stroke-width="3"/>${[...Array(6)].map((_, i) => `<line x1="${f1(-hw + 3 + i * w * .1)}" y1="${-hh + 2}" x2="${f1(-hw + 3 + i * w * .1)}" y2="${hh - 2}" stroke="#d8cdb0" stroke-width="1"/>`).join("")}<circle cx="${hw * .55}" cy="0" r="${hh * .7}" fill="none" stroke="#5a3d26" stroke-width="2.5"/><circle cx="${hw * .55}" r="2" fill="#5a3d26"/>`; break;
+    case "potwheel": s = `<circle r="${hw}" fill="#5d5650" stroke="#2c2824" stroke-width="2"/><circle r="${hw * .55}" fill="#a0603a"/><circle r="${hw * .3}" fill="#6e3e24"/>`; break;
+    case "pelt": s = `<path d="M${-hw} ${-hh * .3} q${hw * .3} ${-hh * .9} ${hw} ${-hh * .7} q${hw * .7} ${-hh * .2} ${hw} ${hh * .5} q${-hw * .2} ${hh * .8} ${-hw} ${hh * .5} q${-hw * .8} ${hh * .2} ${-hw} ${-hh * .3}z" fill="#6a4a30" stroke="#3a2818" stroke-width="1.5"/><ellipse rx="${hw * .5}" ry="${hh * .4}" fill="#8a6a48" opacity=".6"/>`; break;
+    case "rack": s = `<rect x="${-hw}" y="${-hh}" width="${w}" height="${h}" fill="#3a271a" stroke="#1d130b"/>${[...Array(Math.max(2, Math.floor(w / 12)))].map((_, i) => `<line x1="${f1(-hw + 6 + i * 12)}" y1="${f1(hh + 2)}" x2="${f1(-hw + 10 + i * 12)}" y2="${f1(-hh - 6)}" stroke="#b9bcc0" stroke-width="2"/>`).join("")}`; break;
+    case "animal": { const c = v < .33 ? ["#e8e2d6", "#2a2622"] : v < .66 ? ["#7a4a2a", "#3a2214"] : ["#a8a49a", "#4a4640"]; s = `<ellipse rx="${hw * .8}" ry="${hh * .8}" fill="${c[0]}" stroke="${c[1]}" stroke-width="1.5"/><circle cx="${hw * .88}" r="${hh * .45}" fill="${c[0]}" stroke="${c[1]}" stroke-width="1.5"/>${v < .33 ? `<ellipse cx="${-hw * .2}" cy="${-hh * .2}" rx="${hw * .25}" ry="${hh * .3}" fill="${c[1]}"/>` : ""}<line x1="${-hw * .8}" y1="0" x2="${-hw}" y2="${hh * .3}" stroke="${c[1]}" stroke-width="2"/>`; break; }
+    case "hook": s = `<line x1="0" y1="${-hh}" x2="0" y2="${hh}" stroke="#4a4a46" stroke-width="3"/>${[-.5, .2].map(f => `<ellipse cx="5" cy="${f1(hh * f)}" rx="${hw * .55}" ry="${hh * .22}" fill="#8a3a2e" stroke="#4a1a14"/>`).join("")}`; break;
+    case "oars": s = `<rect x="-6" y="${-hh}" width="3" height="${h}" fill="#8a6a40"/><rect x="2" y="${-hh}" width="3" height="${h}" fill="#8a6a40"/><ellipse cx="-4.5" cy="${hh - 5}" rx="4" ry="7" fill="#7a5a34"/><ellipse cx="3.5" cy="${hh - 5}" rx="4" ry="7" fill="#7a5a34"/>`; break;
+    case "door": s = `<rect x="${-hw}" y="${-hh}" width="${w}" height="${h}" rx="2" fill="#6b5a3d" opacity=".55"/>`; break;
+    default: s = `<rect x="${-hw}" y="${-hh}" width="${w}" height="${h}" rx="3" fill="#6b5a3d"/>`;
+  }
+  const shadow = ["rug", "puddle", "kelp", "step", "reeds", "herbs", "body", "candle", "torch", "post", "fencep", "net"].includes(o.k) ? "" : ` filter="url(#SCP-sh)"`;
+  return `<g transform="translate(${f1(o.x * CS)},${f1(o.y * CS)})${o.r ? ` rotate(${o.r})` : ""}"${shadow}>${s}</g>`;
+}
+function scDefs(P, sc) {
+  return `<defs><filter id="${P}-sh" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="2.5" dy="3.5" stdDeviation="2.2" flood-color="#000" flood-opacity=".55"/></filter>
+  <filter id="${P}-wsh" x="-5%" y="-5%" width="110%" height="110%"><feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000" flood-opacity=".7"/></filter>
+  <radialGradient id="${P}-warm"><stop offset="0" stop-color="#ffc276" stop-opacity=".62"/><stop offset=".45" stop-color="#ff9a4a" stop-opacity=".22"/><stop offset="1" stop-color="#ff8a3a" stop-opacity="0"/></radialGradient>
+  <radialGradient id="${P}-cold"><stop offset="0" stop-color="#9fd8ff" stop-opacity=".4"/><stop offset="1" stop-color="#9fd8ff" stop-opacity="0"/></radialGradient>
+  <radialGradient id="${P}-gold"><stop offset="0" stop-color="#ffd98a" stop-opacity=".7"/><stop offset="1" stop-color="#ffd98a" stop-opacity="0"/></radialGradient>
+  <radialGradient id="${P}-vig" cx=".5" cy=".5" r=".75"><stop offset=".55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".62"/></radialGradient>
+  <linearGradient id="${P}-water" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#173f4d"/><stop offset="1" stop-color="#215867"/></linearGradient>
+  <pattern id="${P}-rock" width="64" height="64" patternUnits="userSpaceOnUse"><rect width="64" height="64" fill="#191815"/><path d="M0 22 L16 12 L34 20 L52 8 L64 14 M4 64 L20 44 L38 52 L56 38 L64 44 M30 0 L26 12 M10 40 L0 34" stroke="#2c2a25" stroke-width="3" fill="none"/><path d="M16 12 L22 30 L34 20 M38 52 L44 34 L56 38" stroke="#24221e" stroke-width="2" fill="none"/><circle cx="46" cy="24" r="6" fill="#22201c"/></pattern>
+  <filter id="${P}-rim" x="-5%" y="-5%" width="110%" height="110%"><feMorphology in="SourceAlpha" operator="dilate" radius="2" result="d"/><feGaussianBlur in="d" stdDeviation="6" result="b"/><feFlood flood-color="#000" flood-opacity=".75"/><feComposite in2="b" operator="in" result="sh"/><feMerge><feMergeNode in="sh"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  <pattern id="${P}-grid" width="${CS}" height="${CS}" patternUnits="userSpaceOnUse"><path d="M${CS} 0 H0 V${CS}" fill="none" stroke="#fff" stroke-opacity=".05"/></pattern></defs>`;
+}
+const SC_DARK = { indoor: [.18, .1, .32, .5], outdoor: [.1, 0, .26, .5] };
+function sceneStaticSVG(sc, P) {
+  const R = mulberry(hash(sc.id + "#draw" + WD.id)); const indoor = sc.rooms.length || sc.round || sc.cave; const t = worldTime().part;
+  const objs = sceneObjects(sc.id); const under = objs.filter(o => o.under), over = objs.filter(o => !o.under && !o.hidden);
+  const lit = [...sc.lights, ...objs.filter(o => o.k === "item" && o.id[0] === "a").map(o => ({ x: o.x, y: o.y, r: 36, c: "gold" })), ...objs.filter(o => o.k === "bldroof" && S && bldLit(o.bld)).map(o => ({ x: o.x + ({ l: -1, r: 1 }[o.d] || 0) * o.w / 2, y: o.y + ({ b: 1, t: -1 }[o.d] || 0) * o.h / 2, r: 85, c: "warm" }))];
+  const dark = Math.min(.8, (indoor ? SC_DARK.indoor : SC_DARK.outdoor)[t] + (sc.dark || 0)); const tint = !indoor && t === 2 ? "#2a1405" : !indoor && t === 3 ? "#04102a" : "#05080a";
+  const shafts = !indoor || t === 3 ? "" : sc.rooms.flatMap(r => r.windows.map(w => { const c = w.c || "#fff8e0"; if (w.s === "t") return `<polygon points="${w.p * CS - 16},${r.y0 * CS} ${w.p * CS + 16},${r.y0 * CS} ${w.p * CS + 40},${r.y0 * CS + 110} ${w.p * CS - 4},${r.y0 * CS + 110}" fill="${c}" opacity="${t === 2 ? .05 : .09}"/>`;
+    const xx = (w.s === "l" ? r.x0 : r.x1) * CS, d = w.s === "l" ? 1 : -1; return `<polygon points="${xx},${w.p * CS - 16} ${xx},${w.p * CS + 16} ${xx + d * 120},${w.p * CS + 38} ${xx + d * 120},${w.p * CS + 4}" fill="${c}" opacity="${t === 2 ? .06 : .11}"/>`; })).join("");
+  return `${scDefs(P, sc)}${scFloorSVG(sc, P, R)}<rect width="${SC_W * CS}" height="${SC_H * CS}" fill="url(#${P}-grid)"/>${under.map(o => scObjSVG(o, R)).join("")}${scRoomSVG(sc)}${over.map(o => scObjSVG(o, R)).join("")}
+  <rect width="${SC_W * CS}" height="${SC_H * CS}" fill="${tint}" opacity="${dark}"/>${shafts}<g style="mix-blend-mode:screen">${lit.map(l => `<circle class="sc-light" style="animation-delay:-${(R() * 3).toFixed(2)}s" cx="${f1(l.x * CS)}" cy="${f1(l.y * CS)}" r="${l.r * (t === 3 || indoor ? 1 : .7)}" fill="url(#${P}-${l.c})"/>`).join("")}</g>
+  <rect width="${SC_W * CS}" height="${SC_H * CS}" fill="url(#${P}-vig)"/>`.replace(/url\(#SCP-/g, `url(#${P}-`).replace(/#SCP-/g, `#${P}-`);
+}
+const FOE_GLYPH = { zombie: "skull", skeleton: "skull", wolf: "beast", giant_rat: "beast", giant_spider: "beast" };
+function scTokenSVG(p, P, big) {
+  const x = f1(p.x * CS), y = f1(p.y * CS); let r = 13, ring = "#9fb0ad", fill = "#18262b", inner = "", label = "", hit = "", title = "";
+  if (p.type === "hero") { const c = C(); r = 14; ring = "#f2b45c"; label = c.name; hit = "hero"; title = c.name + " (вы)"; inner = c.img ? `<image href="${esc(c.img)}" x="-12" y="-12" width="24" height="24" preserveAspectRatio="xMidYMin slice" clip-path="url(#${P}-tc)"/>` : `<text y="5" text-anchor="middle" font-size="14" font-weight="700" fill="#f2b45c" font-family="Cormorant, Georgia, serif">${esc(c.name[0] || "?")}</text>`; }
+  else if (p.type === "npc") { const n = NPCS[p.id]; const att = S.world.npcs[p.id]?.att || 0; ring = att >= 8 ? "#7cc79c" : att <= -8 ? "#e8735a" : "#72aed0"; const img = npcImg(p.id); label = n.name; hit = "npc:" + p.id; title = `${n.name}, ${n.role}`;
+    inner = img ? `<image href="${esc(img)}" x="-11.5" y="-11.5" width="23" height="23" preserveAspectRatio="xMidYMin slice" clip-path="url(#${P}-tc)"/>` : `<text y="5" text-anchor="middle" font-size="13" font-weight="700" fill="#e9eee9" font-family="Cormorant, Georgia, serif">${esc(n.name[0])}</text>`;
+    if (p.asleep) { inner += `<circle r="12" fill="#06101f" opacity=".45"/><text x="10" y="-9" font-size="10" font-weight="700" fill="#9fd8ff">z</text>`; title += " (спит)"; } }
+  else if (p.type === "crowd") { r = 10; ring = "#7d8a87"; fill = "#2a3337"; hit = "crowd:" + p.label; title = p.label; label = big ? p.label : ""; inner = `<circle cy="-3" r="3.6" fill="#b9c3c0" opacity=".75"/><path d="M-6.5 6.5 q6.5 -9 13 0" fill="#b9c3c0" opacity=".75"/>`; }
+  else if (p.type === "foe") { const E = ENEMIES[p.id]; const es = S.world.enemies[p.id]; r = E.boss ? 15 : 13; ring = "#e8735a"; fill = "#2a1210"; hit = "foe:" + p.id; label = E.name; title = `${E.name} — ${enemyStatus(p.id)}`; const g = FOE_GLYPH[E.type] || "blade";
+    inner = (g === "skull" ? `<circle cy="-1.5" r="6.5" fill="#d8cfc0"/><rect x="-3.5" y="3" width="7" height="4" fill="#d8cfc0"/><circle cx="-2.4" cy="-1.6" r="1.7" fill="#2a1210"/><circle cx="2.4" cy="-1.6" r="1.7" fill="#2a1210"/>` : g === "beast" ? `<path d="M-7 5 L-5 -6 L-1 -1 L1 -1 L5 -6 L7 5 Z" fill="#d8cfc0"/><circle cx="-2.5" cy="1" r="1.3" fill="#e8735a"/><circle cx="2.5" cy="1" r="1.3" fill="#e8735a"/>` : `<path d="M-6 6 L5 -5 M2 -6 L6 -6 L6 -2" stroke="#d8cfc0" stroke-width="2.4" fill="none"/><path d="M-4 2 L-2 4" stroke="#d8cfc0" stroke-width="3"/>`) + (es.asleep ? `<text x="9" y="-8" font-size="9" fill="#9fd8ff">z</text>` : "");
+    const pct = es.hp / E.hp; inner += `<rect x="-12" y="${r + 3}" width="24" height="3.5" rx="1.5" fill="#000" opacity=".6"/><rect x="-12" y="${r + 3}" width="${f1(24 * pct)}" height="3.5" rx="1.5" fill="${pct > .5 ? "#e8735a" : "#c9402a"}"/>`; }
+  else if (p.type === "corpse") { const E = ENEMIES[p.id]; return `<g data-k="corpse:${p.id}" data-sig="c" style="transform:translate(${x}px,${y}px)" opacity=".85"><title>${esc(E.name)} (повержен)</title><ellipse rx="15" ry="10" fill="#4a0f0b" opacity=".55"/><path d="M-7 -7 L7 7 M7 -7 L-7 7" stroke="#8a2a20" stroke-width="3.4" stroke-linecap="round"/></g>`; }
+  const lab = label && (big || p.type === "hero") ? `<text class="sc-lab" y="${r + (p.type === "foe" ? 17 : 13)}" text-anchor="middle">${esc(label)}</text>` : "";
+  const tk = p.type + ":" + (p.type === "crowd" ? p.id + p.label : p.id || ""); const body = `${inner}${lab}${ring}${r}${fill}${title}`;
+  return `<g class="sc-tok ${p.type}" data-k="${esc(tk)}" data-sig="${hash(body)}" data-hit="${esc(hit)}" style="transform:translate(${x}px,${y}px)" tabindex="0" role="button" aria-label="${esc(title)}"><title>${esc(title)}</title><circle r="${r + 1}" cy="3" fill="#000" opacity=".5"/>${p.type === "hero" ? `<circle r="${r + 5}" fill="none" stroke="#f2b45c" stroke-opacity=".5" class="sc-pulse"/>` : ""}<circle r="${r}" fill="${fill}" stroke="${ring}" stroke-width="2.6"/>${inner}${lab}</g>`;
+}
+/* BLD */
+/* =========================================================================
+   ЗДАНИЯ: случайные дома, лавки и постройки с жильцами
+   Здание — внутренняя локация (inner) при уличной сцене; на карте мира не отмечается.
+   ========================================================================= */
+const BLD_VER = 1;
+const BLD_SLOTS = {
+  street: [{ x: 2.7, y: 2.3, w: 4, h: 3.2, d: "b" }, { x: 7.6, y: 2.1, w: 3.6, h: 2.8, d: "b" }, { x: 12.2, y: 2.4, w: 4.2, h: 3.4, d: "b" }, { x: 16.4, y: 2.2, w: 2.9, h: 2.8, d: "b" },
+    { x: 3.3, y: 9.8, w: 4.4, h: 3, d: "t" }, { x: 9.1, y: 10, w: 3.6, h: 2.8, d: "t" }, { x: 14.9, y: 9.7, w: 4.2, h: 3.2, d: "t" }],
+  square: [{ x: 3.2, y: 1.6, w: 5.4, h: 3.2, d: "b" }, { x: 9.4, y: 1.4, w: 5, h: 2.8, d: "b" }, { x: 15.4, y: 1.8, w: 5.2, h: 3.6, d: "b" }],
+  pier: [{ x: 15.2, y: 3.4, w: 4.6, h: 3.4, d: "l" }, { x: 16, y: 10.2, w: 3.6, h: 2.8, d: "t" }],
+  farm: [{ x: 14, y: 2.6, w: 6.2, h: 4.2, d: "b" }, { x: 16.1, y: 6.9, w: 3.4, h: 2.6, d: "l" }],
+  gate: [{ x: 15.2, y: 5.4, w: 3.8, h: 2.6, d: "l" }]
+};
+const BLD_TPL = { house: "b_house", poor: "b_poor", rich: "b_rich", farmhouse: "b_house", fisher: "b_house", shop: "b_shop", smithy: "b_smithy", barn: "b_barn", shed: "b_shed", guard: "b_guard" };
+const BLD_SLEEPS = new Set(["house", "poor", "rich", "farmhouse", "fisher", "guard"]);
+const NAMES_N = { m: ["Йорн", "Ульф", "Матс", "Гуннар", "Эрик", "Торвальд", "Бьярн", "Свен", "Олаф", "Хакон", "Ивар", "Рольф", "Кнуд", "Ларс", "Нильс", "Пер", "Агнар", "Эйвинд", "Харальд", "Стейн", "Арне", "Тойво"],
+  f: ["Ингрид", "Сигрид", "Астрид", "Хельга", "Грета", "Ильза", "Марит", "Тора", "Сольвейг", "Рагна", "Лив", "Бирта", "Ханна", "Кая", "Гудрун", "Эбба", "Ауд", "Фрея"] };
+const NAMES_S = { m: ["Ждан", "Мирон", "Горислав", "Велимир", "Остап", "Тихон", "Савва", "Прохор", "Ерёма", "Фрол", "Демьян", "Лука", "Игнат", "Матвей", "Гордей", "Яков", "Елисей", "Пантелей"],
+  f: ["Ведана", "Злата", "Любава", "Мила", "Дарина", "Агафья", "Марфа", "Устинья", "Пелагея", "Олеся", "Василиса", "Арина", "Фёкла", "Ульяна", "Глафира", "Дуняша"] };
+// роль, род. падеж, пол, предмет в доме, где встречается
+const OWNER_ROLES = [["плотник", "плотника", "m", "workbench"], ["бондарь", "бондаря", "m", "workbench"], ["ткачиха", "ткачихи", "f", "loom"], ["вдова", "вдовы", "f", "loom", "", 1], ["гончар", "гончара", "m", "potwheel"],
+  ["пастух", "пастуха", "m", "pelt", "", 1], ["травница", "травницы", "f", "herbs"], ["охотник", "охотника", "m", "pelt"], ["лодочник", "лодочника", "m", "net", "coast"], ["рыбак", "рыбака", "m", "net", "coast"],
+  ["сапожник", "сапожника", "m", "workbench"], ["прачка", "прачки", "f", "barrel", "", 1], ["углежог", "углежога", "m", "sack", "forest,marsh,mountains", 1], ["знахарка", "знахарки", "f", "herbs", "", 1],
+  ["старый солдат", "старого солдата", "m", "rack", "", 1], ["кожевник", "кожевника", "m", "workbench"], ["резчик по кости", "резчика по кости", "m", "workbench", "coast,mountains"], ["торфяник", "торфяника", "m", "sack", "marsh", 1],
+  ["рудокоп", "рудокопа", "m", "sack", "mountains"], ["бортник", "бортника", "m", "crate", "forest"]];
+const SHOPS = [{ name: "Пекарня", role: ["пекарь", "пекаря", "m"], shelf: "полки с хлебом", prop: "oven" }, { name: "Лавка старьёвщика", role: ["старьёвщик", "старьёвщика", "m"], shelf: "полки с хламом", prop: "junk" },
+  { name: "Аптекарская лавка", role: ["аптекарь", "аптекаря", "m"], shelf: "полки со склянками", prop: "herbs" }, { name: "Лавка мясника", role: ["мясник", "мясника", "m"], shelf: "полки с колбасами", prop: "hook" },
+  { name: "Лавка всякой всячины", role: ["лавочница", "лавочницы", "f"], shelf: "полки с товаром", prop: "goods" }, { name: "Свечная лавка", role: ["свечник", "свечника", "m"], shelf: "полки со свечами", prop: "candles" }];
+const PERSONAS = ["Подозрительно смотрит на чужаков, но любит поговорить о погоде и ценах.", "Добродушный, но вечно в долгах; за пару монет расскажет лишнее.", "Ворчливый, держит язык за зубами, уважает только прямоту.",
+  "Любопытный, суёт нос в чужие дела и знает все сплетни улицы.", "Набожный и пугливый, во всём видит дурные знаки.", "Жадный до денег, торгуется по любому поводу.", "Устал от жизни, говорит мало и коротко.",
+  "Весёлый, любит выпить и прихвастнуть.", "Гордый и обидчивый, не терпит, когда его перебивают.", "Заботливый, первым делом предложит поесть.", "Хитрый, отвечает вопросом на вопрос.", "Нервный, вздрагивает от каждого стука."];
+const SECRETS = ["Задолжал старосте и боится, что отнимут дом.", "Прячет под половицей скромные сбережения.", "Тайно встречается с кем-то из соседей.", "Видел ночью странные огни у воды, но никому не сказал.",
+  "Приторговывает краденым по мелочи.", "Боится, что сын связался с дурной компанией.", "Слышал, что в округе недавно кто-то пропал.", "Ничего особенного не скрывает, но не любит, когда в доме шарят.",
+  "Держит в сундуке старое письмо, которое никому не показывает.", "Знает обходную тропу, о которой не говорят чужакам.", "Однажды нашёл на берегу вещь с чужого корабля и оставил себе.", "Подслушал, как кто-то торговался в темноте о «грузе»."];
+const LOOK_M = ["с обветренным лицом", "с проседью в бороде", "в заплатанной рубахе", "с мозолистыми руками", "с цепким взглядом", "с усталыми глазами", "с рябым лицом", "с шрамом на подбородке", "с густыми бровями", "в потёртом кожаном фартуке"];
+const LOOK_F = ["в выцветшем платке", "с натруженными руками", "с тугой косой", "с цепким взглядом", "с усталыми глазами", "в переднике с заплатами", "с румяными щеками", "с серебряной серьгой", "с острым языком и острым носом", "в тёмной шерстяной шали"];
+const BLD_DESC = {
+  house: n => `Тесный жилой дом ${n}: очаг, стол, лавки, запах дыма и похлёбки.`, poor: n => `Бедная лачуга ${n}: земляной пол, тлеющий очаг, сквозняк из щелей.`, rich: () => "Просторный дом зажиточной семьи: ковры, сундуки, свечи в медных подсвечниках.",
+  farmhouse: () => "Добротный дом хуторян: пахнет хлебом, сеном и овчиной.", fisher: () => "Дом рыбака: сети на стенах, запах соли и смолы, у порога вёсла.", shop: n => `${n}: прилавок, полки, хозяин зорко следит за товаром.`,
+  smithy: () => "Кузница: жар горна, звон металла, пахнет углём и окалиной.", barn: () => "Амбар: сено, скотина в стойлах, под крышей сеновал.", shed: () => "Сарай: снасти, ящики, бочки и старый хлам.", guard: () => "Караульня: стол с кружками и костями, нары, стойка с оружием."
+};
+function tplOfPlace(p) {
+  if (!p) return "square"; if (p.btpl) return p.btpl; if (p.kind === "street") return "street";
+  const s = `${p.name || ""} ${p.short || ""}`; for (const [re, k] of SC_KW) if (re.test(p.name || "")) return k;
+  if (SC_BY_KIND[p.kind]) return SC_BY_KIND[p.kind]; for (const [re, k] of SC_KW) if (re.test(s)) return k; return "square";
+}
+const isOuter = p => p && !p.inner;
+function outerEntries() { return Object.entries(POIS).filter(([, p]) => !p.inner); }
+function hereOuter() { const p = POIS[S.world.loc]; return p?.inner ? p.parent : S.world.loc; }
+function ensureBuildings(wd) {
+  if (!wd || !wd.places || wd.bver === BLD_VER) return; wd.bver = BLD_VER; const R = mulberry(hash(wd.id + "#bld"));
+  const outer = () => Object.entries(wd.places).filter(([, p]) => !p.inner);
+  const settled = outer().filter(([, p]) => ["inn", "house", "chapel", "well", "pier", "farm", "gate"].includes(p.kind) || ["square", "pier", "farm", "gate", "inn"].includes(tplOfPlace(p)));
+  if (settled.length && !outer().some(([, p]) => tplOfPlace(p) === "street")) addStreet(wd, settled.map(([, p]) => p), R);
+  if (settled.length && wd.settle === "town" && !outer().some(([, p]) => tplOfPlace(p) === "square")) addStreet(wd, settled.map(([, p]) => p), R, { id: "market", name: "Рыночная площадь", kind: "well", short: "Лавки, торговцы и сплетни", desc: "Мощёная площадь с колодцем посередине. Торговцы перекрикивают друг друга, стража лениво поглядывает по сторонам." });
+  if (settled.length && wd.settle === "fort" && !outer().some(([, p]) => tplOfPlace(p) === "gate")) addStreet(wd, settled.map(([, p]) => p), R, { id: "fort_gate", name: "Крепостные ворота", kind: "gate", short: "Стража, стены и досмотр", desc: "Тяжёлые ворота в каменной стене. Стража досматривает телеги и запоминает чужие лица." });
+  const used = new Set(Object.values(wd.npcs).map(n => n.name));
+  for (const [id, p] of outer()) { const t = tplOfPlace(p); if (BLD_SLOTS[t] && !p.blds) genBuildingsFor(wd, id, p, t, R, used); }
+  try { mapCache.clear(); } catch (e) {}
+}
+function addStreet(wd, settled, R, spec) {
+  const cx = settled.reduce((a, p) => a + p.x, 0) / settled.length, cy = settled.reduce((a, p) => a + p.y, 0) / settled.length;
+  const tile = (x, y) => (wd.tiles[y] || "")[x] || "S"; const pass = (x, y) => { const t = tile(x, y); return t !== "S" && t !== "W"; };
+  const all = Object.values(wd.places); let best = null;
+  for (let y = 1; y < MAP_H - 1; y++) for (let x = 1; x < MAP_W - 1; x++) { if (!pass(x, y)) continue; const md = Math.min(...all.map(p => Math.hypot(p.x - x, p.y - y))); if (md < 2.6) continue;
+    const sc = Math.hypot(x - cx, y - cy) + (md > 3.5 ? 2 : 0) + R() * .3; if (!best || sc < best.s) best = { x, y, s: sc }; }
+  if (!best) return;
+  const id = spec?.id || "street"; const bio = wd.biome || "coast";
+  const desc = { coast: "Кривая улочка из почерневших от соли домов. Из труб тянется дым, за заборами сушатся сети.", marsh: "Дома на сваях вдоль раскисшей улицы, мостки через лужи, пахнет торфом и дымом.",
+    mountains: "Каменные дома лепятся к склону, по мостовой гуляет холодный ветер.", forest: "Бревенчатые избы вдоль утоптанной улицы, за плетнями огороды, над крышами шумит лес." }[bio] || "Улица с жилыми домами, лавками и дворами.";
+  wd.places[id] = spec ? { name: spec.name, kind: spec.kind, x: best.x, y: best.y, short: spec.short, desc: spec.desc, npcs: [], enemies: [], clue: "" } : { name: wd.settle === "town" ? "Ремесленная улица" : wd.settle === "fort" ? "Улица за стенами" : "Деревенская улица", kind: "street", x: best.x, y: best.y, short: "Жилые дома, лавки и дворы местных", desc, npcs: [], enemies: [], clue: "" };
+  const roads = new Set(wd.roads || []); const key = (x, y) => x + "," + y; const q = [[best.x, best.y]]; const prev = new Map([[key(best.x, best.y), null]]); let hit = null;
+  while (q.length) { const [x, y] = q.shift(); if ((roads.has(key(x, y)) || all.some(p => p.x === x && p.y === y)) && !(x === best.x && y === best.y)) { hit = key(x, y); break; }
+    for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + a, ny = y + b, k = key(nx, ny); if (prev.has(k) || !pass(nx, ny)) continue; prev.set(k, key(x, y)); q.push([nx, ny]); } }
+  for (let k = hit; k; k = prev.get(k)) roads.add(k); wd.roads = [...roads];
+  wd.houses = wd.houses || []; [[1, 0], [-1, 1], [0, -1], [1, 1], [-1, -1]].forEach(([a, b]) => { const x = best.x + a, y = best.y + b; if (pass(x, y) && !roads.has(key(x, y)) && !all.some(p => p.x === x && p.y === y) && !wd.houses.some(h => h[0] === x && h[1] === y)) wd.houses.push([x, y]); });
+}
+function bldPick(R, arr) { return arr[Math.floor(R() * arr.length)]; }
+function makeOcc(wd, bid, spec, R, used) {
+  const names = nameSet(wd); let name = ""; for (let t = 0; t < 30; t++) { name = bldPick(R, names[spec.g]); if (!used.has(name)) break; } used.add(name);
+  const id = `${bid}_${spec.i}`; const h = hash(wd.id + id); const age = spec.age || "adult";
+  const noun = spec.g === "f" ? (age === "young" ? "девушка" : age === "old" ? "пожилая женщина" : "женщина") : (age === "young" ? "парень" : age === "old" ? "старик" : "мужчина");
+  wd.npcs[id] = { name, role: spec.role, look: `${noun} ${bldPick(R, spec.g === "f" ? LOOK_F : LOOK_M)}`, persona: bldPick(R, PERSONAS), secret: bldPick(R, SECRETS), greet: "", minor: true, gender: spec.g, age,
+    feature: FEATURES[h % FEATURES.length], hair: age === "old" ? (R() < .5 ? "grey" : "white") : Object.keys(HAIRS)[(h >>> 4) % 4], photo_prompt: "", bld: bid, away: spec.away || [] };
+  return id;
+}
+function genBuildingsFor(wd, pid, p, t, R, used) {
+  const slots = BLD_SLOTS[t]; let kinds;
+  if (t === "street") { kinds = ["shop"]; if (R() < .75) kinds.push("smithy"); kinds.push(R() < .5 ? "barn" : "shed"); if (R() < .5) kinds.push("rich"); const want = wd.settle === "town" ? 7 : wd.settle === "fort" ? 5 : 5 + (R() < .5 ? 1 : 0); if (wd.settle === "fort") kinds.push("guard"); while (kinds.length < want) kinds.push(R() < .3 ? "poor" : "house"); }
+  else if (t === "square") kinds = ["house", "shop", R() < .5 ? "rich" : "house"]; else if (t === "pier") kinds = ["shed", "fisher"]; else if (t === "farm") kinds = ["barn", "farmhouse"]; else kinds = ["guard"];
+  const order = slots.map((_, i) => i); if (t === "street") for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
+  const bio = wd.biome || "coast"; const usedRoles = new Set(); p.blds = [];
+  kinds.slice(0, slots.length).forEach((bk, i) => {
+    const bid = `${pid}__b${i}`; const occ = []; let name = "", prop = "", shop = null; const add = s => occ.push(makeOcc(wd, bid, { ...s, i: occ.length }, R, used));
+    const family = (gen, g, extra) => { if (extra > 0 && g === "m") add({ role: `жена ${gen}`, g: "f" }); else if (extra > 0) add({ role: R() < .5 ? `сын ${gen}` : `дочь ${gen}`, g: R() < .5 ? "m" : "f", age: "young", away: R() < .4 ? [1] : [] });
+      if (extra > 1) { const s = R() < .5; add(R() < .6 ? { role: s ? `сын ${gen}` : `дочь ${gen}`, g: s ? "m" : "f", age: "young", away: R() < .4 ? [1] : [] } : { role: s ? `отец ${gen}` : `мать ${gen}`, g: s ? "m" : "f", age: "old" }); } };
+    if (bk === "house" || bk === "poor" || bk === "fisher") {
+      let pool = OWNER_ROLES.filter(r => (!r[4] || r[4].split(",").includes(bio)) && !usedRoles.has(r[0]) && (bk !== "poor" || r[5])); if (bk === "fisher") pool = OWNER_ROLES.filter(r => r[0] === "рыбак");
+      const r = bldPick(R, pool.length ? pool : OWNER_ROLES); usedRoles.add(r[0]); prop = r[3];
+      const worker = ["рыбак", "лодочник", "пастух", "охотник", "углежог", "рудокоп", "торфяник", "бортник"].includes(r[0]);
+      add({ role: r[0], g: r[2], away: worker ? (R() < .7 ? [0, 1] : [1]) : (R() < .3 ? [1] : []) }); family(r[1], r[2], bk === "poor" ? (R() < .4 ? 1 : 0) : Math.floor(R() * 3));
+      name = `${bk === "poor" ? "Лачуга" : "Дом"} ${r[1]}`;
+    } else if (bk === "rich") { name = "Дом купца"; add({ role: "зажиточный купец", g: "m" }); add({ role: "служанка купца", g: "f", age: "young" }); if (R() < .6) add({ role: "жена купца", g: "f" }); prop = "rich"; }
+    else if (bk === "farmhouse") { name = "Дом хуторянина"; add({ role: "хуторянин", g: "m", away: [1] }); family("хуторянина", "m", 1 + Math.floor(R() * 2)); prop = "pelt"; }
+    else if (bk === "shop") { shop = bldPick(R, SHOPS); name = shop.name; add({ role: shop.role[0], g: shop.role[2], away: R() < .6 ? [3] : [] }); if (R() < .5) add({ role: shop.role[2] === "f" ? `помощница ${shop.role[1]}` : `подмастерье ${shop.role[1]}`, g: R() < .5 ? "m" : "f", age: "young", away: [3] }); prop = shop.prop; }
+    else if (bk === "smithy") { name = "Кузница"; add({ role: "кузнец", g: "m", away: [3] }); if (R() < .7) add({ role: "подмастерье кузнеца", g: "m", age: "young", away: [3] }); }
+    else if (bk === "barn") { name = "Амбар"; if (R() < .6) add({ role: "батрак", g: "m", age: R() < .5 ? "young" : "adult", away: [2, 3] }); }
+    else if (bk === "shed") { name = t === "pier" ? "Сарай для снастей" : "Сарай"; }
+    else if (bk === "guard") { name = "Караульня"; add({ role: "сержант стражи", g: "m" }); add({ role: "стражник", g: "m", age: "young", away: [0] }); }
+    const lock = bk === "rich" ? 15 : bk === "poor" ? 10 : bk === "guard" ? 14 : 12 + Math.floor(R() * 2);
+    wd.places[bid] = { name, short: shop ? `${shop.role[0][0].toUpperCase() + shop.role[0].slice(1)} и товар` : BLD_DESC[bk]("").split(":")[0], desc: (BLD_DESC[bk] || BLD_DESC.house)(name.toLowerCase().replace(/^дом |^лачуга /, "")),
+      kind: "house", inner: true, parent: pid, slot: order[i], bk, btpl: BLD_TPL[bk], x: p.x, y: p.y, npcs: [], extra: [], occ, enemies: [], lock, prop, shelf: shop?.shelf || "" };
+    p.blds.push(bid);
+  });
+}
+/* ---------- состояние зданий во время игры ---------- */
+function bstate(bid) { S.bst = S.bst || {}; return S.bst[bid] || (S.bst[bid] = {}); }
+function tkey() { const t = worldTime(); return t.day * 4 + t.part; }
+function bldHome(bid) { const b = POIS[bid]; return (b?.occ || []).filter(n => NPCS[n] && npcSpotNow(n) === bid); }
+function bldAsleep(bid) { const b = POIS[bid]; return !!b && worldTime().part === 3 && BLD_SLEEPS.has(b.bk) && bstate(bid).alarm !== tkey(); }
+function bldLocked(bid) {
+  const b = POIS[bid], st = bstate(bid), k = tkey(); if (!b || st.broken) return false; if (st.unlocked === k || st.open === k) return false;
+  const part = worldTime().part; const h = hash(bid + ":" + worldTime().day);
+  if (b.bk === "shop" || b.bk === "smithy") return part === 3; if (b.bk === "guard") return false; if (b.bk === "barn" || b.bk === "shed") return h % 4 === 0;
+  return part === 3 || !bldHome(bid).length || h % 3 === 0;
+}
+function bldLit(bid) { return worldTime().part >= 2 && bldHome(bid).length > 0 && !bldAsleep(bid); }
+function refreshBuildings() { refreshPeople(); }
+function bldStatus(bid) {
+  const b = POIS[bid], st = bstate(bid); const met = (b.occ || []).filter(id => S.world.met?.includes(id)).map(id => NPCS[id].name); const bits = [];
+  bits.push(met.length ? "Живут: " + met.join(", ") : (b.occ || []).length ? "Жильцы вам незнакомы" : "Похоже, здесь никто не живёт");
+  if (st.broken) bits.push("дверь выбита"); else if ((b.bk === "shop" || b.bk === "smithy") && !bldLocked(bid)) bits.push("открыто для посетителей"); else if (st.known === tkey()) bits.push(bldLocked(bid) ? "заперто" : "не заперто");
+  bits.push(bldLit(bid) ? "в окнах свет" : worldTime().part >= 2 ? "окна тёмные" : ""); return bits.filter(Boolean).join(" · ");
+}
+function doorPt(s) { return s.d === "b" ? { x: s.x, y: s.y + s.h / 2 + .6 } : s.d === "t" ? { x: s.x, y: s.y - s.h / 2 - .6 } : s.d === "l" ? { x: s.x - s.w / 2 - .6, y: s.y } : { x: s.x + s.w / 2 + .6, y: s.y }; }
+function bldSlot(bid) { const b = POIS[bid]; return BLD_SLOTS[tplOfPlace(POIS[b.parent])]?.[b.slot]; }
+function scBlds(sc) {
+  const p = POIS[sc.id]; const slots = BLD_SLOTS[sc.tpl]; const free = new Set(slots.map((_, i) => i));
+  (p?.blds || []).forEach(bid => { const b = POIS[bid]; const s = b && slots[b.slot]; if (!s) return; free.delete(b.slot);
+    scAdd(sc, "bldroof", s.x, s.y, s.w, s.h, { label: b.name, acc: b.name, act: true, bld: bid, d: s.d, v: (hash(bid) % 100) / 100 }); const dp = doorPt(s); sc.doors[bid] = dp; });
+  return [...free].map(i => slots[i]);
+}
+const BLD_ACTS = { knock: "Стучу в дверь", listen: "Подслушиваю у двери", peek: "Заглядываю в окно", pick: "Пытаюсь вскрыть замок", force: "Выбиваю дверь" };
+function bldAction(bid, act) {
+  if (busy || S.dead || !POIS[bid]) return; const b = POIS[bid]; const st = bstate(bid); const part = worldTime().part;
+  const s = bldSlot(bid); if (s) { const dp = doorPt(s); scState(b.parent).player = { x: +dp.x.toFixed(2), y: +dp.y.toFixed(2) }; }
+  S.pendingBld = { bid, act }; st.known = tkey();
+  const checks = { knock: [], listen: [{ kind: "skill", skill: "perception", dc: 12, reason: "Расслышать, что за дверью" }], peek: [{ kind: "skill", skill: "stealth", dc: part >= 2 ? 11 : 13, reason: "Заглянуть в окно незаметно" }],
+    pick: [{ kind: "skill", skill: "sleight", dc: b.lock, adv: C().cls === "rogue" || hasTag("lockpick") ? 1 : 0, reason: hasTag("lockpick") ? "Вскрыть замок отмычками" : "Вскрыть замок" }], force: [{ kind: "skill", skill: "athletics", dc: b.lock + 1, adv: hasTag("crowbar") ? 1 : 0, reason: hasTag("crowbar") ? "Выломать дверь ломом" : "Выбить дверь" }] }[act];
+  if (act === "enter") { st.how = st.broken ? "выбил дверь" : st.unlocked === tkey() ? "вскрыл замок" : st.open === tkey() ? "впустили хозяева" : (b.bk === "shop" || b.bk === "smithy") ? "заведение открыто" : "дверь была не заперта";
+    return takeTurn(`Вхожу: ${b.name}`, { checks: [], move_to: bid }); }
+  takeTurn(`${BLD_ACTS[act]}: ${b.name}`, { checks });
+}
+/* после бросков: что стало с дверью */
+function bldAfterChecks(results) {
+  const pb = S.pendingBld; if (!pb || !POIS[pb.bid]) return; const st = bstate(pb.bid); const k = tkey(); const r = results.find(x => x.kind === "skill"); const note = t => { results.push({ kind: "note", title: t }); pushFeed({ t: "sys", html: esc(t) }); };
+  const home = bldHome(pb.bid).length;
+  if (pb.act === "knock") { st.knocked = k; if (!home) note("На стук никто не отзывается"); else if (bldAsleep(pb.bid)) { st.alarm = k; note("Стук разбудил тех, кто внутри"); } }
+  if (pb.act === "pick" && r) { if (r.ok) { st.unlocked = k; note("Замок поддался: дверь открыта"); sfx("chest"); } else { if (r.fumble || r.total <= r.dc - 5) { st.alarm = k; note("Отмычка сорвалась со скрежетом: внутри могли услышать"); if (home) addRep(-3, "попался на взломе"); } else note("Замок не поддаётся"); } }
+  if (pb.act === "force" && r) { st.alarm = k; if (r.ok) { st.broken = true; note("Дверь с треском распахивается: шум слышен на всю улицу"); sfx("mace"); } else note("Дверь выдержала удар, но грохот был сильный"); addRep(-6, "ломился в чужой дом"); }
+  if (pb.act === "peek" && r && !r.ok && home && !bldAsleep(pb.bid)) { st.alarm = k; note("Кто-то внутри заметил лицо в окне"); addRep(-2, "подглядывал в окна"); }
+}
+function exitBuilding() {
+  const b = POIS[S.world.loc]; if (!b?.inner || busy) return; const s = bldSlot(S.world.loc);
+  S.world.loc = b.parent; if (s) { const dp = doorPt(s); scState(b.parent).player = { x: +dp.x.toFixed(2), y: +dp.y.toFixed(2) }; }
+  S.log.push({ who: "p", text: `(выходит из здания «${b.name}» на улицу)` }); pushFeed({ t: "sys", html: `Вы выходите: <b>${esc(POIS[b.parent].name)}</b>` }); sfx("step"); lastSnap = null; after();
+}
+/* строки для рассказчика и арбитра */
+function bldBrief() {
+  const L = S.world.loc, p = POIS[L]; const out = [];
+  const who = id => { const n = NPCS[id]; return `[${id}] ${n.name}, ${n.role}; ${n.look}; характер: ${n.persona}; тайна: ${n.secret}; отношение: ${S.world.npcs[id]?.att || 0}`; };
+  if (p.inner) {
+    const st = bstate(L); const home = p.npcs.filter(id => NPCS[id]);
+    out.push(`ГЕРОЙ ВНУТРИ ЗДАНИЯ «${p.name}» (${p.desc}). Как попал: ${st.how || "вошёл"}. ${home.length ? (bldAsleep(L) ? "Жильцы СПЯТ (шум их разбудит)." : "Жильцы бодрствуют и видят героя.") : "Дома никого нет."}`);
+    if (st.how && /выбил|вскрыл|не заперта/.test(st.how) && home.length && !bldAsleep(L)) out.push("Герой зашёл без приглашения — жильцы возмущены или напуганы и реагируют сразу (требуют уйти, кричат, хватают что под руку, грозят позвать соседей или стражу).");
+    if (p.bk === "shop") out.push("Здесь можно купить обычные товары за золото (gold отрицательное, items_add)."); out.push(`Выход: на «${POIS[p.parent].name}» [${p.parent}].`);
+  } else if (p.blds?.length) {
+    out.push("ЗДАНИЯ НА ЭТОЙ УЛИЦЕ (move_to в здание — только если оно открыто): " + p.blds.map(bid => { const b = POIS[bid]; return `[${bid}] ${b.name} — ${bldLocked(bid) ? "заперто" : "не заперто"}, дома: ${bldHome(bid).length ? bldHome(bid).length + " чел." + (bldAsleep(bid) ? " (спят)" : "") : "никого"}`; }).join("; ") + ".");
+  }
+  const pb = S.pendingBld; if (pb && POIS[pb.bid] && pb.act !== "enter") { const b = POIS[pb.bid]; const home = bldHome(pb.bid);
+    out.push(`ГЕРОЙ У ДВЕРИ «${b.name}» [${pb.bid}], действие: ${BLD_ACTS[pb.act].toLowerCase()}. Дверь: ${bstate(pb.bid).broken ? "выбита" : bldLocked(pb.bid) ? "заперта" : "не заперта"}. Внутри сейчас: ${home.length ? (bldAsleep(pb.bid) && bstate(pb.bid).alarm !== tkey() ? "(спят) " : "") + home.map(who).join(" | ") : "никого нет дома"}.
+Жильцы герою пока незнакомы, если не встречались. Жилец может ответить из-за двери или выйти на порог — тогда укажи его id в speaker. Если жильцы впускают героя внутрь, добавь в JSON "building": {"id":"${pb.bid}","open":true}; если отказывают — {"id":"${pb.bid}","open":false}. Подглядывание и подслушивание дают обрывки разговоров и деталей обстановки, а не прямые признания.`); }
+  if (pb?.act === "enter") out.push(`ГЕРОЙ ВХОДИТ в «${POIS[pb.bid].name}» (${bstate(pb.bid).how}). Опиши, что он видит внутри, и реакцию тех, кто дома.`);
+  return out.join("\n");
+}
+function bldEffects(e) {
+  if (!e || typeof e !== "object" || !POIS[e.id]?.inner) return; const st = bstate(e.id);
+  if (e.open === true) { st.open = tkey(); pushFeed({ t: "chips", items: [{ c: "npc", x: `Вас впускают: ${POIS[e.id].name}` }] }); }
+  else if (e.open === false) { st.open = null; if (S.world.loc === e.id) setTimeout(() => { if (S.world.loc === e.id) { pushFeed({ t: "sys", html: "Вас выставляют за дверь." }); exitBuilding(); } }, 400); }
+}
+/* ---------- планы внутри зданий ---------- */
+function scInterior(sc, w, h, o = {}) {
+  const b = POIS[sc.id]; const par = POIS[b.parent]; const pt = par ? tplOfPlace(par) : "street";
+  const ground = { square: "cobble", gate: "cobble", pier: "sand", street: "dirt" }[pt] || "grass";
+  w = Math.round(w * 2) / 2; h = Math.round(h * 2) / 2; const x0 = 9 - w / 2, x1 = 9 + w / 2, y0 = 6 - h / 2 - .2, y1 = 6 + h / 2 - .2; sc.flip = sc.R() < .5; const X = x => sc.flip ? 18 - x : x;
+  sc.floor = [{ t: ground, box: [0, 0, SC_W, SC_H], dark: true }, { t: "shade" }, { t: o.floor || "planks", box: [x0, y0, x1, y1] }];
+  scRoom(sc, x0, y0, x1, y1, { door: 9, mat: o.mat || "wood", windows: o.windows || [{ s: "t", p: X(9 - w / 4) }, { s: "t", p: X(9 + w / 4) }, { s: sc.flip ? "r" : "l", p: 6 }] });
+  scAdd(sc, "door", 9, y1 - .25, 1.4, .4, { ghost: true }); sc.spawn = { x: 9, y: y1 - 1 }; sc.foes = { x: 9, y: y0 + 1.5 };
+  return { x0, y0, x1, y1, X, w, h };
+}
+function scProp(sc, prop, x, y) {
+  const P = { workbench: ["workbench", 2, .9], loom: ["loom", 1.4, 1.1], potwheel: ["potwheel", 1, 1], pelt: ["pelt", 1.6, 1.2], net: ["net", 1.5, 1.1], herbs: ["cauldron", .9, .9], rack: ["rack", 1.8, .5], barrel: ["barrel", 1, 1], sack: ["sack", 1, .8], crate: ["crate", 1, 1] }[prop];
+  if (!P) return; const label = { barrel: ["корыто с бельём", "корыто с бельём"], sack: ["мешки", "мешки"], crate: ["ульи", "ульи"] }[prop]; scAdd(sc, P[0], x, y, P[1], P[2], label ? { label: label[0], acc: label[1] } : {});
+  if (prop === "herbs") scAdd(sc, "herbs", x, y - 1, 2, .35, { ghost: true }); if (prop === "net") scAdd(sc, "oars", x + 1.4, y, .5, 1.8);
+}
+Object.assign(SC_BUILD, {
+  street(sc) {
+    const R = sc.R; const road = x => 6.1 + Math.sin(x * .45 + 1) * .3;
+    sc.floor = [{ t: "grass", box: [0, 0, SC_W, SC_H] }, { t: "path", pts: [-0.6, 2, 4.5, 7, 9.5, 12, 14.5, 18.6].map(x => [x, road(x)]), w: 2.2 }];
+    const free = scBlds(sc);
+    Object.entries(sc.doors).forEach(([, d]) => sc.floor.push({ t: "path", pts: [[d.x, d.y], [d.x + (R() - .5) * .4, road(d.x)]], w: .8 }));
+    free.forEach(s => { if (R() < .6) { sc.floor.push({ t: "field", box: [s.x - s.w / 2 + .2, s.y - s.h / 2 + .2, s.x + s.w / 2 - .2, s.y + s.h / 2 - .2] }); sc.g.mark(s.x, s.y, s.w - .4, s.h - .4); scAdd(sc, "fence", s.x - s.w / 2 + .1, s.y, .2, s.h - .3, { ghost: true, act: false }); scAdd(sc, "fence", s.x + s.w / 2 - .1, s.y, .2, s.h - .3, { ghost: true, act: false }); }
+      else scAdd(sc, "tree", s.x, s.y, 2.6, 2.6, { ghost: true, act: false }); });
+    scAdd(sc, "well", 5.3, 4.25, 1.2, 1.2); scAdd(sc, "lamppost", 10.4, 4.6, .4, .4, { act: false }); scAdd(sc, "lamppost", 6.4, 7.7, .4, .4, { act: false });
+    scAdd(sc, "cart", 11.6, 7.95, 1.3, 2.2, { r: 90 }); scScatter(sc, "barrel", 2, [0, 3.6, 18, 4.8], .85, .85, { pad: .3 }); scScatter(sc, "crate", 1, [0, 7.4, 18, 8.4], .9, .9, { pad: .3 });
+    scScatter(sc, "bush", 6, [0, 0, SC_W, SC_H], 1, 1, { pad: .1, ghost: true, act: false, nofree: true, spread: 1, avoid: (x, y) => Math.abs(y - road(x)) < 1.7 || sc.floor.some(f => f.t === "field" && x > f.box[0] - .4 && x < f.box[2] + .4 && y > f.box[1] - .4 && y < f.box[3] + .4) || sc.objs.some(o => o.k === "bldroof" && Math.abs(o.x - x) < o.w / 2 + .5 && Math.abs(o.y - y) < o.h / 2 + .5) });
+    for (const x of [2.6, 5.8, 8.8, 12.6, 15.6]) sc.anchors.stand.push({ x: x + R() * .6, y: road(x) + (R() < .5 ? -.75 : .75) });
+    sc.spawn = { x: 1.2, y: road(1.2) }; sc.foes = { x: 16.2, y: road(16.2) };
+  },
+  b_house(sc) {
+    const R = sc.R; const b = POIS[sc.id]; const occ = (b.occ || []).length; const { x0, y0, x1, y1, X, w } = scInterior(sc, 10.5 + R() * 2.5, 7.4 + R() * 1.2);
+    scAdd(sc, "hearth", X(x0 + .6), 6 - .2, 1, 2.1); sc.anchors.stand.push({ x: X(x0 + 1.9), y: 5 });
+    const tx = X(x0 + w * .4); scAdd(sc, "table", tx, 6.3, 2.3, 1.25); scChairsAround(sc, { x: tx, y: 6.3 }, 4, 1.15, "chair"); scAdd(sc, "candle", tx + .2, 6.2, .2, .2, { ghost: true, act: false });
+    const beds = clamp(Math.ceil(occ / 2) + (occ > 2 ? 1 : 0), 1, 3);
+    for (let i = 0; i < beds; i++) { const bx = X(x1 - 1.05 - i * 1.75), by = y0 + 1.55; scAdd(sc, "bed", bx, by, i === 0 && occ > 1 ? 1.6 : 1.15, 2.2); sc.anchors.sleep.push({ x: bx, y: by + .15 }); }
+    scAdd(sc, "chest", X(x1 - 1.05), y0 + 3.25, 1.15, .75); scAdd(sc, "shelf", X(x0 + 2.7), y0 + .42, 2.8, .45);
+    if (R() < .6) scAdd(sc, "cabinet", X(x0 + 5.2), y0 + .5, 1.4, .6); scAdd(sc, "rug", X(9.6), y1 - 1.9, 2.6, 1.5, { ghost: true, act: false, under: true });
+    scProp(sc, b.prop, X(x1 - 1.6), y1 - 1.5); scScatter(sc, R() < .5 ? "barrel" : "sack", 1, [x0 + .6, y1 - 2, x0 + 3, y1 - .6], .9, .85, { pad: .2 });
+    sc.anchors.work.push({ x: X(x0 + w * .4), y: 7.5 }, { x: X(x1 - 2.4), y: y1 - 1.6 });
+  },
+  b_poor(sc) {
+    const R = sc.R; const { x0, y0, x1, y1, X } = scInterior(sc, 8 + R() * 1.5, 6 + R(), { floor: "dirt", mat: "log" });
+    scAdd(sc, "campfire", 9, 5.6, 1.2, 1.2, { label: "очаг", acc: "очаг" }); scAdd(sc, "cauldron", 10.1, 6.4, .8, .8); scAdd(sc, "bedroll", X(x1 - 1), y0 + 1.5, 1.1, 1.9, { label: "лежанка", acc: "лежанку" }); sc.anchors.sleep.push({ x: X(x1 - 1), y: y0 + 1.5 });
+    scAdd(sc, "table", X(x0 + 1.5), y0 + 1.2, 1.6, .9); scAdd(sc, "sack", X(x0 + 1), y1 - 1, .9, .8); scProp(sc, POIS[sc.id].prop, X(x1 - 1.4), y1 - 1.3);
+    sc.anchors.stand.push({ x: 8, y: 4.8 }, { x: 10, y: 4.7 });
+  },
+  b_rich(sc) {
+    const R = sc.R; const { x0, y0, x1, y1, X } = scInterior(sc, 14, 9.2);
+    scAdd(sc, "rug", 9, 6, 6, 3.6, { ghost: true, act: false, under: true, v: .85 }); scAdd(sc, "hearth", X(x0 + .6), 5.4, 1.1, 2.4); scAdd(sc, "table", X(8.6), 6, 3.4, 1.3, { label: "обеденный стол", acc: "обеденный стол" });
+    scChairsAround(sc, { x: X(8.6), y: 6 }, 6, 1.35, "chair"); scAdd(sc, "candle", X(8.2), 6, .2, .2, { ghost: true, act: false }); scAdd(sc, "candle", X(9.2), 6, .2, .2, { ghost: true, act: false });
+    scAdd(sc, "bookcase", X(x0 + 3), y0 + .45, 3, .5); scAdd(sc, "cabinet", X(x0 + 5.5), y0 + .5, 1.4, .6, { label: "буфет с посудой", acc: "буфет с посудой" });
+    scAdd(sc, "bed", X(x1 - 1.3), y0 + 1.7, 1.9, 2.4, { label: "хозяйская кровать", acc: "хозяйскую кровать" }); sc.anchors.sleep.push({ x: X(x1 - 1.3), y: y0 + 1.8 });
+    scAdd(sc, "chest", X(x1 - 1.3), y0 + 3.6, 1.3, .8, { label: "окованный сундук", acc: "окованный сундук" }); scAdd(sc, "chest", X(x1 - .9), y1 - 1, 1.1, .7);
+    scAdd(sc, "bed", X(x0 + 1), y1 - 1.5, 1.1, 2, { label: "кровать служанки", acc: "кровать служанки" }); sc.anchors.sleep.push({ x: X(x0 + 1), y: y1 - 1.5 }, { x: X(x1 - 1.6), y: y0 + 1.9 });
+    scAdd(sc, "statue", X(x1 - 3.2), y0 + .8, .9, .9, { label: "бронзовая статуэтка", acc: "бронзовую статуэтку" }); scAdd(sc, "candle", X(x1 - 3.2), y1 - .8, .25, .25, { ghost: true, act: false });
+    sc.anchors.work.push({ x: X(x0 + 2), y: 4.4 }, { x: X(8.6), y: 7.6 }, { x: X(x1 - 3), y: 7.2 }); void R;
+  },
+  b_shop(sc) {
+    const R = sc.R; const b = POIS[sc.id]; const { x0, y0, x1, y1, X } = scInterior(sc, 11.5 + R(), 7.4);
+    scAdd(sc, "shelf", 9, y0 + .42, 8, .5, { label: b.shelf || "полки с товаром", acc: b.shelf || "полки с товаром" }); scAdd(sc, "bar", 9, y0 + 2.5, 6, .9, { label: "прилавок", acc: "прилавок" });
+    sc.anchors.work.push({ x: 8.2, y: y0 + 1.5 }, { x: 10.2, y: y0 + 1.5 }); scAdd(sc, "candle", 10.6, y0 + 2.5, .2, .2, { ghost: true, act: false });
+    const pr = b.prop; if (pr === "oven") scAdd(sc, "hearth", X(x0 + .65), 6, 1.1, 2.4, { label: "печь", acc: "печь" }); if (pr === "herbs") { scAdd(sc, "herbs", X(x0 + 2.4), y0 + 1.1, 2.6, .35, { ghost: true }); scAdd(sc, "cauldron", X(x0 + 1.4), 6.4, .9, .9); }
+    if (pr === "hook") { scAdd(sc, "hook", X(x0 + 1), 5.6, 1, 2.6); scAdd(sc, "table", X(x0 + 2.9), 7.2, 1.8, 1, { label: "разделочный стол", acc: "разделочный стол" }); }
+    if (pr === "junk") { scScatter(sc, "crate", 3, [x0 + .5, y0 + 3.5, x0 + 4, y1 - .5], .9, .9, { rot: true, pad: .1, label: "ящики с хламом", acc: "ящики с хламом" }); scAdd(sc, "chest", X(x1 - 1.2), y1 - 1.2, 1.1, .7); }
+    if (pr === "candles") { for (let i = 0; i < 5; i++) scAdd(sc, "candle", 6.6 + i * 1.2, y0 + 2.4, .2, .2, { ghost: true, act: false }); scAdd(sc, "table", X(x0 + 1.6), 7, 1.8, 1, { label: "стол свечника", acc: "стол свечника" }); }
+    scScatter(sc, "barrel", 2, [x0 + .5, y0 + 3.3, x1 - .5, y1 - .5], .85, .85, { pad: .4 }); scScatter(sc, "sack", 2, [x0 + .5, y0 + 3.3, x1 - .5, y1 - .5], .9, .75, { pad: .4 });
+    scAdd(sc, "bedroll", X(x1 - .9), y0 + 1.2, .9, 1.6, { label: "лежанка в углу", acc: "лежанку в углу" }); sc.anchors.sleep.push({ x: X(x1 - .9), y: y0 + 1.2 });
+  },
+  b_smithy(sc) {
+    const R = sc.R; const { x0, y0, x1, y1, X } = scInterior(sc, 12.5, 8, { floor: "dirt", mat: "stone" });
+    const f = scAdd(sc, "hearth", X(x0 + 1), 5.6, 1.7, 2.8, { label: "горн", acc: "горн", nolight: true }); sc.lights.push({ x: f.x, y: f.y, r: 210, c: "warm" });
+    scAdd(sc, "anvil", X(x0 + 3.3), 5.8, 1, .7); scAdd(sc, "barrel", X(x0 + 3.2), 7.6, 1, 1, { label: "бочка с водой", acc: "бочку с водой" }); scAdd(sc, "rack", X(9.6), y0 + .4, 3, .5);
+    scAdd(sc, "workbench", X(x1 - 1.6), 4.6, 2.2, 1); scAdd(sc, "sack", X(x1 - 1.2), y1 - 1, 1, .8, { label: "мешки с углём", acc: "мешки с углём" }); scAdd(sc, "crate", X(x1 - 2.5), y1 - 1, 1, 1, { label: "ящик с подковами", acc: "ящик с подковами" });
+    sc.anchors.work.push({ x: X(x0 + 3.3), y: 4.8 }, { x: X(x0 + 2.3), y: 7 }); sc.anchors.sleep.push({ x: X(x1 - 1.4), y: 6.8 }); void R;
+  },
+  b_barn(sc) {
+    const R = sc.R; const { x0, y0, x1, y1, X } = scInterior(sc, 13, 8.6, { floor: "dirt", mat: "log" });
+    scScatter(sc, "hay", 3, [x0 + .5, y0 + .5, x0 + 5, y1 - 2], 1.6, 1.1, { pad: .2, rot: true });
+    for (let i = 0; i < 3; i++) { const sx = X(x1 - 1.4 - i * 2.1); scAdd(sc, "fence", sx + 1, y0 + 1.6, .2, 2.6, { ghost: true, act: false }); scAdd(sc, "animal", sx, y0 + 1.6, 1.7, .9, { r: 90, label: ["корова", "лошадь", "коза"][i], acc: ["корову", "лошадь", "козу"][i], v: i / 3 }); }
+    scAdd(sc, "stairs", X(x0 + 1.1), y1 - 1.6, 1.4, 2.2, { label: "лестница на сеновал", acc: "лестницу на сеновал" }); scAdd(sc, "cart", X(x1 - 2.5), y1 - 1.8, 1.3, 2.2, { r: 90 });
+    scAdd(sc, "rack", X(x0 + 4.4), y1 - .4, 2.4, .45, { label: "вилы и грабли", acc: "вилы и грабли" }); sc.anchors.work.push({ x: X(x1 - 3), y: 5.6 }, { x: X(x0 + 4), y: 6 }); void R;
+  },
+  b_shed(sc) {
+    const R = sc.R; const { x0, y0, x1, y1, X } = scInterior(sc, 8, 6, { mat: "log", windows: [] });
+    scAdd(sc, "net", X(x0 + 1.4), y0 + 1.2, 1.8, 1.2); scAdd(sc, "oars", X(x1 - .7), 5.6, .5, 2); scScatter(sc, "crate", 3, [x0 + .5, y0 + .5, x1 - .5, y1 - 1.5], .9, .9, { pad: .2, rot: true });
+    scScatter(sc, "barrel", 2, [x0 + .5, y0 + .5, x1 - .5, y1 - 1], .85, .85, { pad: .2 }); scAdd(sc, "lantern", X(x0 + .7), y1 - .8, .4, .4, { ghost: true, act: false }); sc.dark = .3; void R;
+  },
+  b_guard(sc) {
+    const R = sc.R; const { x0, y0, x1, y1, X } = scInterior(sc, 11, 7.6, { floor: "flag", mat: "stone" });
+    const tx = X(x0 + 4); scAdd(sc, "table", tx, 6, 2.2, 1.2, { label: "стол с костями", acc: "стол с костями" }); scChairsAround(sc, { x: tx, y: 6 }, 4, 1.15, "chair");
+    scAdd(sc, "bed", X(x1 - 1), y0 + 1.5, 1.1, 2.1, { label: "нары", acc: "нары" }); scAdd(sc, "bed", X(x1 - 2.4), y0 + 1.5, 1.1, 2.1, { label: "нары", acc: "нары" }); sc.anchors.sleep.push({ x: X(x1 - 1), y: y0 + 1.6 }, { x: X(x1 - 2.4), y: y0 + 1.6 });
+    scAdd(sc, "rack", X(x0 + 2.2), y0 + .4, 2.6, .5); scAdd(sc, "chest", X(x1 - 1.1), y1 - 1, 1.2, .75, { label: "сундук с конфискатом", acc: "сундук с конфискатом" }); scAdd(sc, "brazier", X(x0 + 1), y1 - 1.2, .9, .9);
+    sc.anchors.work.push(...sc.anchors.sit.splice(0)); void R;
+  }
+});
+Object.assign(SC_NAMES, { street: "Улица", b_house: "Дом", b_poor: "Лачуга", b_rich: "Богатый дом", b_shop: "Лавка", b_smithy: "Кузница", b_barn: "Амбар", b_shed: "Сарай", b_guard: "Караульня" });
+Object.assign(SC_CROWD, { street: [["прохожий", "прачка", "мальчишка", "старуха", "торговец вразнос", "пьяница", "девчушка с корзиной"], [3, 4, 3, 1]], b_shop: [["покупатель", "покупательница"], [1, 1, 0, 0]] });
+Object.assign(SC_AMB, { street: "birds", b_house: "campfire", b_poor: "campfire", b_rich: "campfire", b_smithy: "campfire" });
+Object.assign(OBJ, { workbench: ["верстак", "верстак", 1], loom: ["прялка", "прялку"], potwheel: ["гончарный круг", "гончарный круг"], pelt: ["шкуры", "шкуры", 1], rack: ["стойка с оружием", "стойку с оружием", 1],
+  animal: ["корова", "корову"], hook: ["туши на крюках", "туши на крюках"], oars: ["вёсла", "вёсла"], door: ["дверь", "дверь"] });
+KINDS.street = "⌂";
+MK_ICON.street = '<path d="M3 20v-8l4-3 4 3v8"/><path d="M13 20V10l4-3 4 3v10"/><path d="M2 20h20"/>';
+
+/* LIFE */
+/* =========================================================================
+   ЖИЗНЬ МИРА: распорядок жителей, погода, тайники, репутация, ожидание
+   ========================================================================= */
+const GENRES = { mystery: "Расследование", horror: "Ужас", adventure: "Приключение", intrigue: "Интриги", survival: "Выживание" };
+const SEASONS = { spring: "Весна", summer: "Лето", autumn: "Осень", winter: "Зима" };
+const CULTURES = { auto: "По окружению", north: "Северная", slavic: "Славянская", south: "Южная", east: "Восточная" };
+const SETTLES = { village: "Деревня", town: "Городок", fort: "Крепость" };
+const SIZES = { small: "Маленький", normal: "Обычный", large: "Большой" };
+const DANGERS = { low: "Мирный", mid: "Опасный", high: "Смертельный" };
+const CULTURE_PROMPT = { north: "северная, скандинавского духа (имена вроде Ингрид, Торвальд)", slavic: "славянская (имена вроде Злата, Мирон, Горислав)", south: "южная, средиземноморского духа (имена вроде Лючия, Ренцо)", east: "восточная, степная (имена вроде Айгуль, Тимур)", auto: "на усмотрение мастера под окружение" };
+const NAMES_SOUTH = { m: ["Лоренцо", "Марко", "Бенедетто", "Альвизе", "Тео", "Сальво", "Ренцо", "Джано", "Пьетро", "Амадео", "Франко", "Лудо", "Орсо", "Нино"], f: ["Лючия", "Беатриче", "Кьяра", "Нера", "Фьора", "Изотта", "Мирелла", "Агата", "Бьянка", "Сильвия", "Донна", "Розалия"] };
+const NAMES_EAST = { m: ["Тимур", "Арслан", "Карим", "Бахтияр", "Ильдар", "Рустам", "Самир", "Азат", "Ерлан", "Дамир", "Марат", "Нурлан"], f: ["Айгуль", "Зарина", "Лейла", "Динара", "Камила", "Ясмин", "Гульнара", "Алия", "Сауле", "Мадина", "Асель", "Жанна"] };
+function nameSet(wd) { const c = wd.culture; if (c === "south") return NAMES_SOUTH; if (c === "east") return NAMES_EAST; if (c === "slavic") return NAMES_S; if (c === "north") return NAMES_N; return ["forest", "marsh"].includes(wd.biome) ? NAMES_S : NAMES_N; }
+
+/* ---------- распорядок дня ---------- */
+const SCHED = [
+  [/рыбак|лодочник/, ["pier", "pier", "inn|home", "home"]], [/пастух|батрак|хуторянин/, ["farm|street", "farm|street", "inn|home", "home"]],
+  [/охотник|углежог|бортник|торфяник|рудокоп/, ["forest|away", "forest|away", "inn|home", "home"]], [/кузнец/, ["work", "work", "inn|street", "away"]],
+  [/пекар|старьёвщик|аптекар|мясник|лавочниц|свечник|помощниц|подмастерье/, ["work", "work", "work|inn", "away"]], [/стражник|сержант/, ["work|gate", "street|gate|square", "inn|street", "work"]],
+  [/купец/, ["home", "square|street|inn", "inn|home", "home"]], [/служанка/, ["home", "street|square", "home", "home"]], [/^(сын|дочь)/, ["home|street", "street|pier|farm", "home|street", "home"]],
+  [/^(отец|мать)|старый солдат/, ["chapel|home", "home|street", "inn|home", "home"]], [/жена|вдова|прачка|ткачиха|травница|знахарка/, ["home", "street|chapel|square", "home|chapel", "home"]]
+];
+const SPOT_TPL = { pier: ["pier"], inn: ["inn"], chapel: ["chapel", "shrine"], street: ["street", "square"], square: ["square", "street"], farm: ["farm"], forest: ["forest", "camp"], gate: ["gate"] };
+function npcSpotNow(id) {
+  const ov = S.world.npcLoc; if (ov && Object.prototype.hasOwnProperty.call(ov, id)) return ov[id];
+  const n = NPCS[id]; if (!n?.bld) return null; const t = worldTime();
+  const sched = (SCHED.find(([re]) => re.test(n.role || "")) || [0, ["home", "street|home", "inn|home", "home"]])[1];
+  const opts = sched[t.part].split("|"); const r = hash(id + ":" + t.day + ":" + t.part); const pick = opts[r % opts.length];
+  if (pick === "away") return null; if (pick === "home" || pick === "work") return n.bld;
+  if ((r >>> 9) % 10 < 3) return n.bld; // иногда просто остаются дома
+  const tpls = SPOT_TPL[pick] || []; const cands = outerEntries().filter(([, p]) => tpls.includes(tplOfPlace(p))).map(([pid]) => pid);
+  return cands.length ? cands[(r >>> 4) % cands.length] : n.bld;
+}
+function refreshPeople() {
+  if (!S) return; const ov = S.world.npcLoc || {}; const vis = {};
+  for (const [id, n] of Object.entries(NPCS)) { let spot; if (Object.prototype.hasOwnProperty.call(ov, id)) spot = ov[id]; else if (n.bld) spot = npcSpotNow(id); else continue; if (spot && POIS[spot]) (vis[spot] = vis[spot] || []).push(id); }
+  for (const [lid, p] of Object.entries(POIS)) {
+    if (!p.inner && !p.base) p.base = (p.npcs || []).filter(x => !NPCS[x]?.bld);
+    const base = p.inner ? (p.extra || []) : p.base;
+    p.npcs = [...new Set([...base.filter(x => !Object.prototype.hasOwnProperty.call(ov, x) || ov[x] === lid), ...(vis[lid] || [])])];
+    if (lid === S.world.loc) p.npcs.forEach(ensureNpcState);
+  }
+}
+function npcMoves(list) {
+  if (!Array.isArray(list)) return; S.world.npcLoc = S.world.npcLoc || {};
+  list.slice(0, 3).forEach(m => { const id = m?.id; if (!NPCS[id]) return; const to = m.to === null || m.to === "home" ? null : m.to; if (to !== null && !POIS[to]) return;
+    const was = S.world.loc; const n = NPCS[id];
+    if (to === null && !n.bld) delete S.world.npcLoc[id]; else S.world.npcLoc[id] = to === null ? n.bld : to;
+    refreshPeople(); const here = POIS[was].npcs.includes(id);
+    if (!here && (POIS[was].base || []).concat(Object.keys(S.world.npcLoc)).includes(id)) pushFeed({ t: "chips", items: [{ c: "npc", x: `${n.name} уходит${to && POIS[to] && S.world.visited.includes(to) ? " · " + POIS[to].name : ""}` }] });
+    else if (here && to === was) pushFeed({ t: "chips", items: [{ c: "npc", x: `Здесь появляется: ${n.name}` }] }); });
+}
+function peopleWhereBrief() {
+  const lines = []; for (const [id, n] of Object.entries(NPCS)) { if (n.bld && !S.world.met?.includes(id)) continue; const where = Object.entries(POIS).find(([, p]) => p.npcs?.includes(id)); lines.push(`${n.name} — ${where ? where[1].name : "нет на виду"}`); if (lines.length >= 14) break; }
+  return lines.join("; ");
+}
+function waitTime() {
+  if (!S || busy || S.dead || S.world.combat) return; const before = new Set(POIS[S.world.loc].npcs);
+  advanceTime(1); refreshPeople(); const t = worldTime(); const now = POIS[S.world.loc].npcs;
+  const came = now.filter(id => !before.has(id) && NPCS[id]).map(id => NPCS[id].name), left = [...before].filter(id => !now.includes(id) && NPCS[id]).map(id => NPCS[id].name);
+  pushFeed({ t: "sys", html: `Время идёт… Наступает <b>${DAY_PARTS[t.part]}</b>, день ${t.day}. ${weatherNow().name}.${came.length ? " Приходят: " + esc(came.join(", ")) + "." : ""}${left.length ? " Уходят: " + esc(left.join(", ")) + "." : ""}` });
+  S.log.push({ who: "p", text: `(ждёт; наступает ${DAY_PARTS[t.part]})` }); lastSnap = null; sfx("step"); after();
+}
+
+/* ---------- погода ---------- */
+const WX = { clear: "Ясно", cloudy: "Облачно", rain: "Дождь", storm: "Гроза", fog: "Туман", snow: "Снег", blizzard: "Метель" };
+const WX_TABLE = { spring: [["clear", .35], ["cloudy", .3], ["rain", .25], ["fog", .1]], summer: [["clear", .55], ["cloudy", .2], ["storm", .1], ["rain", .1], ["fog", .05]],
+  autumn: [["cloudy", .3], ["rain", .3], ["fog", .25], ["clear", .15]], winter: [["snow", .35], ["cloudy", .25], ["clear", .2], ["blizzard", .1], ["fog", .1]] };
+function weatherNow() {
+  if (!WD || !S) return { k: "clear", name: "Ясно" }; const t = worldTime(); const slot = t.day * 2 + (t.part >= 2 ? 1 : 0); let r = (hash(WD.id + ":wx:" + slot) % 1000) / 1000;
+  const tab = WX_TABLE[WD.season || "autumn"]; let k = tab[0][0]; for (const [kk, p] of tab) { if (r < p) { k = kk; break; } r -= p; }
+  if (S.world.wx && S.world.wx.slot === slot) k = S.world.wx.k; return { k, name: WX[k] };
+}
+function seasonTint(box) { const s = WD?.season; if (s === "winter") return `<rect x="${box[0] * CS}" y="${box[1] * CS}" width="${(box[2] - box[0]) * CS}" height="${(box[3] - box[1]) * CS}" fill="#e3eaee" opacity=".34"/>`; if (s === "autumn") return `<rect x="${box[0] * CS}" y="${box[1] * CS}" width="${(box[2] - box[0]) * CS}" height="${(box[3] - box[1]) * CS}" fill="#8a5a1c" opacity=".14"/>`; return ""; }
+function weatherSVG(sc, P) {
+  const w = weatherNow(); if (sc.rooms.length || sc.round || sc.cave) return "";
+  const W = SC_W * CS, H = SC_H * CS; const R = mulberry(hash(sc.id + w.k)); let s = "";
+  const loop = (cls, body) => `<g class="${cls}"><g>${body}</g><g transform="translate(0,-${H})">${body}</g></g>`;
+  if (w.k === "rain" || w.k === "storm") { let L = ""; for (let i = 0; i < 95; i++) { const x = R() * (W + 60) - 30, y = R() * H; L += `<line x1="${f1(x)}" y1="${f1(y)}" x2="${f1(x - 5)}" y2="${f1(y + 15)}"/>`; }
+    s += `<rect width="${W}" height="${H}" fill="#0a1a26" opacity="${w.k === "storm" ? .3 : .18}"/><g stroke="#c6dcea" stroke-width="1.2" opacity="${w.k === "storm" ? .5 : .34}">${loop("wx-rain", L)}</g>`;
+    if (w.k === "storm") s += `<rect class="wx-flash" width="${W}" height="${H}" fill="#eaf2ff"/>`; }
+  if (w.k === "snow" || w.k === "blizzard") { let L = ""; for (let i = 0; i < (w.k === "blizzard" ? 140 : 80); i++) L += `<circle cx="${f1(R() * W)}" cy="${f1(R() * H)}" r="${f1(1 + R() * 2)}"/>`;
+    s += `<g fill="#f4f8fb" opacity=".8">${loop(w.k === "blizzard" ? "wx-snow fast" : "wx-snow", L)}</g>`; }
+  if (w.k === "fog" || w.k === "blizzard") { s += `<filter id="${P}-fb" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="26"/></filter><g class="wx-fog" filter="url(#${P}-fb)" fill="#dfe6ea">${[...Array(7)].map(() => `<ellipse cx="${f1(R() * W)}" cy="${f1(R() * H)}" rx="${f1(90 + R() * 120)}" ry="${f1(40 + R() * 50)}" opacity="${(.1 + R() * .12).toFixed(2)}"/>`).join("")}</g>`; }
+  if (w.k === "cloudy") s += `<rect width="${W}" height="${H}" fill="#203038" opacity=".1"/>`;
+  return s;
+}
+/* шум дождя и ветра: синтез, без файлов */
+function auWeather() {
+  const want = AU.cfg.on && AU.unlocked && AU.cfg.amb > 0 && S ? weatherNow().k : null; const kind = want === "rain" || want === "storm" ? "rain" : want === "snow" || want === "blizzard" ? "wind" : null;
+  const sc = S ? sceneOf(S.world.loc) : null; const inside = !!sc && (/^b_/.test(sc.tpl) || ["inn", "tower", "cave", "mine"].includes(sc.tpl));
+  const sig = kind ? kind + (inside ? "-in" : "") + (want === "storm" || want === "blizzard" ? "+" : "") : null; if (AU.wxSig === sig) return; AU.wxSig = sig;
+  if (AU.wxNode) { const n = AU.wxNode; AU.wxNode = null; try { n.g.gain.setTargetAtTime(0, AU.ctx.currentTime, .6); setTimeout(() => { try { n.src.stop(); clearInterval(n.timer); } catch (e) {} }, 2500); } catch (e) {} }
+  if (!kind) return; const ctx = auCtx(); if (!ctx) return;
+  const len = ctx.sampleRate * 2; const buf = ctx.createBuffer(1, len, ctx.sampleRate); const d = buf.getChannelData(0); let last = 0; for (let i = 0; i < len; i++) { const w = Math.random() * 2 - 1; last = kind === "wind" ? (last + .02 * w) / 1.02 : w; d[i] = kind === "wind" ? last * 3.5 : w; }
+  const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true; const f = ctx.createBiquadFilter(); f.type = kind === "rain" ? "lowpass" : "bandpass"; f.frequency.value = kind === "rain" ? (inside ? 900 : 4200) : 420; f.Q.value = kind === "rain" ? .4 : .8;
+  const g = ctx.createGain(); g.gain.value = 0; src.connect(f); f.connect(g); g.connect(ctx.destination); src.start();
+  const vol = AU.cfg.amb * (kind === "rain" ? (inside ? .16 : .3) : .45) * (sig.endsWith("+") ? 1.4 : 1); g.gain.setTargetAtTime(vol, ctx.currentTime, 1.2);
+  let timer = null; if (kind === "wind") timer = setInterval(() => { try { f.frequency.setTargetAtTime(300 + Math.random() * 400, ctx.currentTime, 1.5); g.gain.setTargetAtTime(vol * (.6 + Math.random() * .7), ctx.currentTime, 1.5); } catch (e) {} }, 2200);
+  if (want === "storm") timer = setInterval(() => { if (Math.random() < .35) auThunder(); }, 7000);
+  AU.wxNode = { src, g, timer };
+}
+function auThunder() { const ctx = auCtx(); if (!ctx || !AU.cfg.on) return; const len = ctx.sampleRate * 3; const b = ctx.createBuffer(1, len, ctx.sampleRate); const d = b.getChannelData(0); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2);
+  const s = ctx.createBufferSource(); s.buffer = b; const f = ctx.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 160; const g = ctx.createGain(); g.gain.value = AU.cfg.amb * 1.4; s.connect(f); f.connect(g); g.connect(ctx.destination); s.start(); }
+
+/* ---------- тайники ---------- */
+const LOOT = [{ name: "Отмычки", desc: "Набор тонких крючков: помогает вскрывать замки" }, { name: "Серебряное кольцо", desc: "Можно продать или узнать, чьё оно" }, { name: "Нож с костяной рукоятью", desc: "Острый, с вырезанным знаком" },
+  { name: "Старая карта с пометкой", desc: "Крестик в неожиданном месте" }, { name: "Свёрток с травами", desc: "Пахнет мятой и полынью" }, { name: "Письмо без подписи", desc: "Несколько строк, которые лучше бы никто не читал" },
+  { name: "Ключ без бирки", desc: "Железный, от неизвестного замка" }, { name: "Фляга крепкой настойки", desc: "Согревает и развязывает языки" }, { name: "Огниво и трут", desc: "Пригодится в темноте" }, { name: "Медальон с портретом", desc: "Внутри — чьё-то лицо" }];
+function sceneStash(id) {
+  const sc = sceneOf(id); if (sc.stash !== undefined) return sc.stash; const R = mulberry(hash(WD.id + id + "#stash")); const p = POIS[id];
+  const cands = sc.objs.filter(o => o.search && o.act && !o.bld && o.k !== "door" && !o.hidden);
+  sc.stash = cands.length && R() < (p.inner ? .55 : .35) ? { obj: cands[Math.floor(R() * cands.length)].id, loot: R() < .4 ? { gold: 2 + Math.floor(R() * 8) + (p.bk === "rich" ? 12 : 0) } : R() < .3 ? { item: { name: "Зелье лечения", desc: "Восстанавливает 2d4+2 HP", potion: true } } : { item: LOOT[Math.floor(R() * LOOT.length)] } } : null;
+  return sc.stash;
+}
+function searchObj(id, o) {
+  if (busy || S.dead) return; S.pendingSearch = { loc: id, obj: o.id, label: o.label };
+  takeTurn(`Обыскиваю ${o.acc}`, { checks: [{ kind: "skill", skill: "investigation", dc: o.k === "chest" ? 13 : 11, reason: "Тщательно обыскать" }] });
+}
+function searchAfterChecks(results) {
+  const ps = S.pendingSearch; if (!ps) return; const r = results.find(x => x.kind === "skill"); const note = t => { results.push({ kind: "note", title: t }); };
+  const p = POIS[ps.loc]; const st = p.inner ? bstate(ps.loc) : {}; const awake = p.inner && p.npcs.some(n => NPCS[n]) && !bldAsleep(ps.loc); const intruder = p.inner && st.how && !/впустили|открыто/.test(st.how);
+  if (awake && intruder) { addRep(-4, "рылся в чужом доме"); note("Хозяева видят, как герой роется в их вещах"); }
+  S.world.taken = S.world.taken || {}; const key = ps.loc + ":" + ps.obj; const stash = sceneStash(ps.loc);
+  if (!r || !r.ok) { note(`Поиски (${ps.label}) ничего не дали`); return; }
+  if (stash && stash.obj === ps.obj && !S.world.taken[key]) {
+    S.world.taken[key] = true; const c = C(); const chips = [];
+    if (stash.loot.gold) { c.gold += stash.loot.gold; chips.push({ c: "gold", x: `+${stash.loot.gold} зм` }); sfx("gold"); note(`НАХОДКА в «${ps.label}»: ${stash.loot.gold} золотых (уже добавлено движком, не дублируй в gold)`); }
+    else { const it = stash.loot.item; c.items.push({ ...it }); chips.push({ c: "item", x: `+ ${it.name}` }); sfx("chest"); note(`НАХОДКА в «${ps.label}»: ${it.name} — ${it.desc} (уже в инвентаре, не дублируй в items_add; если уместно, свяжи находку с тайной)`); }
+    pushFeed({ t: "chips", items: chips });
+  } else note(`В «${ps.label}» нет ничего ценного (не выдавай предметов и золота, только детали обстановки)`);
+}
+
+/* ---------- репутация в поселении ---------- */
+function repLabel(v) { return v >= 30 ? "уважают" : v >= 10 ? "приветливы" : v > -10 ? "нейтрально" : v > -30 ? "косо смотрят" : "враждебны"; }
+function addRep(dv, why) { if (!dv || !S) return; const before = S.world.rep || 0; S.world.rep = clamp(before + dv, -100, 100); pushFeed({ t: "chips", items: [{ c: dv > 0 ? "heal" : "dmg", x: `Репутация ${dv > 0 ? "+" : ""}${dv}${why ? " · " + why : ""}` }] }); }
+
+/* ---------- контекстное меню плана: поверх всего, внутри экрана ---------- */
+let scPopEl = null, scPopView = null;
+function scPop() {
+  if (scPopEl) return scPopEl; scPopEl = document.createElement("div"); scPopEl.className = "sc-pop g"; scPopEl.hidden = true; document.body.append(scPopEl);
+  document.addEventListener("pointerdown", e => { if (!scPopEl.hidden && !scPopEl.contains(e.target) && !e.target.closest(".scene-view")) scHidePop(); }, true);
+  document.addEventListener("keydown", e => { if (e.key === "Escape") scHidePop(); }); window.addEventListener("resize", scHidePop);
+  document.addEventListener("scroll", e => { if (!scPopEl.hidden && scPopView && e.target.contains && e.target.contains(scPopView)) scHidePop(); }, true);
+  return scPopEl;
+}
+function scHidePop() { if (scPopEl) scPopEl.hidden = true; document.querySelectorAll(".scene-view .sel").forEach(e => e.classList.remove("sel")); }
+function scShowPop(view, el, html) {
+  const pop = scPop(); scPopView = view; pop.innerHTML = html; pop.hidden = false; pop.style.left = "0px"; pop.style.top = "0px";
+  const r = el.getBoundingClientRect(); const pw = pop.offsetWidth, ph = pop.offsetHeight; const cx = r.left + r.width / 2;
+  pop.style.left = clamp(cx - pw / 2, 8, innerWidth - pw - 8) + "px";
+  pop.style.top = (r.top - ph - 10 >= 8 ? r.top - ph - 10 : Math.min(r.bottom + 10, innerHeight - ph - 8)) + "px";
+  return pop;
+}
+
+/* ---------- план: неизменная часть + подвижные фишки ---------- */
+const SVGNS = "http://www.w3.org/2000/svg";
+function sceneKey(id, big) {
+  const sc = sceneOf(id), st = scState(id), t = worldTime();
+  const roofs = sc.objs.filter(o => o.k === "bldroof").map(o => { const bs = bstate(o.bld); return `${bldLit(o.bld) ? 1 : 0}${bldHome(o.bld).length ? 1 : 0}${bs.broken ? 1 : 0}${bs.known === tkey() && bldLocked(o.bld) ? 1 : 0}`; }).join("");
+  return [WD.id, id, big ? 1 : 0, t.part, weatherNow().k, JSON.stringify(st.add || []), (st.removed || []).join(","), roofs].join("|");
+}
+function sceneDyn(id, big, P) {
+  const ppl = scenePeople(id); const objs = sceneObjects(id).filter(o => o.act);
+  const hits = objs.map(o => `<rect class="sc-hit" data-hit="obj:${o.id}" x="${f1((o.x - Math.max(o.w, .8) / 2) * CS)}" y="${f1((o.y - Math.max(o.h, .8) / 2) * CS)}" width="${f1(Math.max(o.w, .8) * CS)}" height="${f1(Math.max(o.h, .8) * CS)}" transform="${o.r ? `rotate(${o.r} ${f1(o.x * CS)} ${f1(o.y * CS)})` : ""}" rx="4"><title>${esc(o.label)}</title></rect>`).join("");
+  const seenL = new Set(); const labels = big ? objs.filter(o => { const k = o.label.toLowerCase(); if (seenL.has(k)) return false; seenL.add(k); return true; }).map(o => `<text class="sc-olab" x="${f1(o.x * CS)}" y="${f1((o.y + Math.min(o.h, 2.4) / 2) * CS + 11)}" text-anchor="middle">${esc(o.label)}</text>`).join("") : "";
+  const toks = ppl.filter(p => p.type === "corpse").map(p => scTokenSVG(p, P, big)).join("") + ppl.filter(p => p.type !== "corpse").sort((a, b) => (a.type === "hero") - (b.type === "hero")).map(p => scTokenSVG(p, P, big)).join("");
+  return { hits, labels, toks };
+}
+function sceneSVG(id, big) {
+  const sc = sceneOf(id); const P = "sc" + (++scSeq); const d = sceneDyn(id, big, P);
+  return `<svg class="sc-svg" data-key="${esc(sceneKey(id, big))}" data-p="${P}" viewBox="0 0 ${SC_W * CS} ${SC_H * CS}" xmlns="${SVGNS}"><clipPath id="${P}-tc"><circle r="11.5"/></clipPath>${sceneStaticSVG(sc, P)}${weatherSVG(sc, P)}<g class="sc-hits">${d.hits}</g><g class="sc-labs">${d.labels}</g><g class="sc-toks">${d.toks}</g></svg>`;
+}
+function paintScene(view, id, big) {
+  const svg = view.querySelector("svg.sc-svg"); const key = sceneKey(id, big);
+  if (!svg || svg.getAttribute("data-key") !== key) { if (svg) svg.remove(); view.insertAdjacentHTML("afterbegin", sceneSVG(id, big)); return; }
+  const d = sceneDyn(id, big, svg.getAttribute("data-p")); svg.querySelector(".sc-hits").innerHTML = d.hits; svg.querySelector(".sc-labs").innerHTML = d.labels;
+  const box = svg.querySelector(".sc-toks"); const tmp = document.createElementNS(SVGNS, "g"); tmp.innerHTML = d.toks; const keep = new Set();
+  [...tmp.children].forEach(c => { const k = c.getAttribute("data-k"); keep.add(k); const old = [...box.children].find(x => x.getAttribute("data-k") === k);
+    if (!old) box.appendChild(c); else if (old.getAttribute("data-sig") !== c.getAttribute("data-sig")) old.replaceWith(c); else { old.setAttribute("style", c.getAttribute("style") || ""); old.classList.remove("sel"); } });
+  [...box.children].forEach(x => { if (!keep.has(x.getAttribute("data-k"))) x.remove(); });
+}
+function sceneHeadHTML() { const sc = sceneOf(S.world.loc); const t = worldTime(); const w = weatherNow();
+  return `<span class="eyebrow">План · ${SC_NAMES[sc.tpl] || "место"}</span><span class="scene-time">${DAY_PARTS[t.part]} · ${w.name.toLowerCase()}<button type="button" class="sc-wait" id="sc-wait" title="Подождать: пройдёт часть дня" ${busy || S.world.combat ? "disabled" : ""}>Ждать</button></span>`; }
+function scenePanelHTML() {
+  return `<div class="scene-card${S.world.combat ? " combat" : ""}" id="scene-card"><div class="scene-head">${sceneHeadHTML()}</div><div class="scene-view" id="scene-view">${sceneSVG(S.world.loc, false)}<button class="map-expand" type="button" id="scene-big" aria-label="Развернуть план" title="Развернуть план"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M2 6V2h4M14 6V2h-4M2 10v4h4M14 10v4h-4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button></div></div>`;
+}
+function updateScenePanel(slot) {
+  const id = S.world.loc; const k = WD.id + ":" + id; let card = slot.querySelector("#scene-card");
+  if (!card || card.getAttribute("data-loc") !== k) { slot.innerHTML = scenePanelHTML(); card = slot.querySelector("#scene-card"); card.setAttribute("data-loc", k); }
+  else { card.classList.toggle("combat", !!S.world.combat); card.querySelector(".scene-head").innerHTML = sceneHeadHTML(); paintScene(card.querySelector("#scene-view"), id, false); }
+  bindScene(slot, false);
+}
+function bindScene(root, big) {
+  const view = root.querySelector(big ? "#scene-view-big" : "#scene-view"); if (!view) return;
+  const id = S.world.loc; const sc = sceneOf(id);
+  const rerender = () => { if (big) { paintScene(view, id, true); } renderWorld(); };
+  const walkTo = (x, y) => { const taken = scenePeople(id).filter(p => p.type !== "hero"); const p = scFreeNear(sc, taken, x, y, 2.5); scState(id).player = { x: +p.x.toFixed(2), y: +p.y.toFixed(2) }; sfx("step"); save(); rerender(); };
+  const open = (el, title, sub, acts) => {
+    scHidePop(); el.classList?.add("sel");
+    const pop = scShowPop(view, el, `<b>${esc(title)}</b>${sub ? `<small>${esc(sub)}</small>` : ""}<div class="sc-acts">${acts.map((a, i) => `<button type="button" class="btn small${i === 0 ? " primary" : ""}" data-i="${i}" ${a.dis ? "disabled" : ""}>${esc(a.t)}</button>`).join("")}</div>`);
+    pop.querySelectorAll("button").forEach(b => b.onclick = ev => { ev.stopPropagation(); const a = acts[+b.dataset.i]; scHidePop(); if (big && a.closes !== false) closeModal(); a.fn(); });
+  };
+  const turn = t => { if (busy || S.dead) return; takeTurn(t); };
+  const approach = (x, y) => () => walkTo(x, y + .9);
+  view.onclick = ev => {
+    if (ev.target.closest(".map-expand")) return; const el = ev.target.closest("[data-hit]"); const svg = view.querySelector("svg.sc-svg"); sfx("tap");
+    if (!el || !el.dataset.hit) { if (scPopEl && !scPopEl.hidden) { scHidePop(); return; } const r = svg.getBoundingClientRect(); const x = (ev.clientX - r.left) / r.width * SC_W, y = (ev.clientY - r.top) / r.height * SC_H; if (busy) return; walkTo(x, y); return; }
+    const [kind, ref] = el.dataset.hit.split(/:(.*)/s); const ppl = scenePeople(id);
+    if (kind === "obj") { const o = sceneObjects(id).find(q => q.id === ref); if (!o) return;
+      if (o.bld) { const bid = o.bld, b = POIS[bid], st = bstate(bid); const dp = sc.doors[bid] || { x: o.x, y: o.y }; const knownLocked = st.known === tkey() && bldLocked(bid); const acts = [];
+        acts.push({ t: (b.bk === "shop" || b.bk === "smithy") && !bldLocked(bid) ? "Войти" : "Открыть дверь", dis: busy, fn: () => { if (!bldLocked(bid)) bldAction(bid, "enter"); else { st.known = tkey(); scState(id).player = { x: dp.x, y: dp.y }; pushFeed({ t: "sys", html: `Дверь заперта: ${esc(b.name)}.` }); sfx("thud"); save(); rerender(); } } });
+        if (!st.broken) acts.push({ t: "Постучать", fn: () => bldAction(bid, "knock"), dis: busy });
+        acts.push({ t: "Подслушать", fn: () => bldAction(bid, "listen"), dis: busy }, { t: "Заглянуть в окно", fn: () => bldAction(bid, "peek"), dis: busy });
+        if (knownLocked) acts.push({ t: "Взломать замок", fn: () => bldAction(bid, "pick"), dis: busy }, { t: "Выбить дверь", fn: () => bldAction(bid, "force"), dis: busy });
+        acts.push({ t: "Подойти", fn: () => walkTo(dp.x, dp.y), closes: false });
+        open(el, b.name, bldStatus(bid), acts); return; }
+      if (o.k === "door" && POIS[id].inner) { open(el, "Дверь", `выход: ${POIS[POIS[id].parent].name}`, [{ t: "Выйти наружу", fn: exitBuilding, dis: busy }, { t: "Подойти", fn: approach(o.x, o.y - 1.6), closes: false }]); return; }
+      const acts = [{ t: "Осмотреть", fn: () => turn(`Осматриваю ${o.acc}`), dis: busy }]; if (o.search) acts.push({ t: "Обыскать", fn: () => searchObj(id, o), dis: busy });
+      if (["bar", "stall", "anvil", "altar"].includes(o.k)) { const ms = merchantsHere(); const mm = (o.k === "stall" ? ms.find(x => x.type === "stall") : ms.find(x => x.type !== "stall")) ; if (mm) acts.unshift({ t: "Торговать", fn: () => openShop(mm), dis: busy }); }
+      const sp = { hearth: "Погреться у огня", bar: "Заказать выпивку", altar: "Помолиться", well: "Заглянуть в колодец", boat: "Сесть в лодку", stairs: "Подняться наверх", campfire: "Сесть у костра", bed: "Прилечь", font: "Окропить себя водой", stall: "Прицениться к товару" }[o.k];
+      if (sp) acts.push({ t: sp, fn: () => turn(sp), dis: busy }); acts.push({ t: "Подойти", fn: approach(o.x, o.y), closes: false });
+      open(el, o.label[0].toUpperCase() + o.label.slice(1), S.world.taken?.[id + ":" + o.id] ? "уже обыскано" : "", acts); return; }
+    if (kind === "npc") { const n = NPCS[ref]; const p = ppl.find(q => q.id === ref); const zz = p?.asleep; const mer = !zz && merchantsHere().find(mm => mm.npc === ref); open(el, n.name, `${n.role} · ${zz ? "спит" : attLabel(S.world.npcs[ref]?.att || 0)[0]}`, [
+      ...(mer ? [{ t: "Торговать", fn: () => openShop(mer), dis: busy }] : []),
+      { t: zz ? "Разбудить" : "Заговорить", fn: () => { if (zz) { bstate(id).alarm = tkey(); turn(`Бужу: ${n.name}`); return; } walkTo(p.x, p.y + .9); showTab("story"); const inp = document.getElementById("act-input"); inp.value = `${n.name}, `; inp.focus(); }, closes: true },
+      { t: "Присмотреться", fn: () => turn(`Незаметно присматриваюсь: ${n.name} (${n.role})`), dis: busy }, { t: "Подойти", fn: approach(p.x, p.y), closes: false }]); return; }
+    if (kind === "crowd") { const p = ppl.find(q => q.type === "crowd" && q.label === ref) || {}; const stall = /торгов/.test(ref) && merchantsHere().find(x => x.type === "stall");
+      open(el, ref[0].toUpperCase() + ref.slice(1), "безымянный местный житель", [...(stall ? [{ t: "Торговать", fn: () => openShop(stall), dis: busy }] : []),{ t: "Заговорить", fn: () => turn(`Подхожу к человеку (${ref}) и заговариваю с ним`), dis: busy }, { t: "Подслушать", fn: () => turn(`Прислушиваюсь, о чём говорит ${ref}`), dis: busy }, { t: "Подойти", fn: approach(p.x || 9, p.y || 6), closes: false }]); return; }
+    if (kind === "foe") { const E = ENEMIES[ref]; open(el, E.name, enemyStatus(ref), [{ t: "Атаковать", fn: () => turn(`Атакую: ${E.name}`), dis: busy }, { t: "Оценить врага", fn: () => turn(`Оцениваю, насколько опасен ${E.name}`), dis: busy }]); return; }
+    if (kind === "hero") open(el, C().name, "это вы · клик по полу — переместиться", [{ t: "Осмотреться", fn: () => turn("Осматриваюсь внимательно"), dis: busy }, { t: "Подождать", fn: waitTime, dis: busy || S.world.combat }]);
+  };
+  view.onkeydown = ev => { if ((ev.key === "Enter" || ev.key === " ") && ev.target.closest("[data-hit]")) { ev.preventDefault(); ev.target.dispatchEvent(new MouseEvent("click", { bubbles: true })); } };
+  if (!big) { const b = root.querySelector("#scene-big"); if (b) b.onclick = ev => { ev.stopPropagation(); openBigScene(); }; const w = root.querySelector("#sc-wait"); if (w) w.onclick = ev => { ev.stopPropagation(); waitTime(); }; }
+}
+function openBigScene() {
+  if (!S) return; const id = S.world.loc;
+  modal(`<div class="bigmap"><div class="bigmap-head"><div><div class="eyebrow">План локации · ${SC_NAMES[sceneOf(id).tpl] || ""} · ${DAY_PARTS[worldTime().part]} · ${weatherNow().name.toLowerCase()}</div><h2>${esc(POIS[id].name)}</h2></div><div class="bm-tools"><button class="btn small" type="button" id="sb-close">Закрыть</button></div></div>
+  <div class="scene-view big" id="scene-view-big">${sceneSVG(id, true)}</div>
+  <div class="legend"><span><i class="lg here"></i>вы</span><span><i class="lg tk-npc"></i>персонажи</span><span><i class="lg tk-crowd"></i>местные</span><span><i class="lg tk-foe"></i>враги</span><span class="home-note">Нажмите на человека или предмет, чтобы действовать. Клик по полу — подойти.</span></div></div>`, root => {
+    root.querySelector(".modal").classList.add("wide"); root.querySelector("#sb-close").onclick = () => { scHidePop(); closeModal(); renderWorld(); }; bindScene(root, true);
+  });
+}
+
+/* ICONS */
+/* Иконки: game-icons.net (CC BY 3.0) — авторы Lorc, Delapouite, Carl Olsen, DarkZaitzev, Cathelineau */
+const ICONS = {"club":"M483.4 24.6L449.8 40c0.91 1.9 2 2.8 3.1 3.5 4.3 6.5 8.9 9.1 13.7l21.8-32.2zm-221.2 14.4l4.2 42.5c7.2-7 14.9-13.6 23-19.6l-27.2-22.9zm143.2 2.4c-2 0-4.10.1-6.20.3-11.60.9-24.4 4-37 7.4l23.6 36.20.40.60.30.7c3.1 7.1 2.3 14.50 21.4-2.3 6.9-6.4 13.6-12.5 18.5-6.1 5-14.8 8-23.8 6.1-9.1-1.9-17.6-8.2-25.5-18.8l-1.7-2.3-1.1-48.5c-25.1 12.9-47.5 34.3-66.2 57l17.1 9.4 2.9 1.6 1.2 3.1c4.9 12.8 5.1 26.1-1.4 37.1-6.6 11-18.7 18.7-35.4 24.3l-6.9 2.3-11.7-19.8c-1.7 3.8-3.4 7.6-5.1 11.4l-17.2 108.6-2.8-61.6c-10.4 24.2-21.8 48.4-36.1 70.1C119.6 368.2 28.3 462 28.3 462l-0.10.1-0.10.1c-3.9 3.9-3.9 5.6-3.5 7.70.3 1.4 1.3 3.4 3.2 5.4l97.2-78.7-84 87.3c5.8 2.3 11.9 3.6 15.9 3.5 6.9-6.5 66.7-62.5 107.1-88.6 38.1-24.7 69.8-54.1 106.3-82l12.2-70.70.4-2.1 1.3-1.7c6.8-9 15.6-14.2 24.5-15.3a31.9 31.9 0 0 1 6.6-0.1c6.50.6 12.5 3 17.6 6.6 11.9 8.3 20.2 22.8 18 37.7 6.8-3 13.4-6 19.9-9.2 20.7-10.1 38.7-21.3 51.1-37.6-7-0.5-13.6-3.7-19-7.8-7.5-5.7-13.4-13.6-17.2-22.2-3.8-8.6-5.7-18.3-3-27.6 2.8-9.3 11.1-17.3 22.8-20l0.6-0.2 45.7-3.8c0.9-5.2 1.7-10.4 2.2-15.6 1-10.1 1.2-19.90.3-29.2l-28.9 31.2 19.9-64.6c-1.9-3.6-4.1-6.9-6.6-9.9-7.1-8.6-16.2-12.2-27.5-13a72.2 72.2 0 0 0-5.8-0.1zm-65.9 5.8l1.3 57.9c5.4 6.6 10 9.3 13.1 9.9 3.40.7 5.8-0.1 8.7-2.5 2.9-2.3 5.5-6.3 6.8-10.3 1.3-3.8 1-7.10.6-8.2l-30.5-46.9zm-136.1 64.7l37.6 64c10.1-4.3 16.1-9.1 18.9-13.8 3-5 3.4-10.71-18.5l-57.5-31.6zm284.1 45.8l-78.3 6.5c-6.5 1.6-8.2 4-9.3 7.4-1.1 3.6-0.5 9.3 2.2 15.2 2.6 5.9 7.1 11.6 11.7 15.2 4.1 3.1 7.9 4.3 10.9 4.10.6-0.4 1.2-0.9 2.2-1.6a960.5 960.5 0 0 0 10.2-7.8c8.4-6.4 19.4-15 30.4-23.5 10-7.8 12.1-9.4 20-15.6zM312.4 244.5c-0.50-10-1.40.1-3.40.4-7.1 2.2-11.1 6.9l-16.5 95.5 49.2-76.5c2-7.1-2.5-17.3-9.9-22.5-2.9-2-5.9-3.2-8.8-3.4a14.1 14.1 0 0 0-1.5-0.1zm74 29.5a328.8 328.8 0 0 1-7.7 3.9c-5.1 2.5-10.3 4.9-15.5 7.2l27.8 17-4.6-28.2z","dagger":"M43.5 15.8c-15.7 0-28.3 12.6-28.3 28.3 0 14.1 10.1 25.6 23.5 27.9L42.7 68 68.8 41.9l2.6-2.6C69.2 25.9 57.6 15.8 43.5 15.8zm33.7 44.1l-17 17c15.9 39.4 43.5 66.7 78.8 87.4 8.2-8.6 16.6-16.9 25.4-24.9-22.5-35.1-51.5-62.3-87.2-79.5zM322.6 79l-51.2 4.3c-79.4 48.1-143.9 108.1-186.7 186.5l-4.3 51.5 44.2-18.7-2.9-34.1-0.2-3.1 1.6-2.6c35.9-58.5 79.9-109.4 141.5-141.2l2.4-1.2 2.70.2 34.1 2.9 19-44.5zm-62.4 66.4c-10 5.9-19.5 12.3-28.6 19.3 46.7 47.9 87.2 108.6 114.7 166.5l11.2 23.7-23.7-11.3c-58-27.6-117.9-67.6-165.7-113.9-7.2 9.4-14 19.2-20.6 29.3 101.9 94.9 227.1 177.3 347.8 234.7-57.1-120.1-140-246.2-235.2-348.3zm-43 31.2c-13.4 11.7-25.7 24.6-37.3 38.4 39.4 38.5 88.1 72.8 136.7 98.8-26.1-48.6-60.8-97.8-99.4-137.3z","greatclub":"M300.6 33.5l-2.5 29.9s-5.7-7.5-12.3-16.2c-6.7 8.2-11.3 17.3-12.2 25.4 2.7 15.7 25.2 31.2 36.5 38.5l8.4 5.2-5.7 8c-34.3 48.4-83.3 112.5-123.7 154.5 14.4 2.4 29.4 6.3 45.1 13.5 40.7-46 94.2-111.7 141.1-155.4l7.9-7.4 6 9.2c10.6 12.8 23.5 23.2 36.4 30.4 1.7-13.3 1.8-25.4-3.2-36.9l-4.5-10 25.7-6.5-15.2-24.6 10.5-3.9c16.4-6.1 26.5-13.8 31.5-23.9-4.8-5.4-15-8.5-20.3-6.5-15.7 4-41.9 27.9-54.5 30.5-6 1.1-13.3 1.3-20.6-0.7-3.7-1-7.5-2.6-10.8-5.6-11-16.5-7.8-33.9-18.7-51.6-2.8-4.7-6.5-6.8-11.3-7.1-11.7-0.2-25.8 5.8-33.6 11.1zm179.9 47.6c-6.3 7.7-14.9 13.9-25.1 18.8l17 27.3-29.8 7.6c3.8 14.6 2.5 28.90.4 42.5 7.5 3.2 18.9-6.6 22.6-10.1 7.5-7.1 14.2-17.1 17.6-29.6 4.5-16.7 3.4-39.5-2.7-56.6zM173.1 295.1c-5.8 2.1-8.9 6.4-11.4 11.4 16 4.6 31.1 8.7 46.2 15 0.20.10.30.10.60.2 6.8-2.6 12-6.8 12.9-14.9-16.5-6.9-32.3-9.9-48.3-11.7zm-26.4 26.2c-0.10.1-0.20.2-0.30.40.1-0.10.2-0.10.4-0.2zm-0.70.7c-6.1 2.4-11.6 5.7-13.4 13 17.6 6.1 33 13.4 45.5 21.9 8-4.1 14.1-10.8 17.6-20.5-16.5-5.1-32.8-12.2-49.7-14.4zm-28.4 27.3c-8-0.2-7.9 5.2-9.8 9.2 13.5 13.7 26.8 25.6 39.3 34.8 7.7-4.7 14.7-11.1 19.1-22.3-12.6-8.2-29-15.4-48.6-21.7zm-23.3 21.9c-4.6 1-8.4 4.6-11.5 10.7 9.6 16.7 22.7 30.1 38.8 41.2 6.3-3.6 12.1-7.9 13.5-15.8-13.2-9.9-27-22.2-40.8-36.1zm-25.3 23.4c-9.8 9.1-19.7 18.2-29.6 27.3 3.3 1 6.4 2.7 9.3 4.6 8.1 5.4 15.1 13.9 20.3 24.3 4 8.2 6.4 16.5 7 24.4 11.2-12.6 22.4-25.2 33.4-38.1-16-11.5-29.9-25.4-40.4-42.5zm-39.5 44.6c-1.30.7-3.1 2.9-3.5 8.6-0.2 5.7 1.3 13.8 5.3 21.7 4 7.9 9.4 14.1 14.1 17.3 4.8 3.2 7.7 3.2 9 2.5 1.3-0.6 3.1-2.9 3.5-8.60.2-5.7-1.3-13.8-5.3-21.7-4-8-9.4-14-14-17.3-2.8-1.6-5.8-3.7-9-2.5z","handaxe":"M215.3 22.8L205 37.9l71.8 46.4 8.9-12.8c-15.6-23.6-44.2-41-70.4-48.7zm-38.5 18.8c-28.3 35.3-79.2 105.2-105.7 145.3 62 26.4 113 69.6 133.2 119.6 5.1 12.5 8.1 25.6 8.8 38.8 36.9-9.8 80.3-36.9 117.2-70.5 30.1-27.4 55.9-59.1 71.4-87.8L176.9 41.7zm240.7 155.5c-16.8 31-43.7 63.1-74.7 91.3-40.2 36.6-87.2 66.5-130.5 76-1.1 8.3-3.2 16.5-6.3 24.7-8.9 22.8-26.2 44.6-52.7 64.6 64.7 11 135.1-13.1 195.8-53.7 64.2-42.9 116.8-104.1 139.3-157.1l-70.9-45.9zM84.8 213.8L16.5 313.7v143.7l135.9-194.8c-18.2-18.5-41.4-35.3-67.6-48.8z","javelin":"M433.9 19.9l-78.6 158.7 47.8 53.9-15.7 260.8h38.8l15.7-261.2 51-45.2-59.1-166.9zm-130.5 20.6L216.1 152.6l28.4 49.2-28.6 106.4-0.1-0.2-9.5 35.60.10.1-40.2 149.6h32.7l29.7-111.200 9.5-35.6-0.1-0.1 36.7-137.3 48.4-27.9L303.4 40.5h0zM111.6 153.2l14.5 116.5 44.4 11.9L193 320.6l9.6-35.7-9.3-16.1 12-44.9-93.7-70.8zm-49.4 74.3l-42.7 79.3 23.6 28.5L30.8 493.3h18.7L61.8 336.3l27.6-22.9-27.2-85.9h0zm257.1 10.9l-22.4 87.2 29.7 21.9L345 493.3h18.8l-18.8-149.2 21.3-28.8-47-76.8zm175.1 28.6l-40.1 226.3h19l21.1-119.2V267zm-339.9 38.9l-55.4 71 18.6 32.2-20.4 84.1h19.2l19.5-80.4 30.8-17.8-12.4-89.2h0zm96.6 63.6l-9.5 35.5 50.8 88.2h29.8l-71.1-123.7z","lhammer":"M132.8 27.6l29.6 134.1c4.5 3.6 9.7 4.2 18.1 2l5.2-1.4 3.8 3.8 84.2 84.2 3.8 3.8-1.3 5.2c-2.4 9.4-1.5 15 3.4 19.9l13.5 13.5 97.5-97.6-13.5-13.5c-3.5-3.5-9.4-4.4-19.7-1.4l-5.3 1.5-3.9-3.9-86.2-86.2-1.6-3.3-1.1-3.3V64.4c00000-0.1L132.8 27.6zM310.6 85.5l-14.2 14.2 43.8 43.8 14.2-14.2L310.6 85.5zm120.2 95.8l-160 160 37.1 37.1 160-160-37.1-37.1zM196.5 199.6l-175 175v87.6l218.8-218.8-43.8-43.8z","mace":"M487.7 24.3c-24.6 11.2-45.5 18.6-63.1 21.9l41.2 41.2c3.3-17.6 10.7-38.5 21.9-63.1zm-86.1 24.4c-32.1 11.5-60 12.7-84.4 4.6l-9.7-3.2-2 10c-10.1 50.6-18.9 83.3-36.7 121.7l61.4 61.4c38.4-17.8 71.1-26.6 121.7-36.7l10-2-3.2-9.7c-8.1-24.4-6.9-52.3 4.6-84.4zm2 18.1c-13.8 11.7-29.8 19.9-55.3 19.9h-5.6l-2.5 5c-18.8 37.5-37.8 74.9-55.5 98.3 17.4-37.6 26.9-71 36.4-117.1 25.2 6.1 52.8 3.8 82.5-6.1zm7.9 16.3L303.6 195c17.4-24.4 33.7-57.2 50.3-90.3 24.9-1.2 42.9-10.1 57.6-21.5zm17.3 17.3c-11.3 14.7-20.3 32.7-21.5 57.6-33.1 16.5-66 32.9-90.3 50.3zm16.3 7.9c-9.9 29.7-12.2 57.3-6.1 82.5-46 9.5-79.5 18.9-117.1 36.4 23.4-17.7 60.7-36.7 98.3-55.5l5-2.5v-5.6c0-25.5 8.3-41.5 19.9-55.3zm-192.3 82.9l-12.7 12.7 67.9 67.9 12.7-12.7-7.7-7.7-52.5-52.5zm-6.4 41.7l-43.8 43.8 32.5 32.5 43.8-43.8zm-67.9 45.3l-12.7 12.7 55.2 55.2 12.7-12.7zm-14.1 36.8l-41 41 32.5 32.5 41-41zM99.4 357.5l-12.7 12.7 55.2 55.2 12.7-12.7zm-14.1 36.8L18 461.5V494h32.5l67.2-67.2z","staff":"M168.8 20.6l9.4 56.3c9.5-8.1 19.9-14.2 30.7-18.5zm82 47.6c-24.80.2-47.5 8.5-66.8 27.8-42.6 42.7-42.5 95-31.6 138.6 10.9 43.6 32.7 76.4 32.7 76.4l9.3 14h-40.2l33.3 33.4 37.5 37.4 57.4-24.6c-7.4-3.8-14.4-8.8-20.6-15-18.1-18-25.8-42.7-23.2-66.3-0.8-1.6-1.7-3.3-2.5-4.9-12.8-25.2-23.7-52.3-27.2-77.9-3.6-25.60.5-50.7 19.3-67.6 21-18.9 49.2-22.1 77.5-15.9 28.3 6.2 57.8 21.4 85.3 40.6 27.5 19.1 53 42.2 72.9 64.6 12.1 13.8 22.2 27.1 29.4 39.6-0.1-1.2-0.1-2.4-0.3-3.7-1.5-10.7-6.8-24.5-15.3-39.3-17-29.8-46.6-64.1-81.5-92.8-34.9-28.8-75.2-51.9-112.9-60.6-9.4-2.1-18.6-3.5-27.5-3.8-1.7-0.1-3.3-0.1-5-0.1zM49.5 98.9l82 58.9c2.4-12.4 6.4-24.8 12.4-36.8zm81 117.2l-68.5 30.6 75.6 1.7c-0.9-3.1-1.8-6.2-2.6-9.4-1.8-7.3-3.4-15-4.5-22.9zm188.7 19.8c-16.1 0-32.2 6.2-44.6 18.5a62.8 62.8 0 0 0 0 89.1 62.8 62.8 0 0 0 89.1 0 62.8 62.8 0 0 0 0-89.1c-12.4-12.3-28.4-18.5-44.5-18.5zm-198 81.4l-21.2 21.3L200.3 439l21.2-21.2zm-22.7 45.3L18 443v51h104.7l53.6-53.6-12.8-12.7-38.9 38.9-12.8-12.8 38.9-38.9-26.8-26.8L85 427l-12.7-12.8 38.9-38.9z","wstaff":"M335.7 19.5c-24.50.1-49 5.2-71.1 15.6-22.5 10.6-43.1 34.2-58.4 62.6-15.3 28.4-25.2 61.3-27.7 88.8-7.5 82.1-51.9 155.4-159.8 252.6l-0.2 21.4C89.2 403.4 139.9 346.6 176.3 290l0.10c-9.3 32.5-22.6 63.2-43.6 88-31.5 35.6-69.2 71.1-114.5 106.5l-0.1 8.2 25 0.1h0.5l1.3-1.2c24.4-16.5 48.6-31.5 72.6-41.5l0.20.2-46.4 42.5 28.90.1c48.4-41.7 94.7-90.6 129.6-137 33.6-44.7 56-87.3 60.7-116.8-1.3-2.3-2.6-4.6-3.7-7.1-18.8-42.1-4.3-96.4 40.2-116.1 32.7-14.4 74.9-3.2 90.4 31.30.10.30.30.60.51 13.3 24.1 6.2 49.5-9.3 62-7.9 6.3-18.4 9.5-28.8 6.6-10.3-3-19-11.8-24.5-25.1l17.3-7.1c4 9.8 8.7 13.2 12.4 14.2 3.7 1.1 7.80.1 11.9-3.2 8.2-6.6 14.3-21.9 4.4-39l-0.3-0.5-0.2-0.5c-10.7-24.8-42-33.3-66.2-22.6-34.1 15-45.6 58.1-30.7 91.3 20.5 45.8 78 61.2 122.4 40.9 60.2-27.5 80.1-103.3 53.1-161.8-24.7-53.5-81.4-82.5-138.9-83.8-1.60-3.3-0.1-4.9-0.1zm-25.8 26.7c3.20 6.40.3 9.40.9 10.3 1.9 19.9 6.8 29 13.2-30.6-5.4-58.3 4.6-80.8 24.8-22.4 20.2-39.2 50.6-45.8 84.7-4.7-11.4-7.2-21.5-6.7-31.70.3-6.3 1.7-13 4.8-20.2 9.1-18 21-33.9 35.2-46.7 7.8-7 16.4-13.1 25.5-17.9 10.9-5.2 20.5-7.2 29.3-7.1zm122.9 62.3c22.6 13.2 34.4 41.9 32.9 70.7-0.6 11.4-3.5 23-8.9 33.6-12.5 18.9-35.5 25.5-50 20.9l-0.1-0.2c27.9-10.4 39.2-32.4 40.3-55.20.1-2.50.1-50-7.5 1.4-13.3-0.4-28.8-5.5-43.4-2.2-6.5-5.2-12.9-8.8-18.7l0.1-0.1zm-135.6 1.3c-21 19.3-29.4 35.3-33.2 51.2-3.8 16-2.8 32.8-2.9 52.9-0.1 23.8-2.6 51.5-18.4 85.7000000-21.1 26.8-45.3 52.2-68.9 67.4l-0.10c64.2-71.5 68.5-114.8 68.8-153.20.1-19.2-1.3-37.6 3.4-57.10.6-2.4 1.2-4.7 2-7.1h0c8.1-17 16.6-26.1 25.5-31.6 7.2-4.4 15-6.7 23.9-8.2z","sickle":"M257.6 25.2c353.2 276.9 16.9 408.9-87.9 293.2l-40.8 37.1 50.8 50.3c217.6 181.4 524.7-252.1 77.8-380.7zM110.8 364.3c-5.5 1.1-9 3-11.3 5.2-2 1.9-3.2 4.6-4.2 7.6l55.2 52.8c5.5-1 9.3-2.8 11.3-4.7 2-1.9 3.1-3.9 3.1-7.5l-54-53.4zm-24.7 30.3L30.4 445.3C13.7 472.3 45.1 506.5 81.5 489.9l51.5-50.3-47-45.1z","spear":"M286.9 26.1l32.3 66.7 175.3-51.6zm-14.4 11.5l-20.7 47.8 19.9 67.4 43.5 29.1c-0.9-8-2-17.1-3.1-27-1.4-11.7-2.8-23.6-4-32.9-0.6-4.6-1.1-8.6-1.5-11.5-0.2-1.7-0.6-3.4-0.7-4.2zm227.2 20.8l-175 51.6c0.4 2.80.8 5.9 1.3 9.8 1.2 9.4 2.6 21.3 4 33 1.3 11.3 2.6 22.2 3.5 30.7zM225.2 96.4c-6.20-13.51-20.4 3-11.9 3.5-22.8 10.2-27.7 15.8l13.1 44.5c2.9 11.5 2.6 10.6 2.9 11.5 2.8 9.7 6 22.9 8.9 36.2 2.9 13.1 5.4 26.3 7.2 36.6-13.2 9.1-24.2 23.5-26.7 38.10.7 5.7 1.4 11.7 2 17.9h30.7v3.6c-9.4 2.8-19.5 7-29.1 11.50.9 9.1 1.8 18.5 2.8 28l26.30.7v1.4c-9.1 3-17.4 6.7-24.9 10.7 2.1 19.7 4.5 39.5 7.7 580.6 3.7 1.3 7.4 2 11h15.3v3.6c-4.4 1.3-9 2.9-13.6 4.7 3 14.1 6.6 26.8 10.8 36.9 5.2 12.5 11.1 20.1 16.8 23.4 5.8-3.3 11.7-10.3 16.8-22.3 2-4.7 3.9-10.1 5.7-16-6.1-3-12.2-5.5-17.5-6.5v-0.6h19.5c2.6-9.9 4.9-21.2 6.9-33.3 1.4-8.4 2.6-17.2 3.8-26.3-8.6-4.7-17.7-8.7-24.9-9.6-1.6 20.6-3.5 40.4-5.3 57.9-0.2-45.8-0.5-128.8-5.7-171.6l0.7-10.3c-0.4-3.5-1.1-8.1-2.1-13.4-1.8-10.6-4.5-24.3-7.5-37.9-2.7-12.3-5.6-24.5-8.4-34.4 4.3-0.5 8.9-1.3 13.3-2.6 11.9-3.5 22.8-10.2 27.7-15.8L236.6 97.7c-3-0.9-6.9-1.3-11.4-1.3zm-64 28.4l-11 3.2 24 40.8zm-28.8 8.5l-12.9 3.8 24 40.9 12.9-3.8zm-30.6 9.1l13 44 11-3.2zm-17.3 5L18 166.9v48l79.5-23.4zm157.5 86.6c-0.40-0.80-1.20 1.6 8.3 2.4 18.2 2.9 29.60.7 17.30.3 37.8-0.6 59.4-0.8 18.2-2.1 37.2-3.5 55.7h26.1c1.5-13.6 2.9-27.8 4.1-42.4-10.1-1.3-20.1-1.6-26.60.7l27.3-10c1.9-24 3.6-48.9 5.5-73.50-4.9-1.4-7.9-3.6-10.4-2.3-2.6-5.9-4.8-10.5-6.4-4.6-1.6-10.2-2.4-15.7-2.7-1.4-0.1-2.8-0.1-4.1-0.1zm-26.8 211.2v2l-0.20c0.1-0.60.1-1.40.2-2z","lcrossbow":"M89.6 18.1l-10.8 10.800 27.5 333.6-83 92.9 33.2 33.2 90.2-80.6 336.2 24.9c0.10.10.10.10.20.2l0.2-0.2h0v0l10.6-10.6c-1.7-1.7-3.1-3.4-4.7-5.2-21.3-25.6-25.4-63.2-35.5-109.1-8.3-38-21.2-81-53.1-125l-38.1 50.8c0000 0 0 29 36.1 46 67.8 59.7 96.2 15 31.2 26.1 59 44.5 83.7L165.3 391.5 337.5 237.6l64.4-86-41.5-41.5-85.9 64.3L122.8 344.1 98.2 45.2c24.7 18.3 52.4 29.4 83.7 44.4 28.5 13.7 60.2 30.7 96.3 59.7l50.8-38.1c-44-31.9-87-44.7-125-53.1C158 48.2 120.3 44.1 94.8 22.8c-1.7-1.6-3.5-3-5.2-4.7zm3170.3c-3.40-6.90.4-10.31-4.60.8-9 1.8-12.8 3.1-3.8 1.3-6.8 2.3-9.7 4.6a7.2 7.2 0 0 0-2.7 6.2l5 62.3a7.2 7.2 0 0 0 2.1 4.5l33.7 33.6a7.2 7.2 0 0 0 4.5 2.1l62.3 5a7.2 7.2 0 0 0 6.2-2.7c2.3-2.9 3.4-5.9 4.6-9.7 1.3-3.8 2.3-8.3 3.1-12.80.8-4.6 1.2-9.20.9-13.6-0.3-4.4-1-9-4.8-12.8L422.8 23.3c-3.8-3.8-8.4-4.5-12.8-4.8-1.1-0.1-2.2-0.1-3.3-0.1zm0.1 14.4c0.80 1.60 2.20.1 2.40.2 3.70.9 3.70.8l65.7 65.7c-0.100.6 1.30.8 3.70.2 2.7-0.1 6.5-0.7 10.3-0.6 3.8-1.6 7.6-2.6 10.7-0.4 1.2-0.5 1.3-0.9 2.2l-54.8-4.4-29.9-29.9-4.4-54.8c0.9-0.40.9-0.5 2.2-0.9 3-1 6.9-2 10.7-2.6 2.8-0.5 5.7-0.7 8.1-0.8zm-48 120.4l-18.9 31.6-204.5 204.5-8.8-0.7-1.2-14.6 201.9-201.9 31.6-18.9z","sling":"M218.5 26.8c-36 0-72.6 10.1-102.1 28.2C74.6 80.6 47 121.2 51.1 172.7l9 27.7c15.8-42.6 42-79.2 75.8-103.8 36.9-26.9 83.1-39.1 132.7-29.1l-10.2-36.3c-10.7-2.4-21.6-3.9-32.7-4.3-2.4-0.1-4.8-0.1-7.2-0.1zm61 13l8.5 30 18-0.5-3.4-20.9zm42.4 15.3l3.6 22.2c5.8 3.5 9.5 6.8 11.3 9.3 3 4.1 2.8 5.60.6 9.8-4.4 8.5-23.5 22.3-46.9 35.7-23.4 13.4-50.8 27.4-72.4 42.9-10.9 7.8-20.3 15.9-27.2 25-6.8 9.1-11.1 19.7-9.8 31 7 62.8 61.8 105.2 113.1 132.1 30.7 16 60.6 26.7 79.7 32.7 2.8 2.7 11.9 11.2 23.8 19.8 14.2 10.2 31.5 21.5 49.5 19 10.5-1.4 21.4-6.8 30.2-14.4 4.4-3.8 8.2-8.3 10.7-13.7 2.4-5.4 3.3-12.10.8-18.4-4.6-11.7-16.3-17.3-27.9-19.4-5.9-1-12-1.3-18.3-1.2-6.20.2-12.60.7-18.8 1.6-20.1 2.6-38.2 7.7-44.6 9.6-18.4-5.8-47.3-16.1-76.7-31.6-49-25.7-97.7-64.8-103.7-118.1-0.6-5.7 1.4-11.5 6.4-18.2 5.1-6.8 13.3-14 23.2-21.1 20-14.3 47-28.3 70.9-42 23.9-13.6 45-25.8 54-43 4.5-8.6 4.3-19.9-2-28.6-5.9-8.1-15.4-14.6-29.5-20.9zm85.4 97c-12.8 0-23 10.2-23 23s10.2 23 23 23 23-10.2 23-23-10.2-23-23-23zm-71 39c-12.8 0-23 10.2-23 23s10.2 23 23 23 23-10.2 23-23-10.2-23-23-23zm-296.6 4.5l-12.8 34.8L43.4 245l6.9-16.6zm392.6 27.5c-12.8 0-23 10.2-23 23s10.2 23 23 23 23-10.2 23-23-10.2-23-23-23zM22.8 251c-1.3 8.4-1.6 18-0.8 28.4 1.6 21.2 8.3 45.3 24.4 65.1 45.9 56.3 82.3 75.5 121.7 82.2 35.9 6 73.2 2.5 125.2 10.4 3.7 4.9 9.2 12 15.9 19.3 11.9 13 26.5 27.5 44.7 28.7 10.60.6 22.4-2.5 32.5-8.2 5-2.9 9.7-6.4 13.2-11.2 3.4-4.8 5.6-11.3 4.5-18-2.2-12.4-12.5-20.1-23.5-24.5-11-4.3-23.9-6.2-36.4-7.1-6.2-0.4-12.4-0.6-18.1-0.6-17.3 0-30.7 1.5-30.7 1.5l-8.80.9c-49.1-6.4-84.7-3.8-115.5-9-35.8-6-66.5-21.5-110.8-75.8C47.3 317 41.4 296.5 40 278c-0.3-4.2-0.3-8.2-0.2-12.1zM443.1 385.6h4c3.9 0 7.50.3 10.70.9 8.6 1.5 12.7 4.2 14.3 8.20.5 1.30.6 2.3-0.4 4.4-1 2.1-3.1 4.9-6.1 7.5-6 5.2-15.3 9.4-20.8 10.2-7.4 1-23.6-6.5-36.6-15.8-4-2.9-7.5-5.8-10.8-8.5 8.1-2 18.3-4.2 28.9-5.6 5.7-0.7 11.4-1.2 16.8-1.3zm-116.8 47.9c5.3 0 11 0.2 16.80.6 11.40.8 22.9 2.7 31 5.9 8 3.1 11.6 6.6 12.3 10.90.3 1.30.1 2.3-1.3 4.2-1.4 1.9-4 4.2-7.5 6.1-6.9 4-16.9 6.3-22.4 5.9-7.4-0.5-21.8-11.1-32.6-22.8-3.4-3.7-6.3-7.2-8.9-10.5 3.8-0.1 7.9-0.3 12.6-0.3z","shortbow":"M77.8 11.8l9.5 70.6-69.4-11.2 41.5 56.1-11.1 322.7c-11.7 13.2-20.7 28.9-25.8 47.9 74.2-55.8 152.9-71.6 223.6-101.4l-35.9-35.9c-53.1 25.2-105.8 42.5-142.5 71.3l9.7-280.5 8.1 10.9 2.2 4.5h71.3L358.7 394c15.6-13.6 29.6-28.4 42.7-44.6l-229.9-193.8V84.2l-11.9-9.2 273.6-10.7c-30 36.4-46.8 89.1-71.4 142.4l36.6 36.6c29.2-70.2 45-148.1 100.3-221.5-18.5 5-33.7 13-46.6 23.6l0-0.5-315.4 12.3-58.8-45.4zm24.6 42.6l50.4 38.9v54.8H99.2l-0.6-0.1-38.4-51 49 7.9-6.8-50.5zm248.1 167.5c-8.2 13.3-17 25.8-26.6 37.7l30.7 25.9c11.2-8.8 22.6-17.2 34.1-25.4l-38.2-38.2zm100 89.7C414.8 368.5 375.2 412.4 315.9 447.7c59.1 20.7 118.5 37.3 178.8 44-8.7-60.7-24-120.6-44.1-179.9zm-184.1 5.8c-13.4 11-27.6 21.2-42.4 30.7l37.5 37.5c8.7-14.6 18.6-28 29.3-40.4l-24.4-27.7z","longbow":"M331.7 20.4a4.4 4.4 0 0 0-1.80.3c-27.7 11.5-47.3 57.5-29.9 76.7 33.5 38.9 72.8 55.6 90.1 128.4 2.6 20.1 1.2 40.1 0 60.2-17.3 72.9-56.6 89.5-90.1 128.4-17.4 19.2 2.2 65.1 29.9 76.7 9 3.8 28-26.2 21.8-25.2-16.3 2.5-37.8-20.9-28.4-28.9 38.5-32.6 105.5-100.1 100.3-135.6-2.2-15.1-9.3-30.4-15.6-45.5 6.2-15.2 13.4-30.5 15.6-45.5 5.2-35.5-61.8-102.9-100.3-135.6-9.4-8 12-31.4 28.4-28.9 5.90.9-10.4-25.4-19.9-25.5zM152 24.2l-21.4 53.6L152 99.3l21.4-21.4zm-9 91.5v296.5l9-9 9 9V115.7l-2.6 2.6-6.4 6.4zm160 9.8v260.8l18-17.5V143.1zM152 428.7l-23 23v38.5l23-23 23 23v-38.5z","battleaxe":"M240.1 19.6c-56.70.4-110.9 29.1-151.6 72.3-53.4 56.8-81.9 137.9-61 210.1 16.3-8.8 32.8-16 48.9-21.4-6.3-123.2 89.2-210.9 200-210.3 4.3-13.4 10.3-27.3 18.1-41.9-16.3-5.4-32.7-8.4-49-8.8-1.80-3.7-0.1-5.5-0.1zM271.3 89C173.7 90.7 91.4 166.1 94.9 275.3c11-2.7 21.8-4.6 32.3-5.4 14.6-1.2 28.7-0.5 41.8 2.4L278.3 162.9c-5.3-12.1-8.5-25-9.3-38.8-0.7-11.30.1-23 2.6-35.2-0.10-0.2 0-0.3 0zm60.8 60.7l-16.9 16.9L345.8 197l16.8-16.8-30.4-30.5zm-37.1 23L175.6 292.1l44.6 44.6 119.3-119.3L295 172.7zm189.9 46.1c-14.5 7.8-28.3 13.8-41.6 18.10.8 111-87.2 206.8-210.7 200.3-5.4 16.1-12.6 32.5-21.3 48.7 72.2 20.9 153.3-7.6 210.1-61 57-53.6 88.5-130.7 63.5-206zm-136 15.7L240.7 342.6c3.2 13.6 4.1 28.2 2.8 43.5-0.9 10.6-2.8 21.5-5.5 32.6 109.6 3.7 185.1-79 186.6-176.9-12.3 2.5-24.2 3.4-35.5 2.7-14.3-0.9-27.7-4.3-40.2-10zM169.5 312.3L20.1 461.7V494H48.8l151.2-151.2-30.4-30.5z","flail":"M157.5 14.9c-7.90-15.8 1.8-22.8 5.2-4.2 2-7.9 5-10.6 8.8a28.1 28.1 0 0 0-1.7-0.2 29.2 29.2 0 0 0-70.4c-17.6 3.3-33.4 16.3-40 32.9-2.1 5.4-2.7 11.4-1.2 17.1a29.5 29.5 0 0 0-3 3C59.8 95.7 55.7 115.8 61.1 132.8c1.6 5 4.5 9.5 8.4 12.9-2.7 17.6 4.2 36.6 17.6 48.3a29.2 29.2 0 0 0 5.4 3.8c-0.3 1.3-0.4 2.6-0.5 400.300.600.9l17.9 13c-1.4-4.4-2.2-8.8-1.9-12.90-0.60.2-1.30.4-2a25.1 25.1 0 0 0 5.1-1.3 24.9 24.9 0 0 0 8.8-5.5c0.70.3 1.40.6 1.91 9.3 6.7 16.2 21.3 15.5 32.8-0.1 2.2-1.7 5.1-3.3 7.1l13.3 9.6c3.6-4.4 5.6-10 6-15.8v0c1.1-17.9-7.6-36.3-22.2-46.8a29.5 29.5 0 0 0-3.5-2.1c0.1-0.50.2-10.3-1.5 2.8-17.4-3.8-36.2-16.8-48.1 5.3-11.4 6.7-24.7 3.5-36.9 10.3-4.8 19.2-12.9 24.7-22.8 12 4.4 25.6 4.4 37.60a56.3 56.3 0 0 0 2.9 5.1l13.4-9.4a46.1 46.1 0 0 1-2.6-4.7c3.5-4.1 5.8-9.2 6.1-15.1a24.9 24.9 0 0 0-1-8.6c0.300.70 10 2.10 4.20.4 5.6 1.2 4.7 2.6 9.1 7 12.5 12.2l13.4-9.4c-4.7-6.9-10.9-12.8-18.1-16.8-4.1-2.3-8.7-3.6-13.4-3.6a25.1 25.1 0 0 0-11.2 2.5 29.6 29.6 0 0 0-1.7-1.2c-7.6-4.8-16.5-7.4-25.5-7.9a56.3 56.3 0 0 0-3.4-0.1zm0.6 16.3c6.50.1 13.1 1.6 18.3 4.4-2.1 4.3-3.1 9.1-2.8 14a49.8 49.8 0 0 0 0.7 5.9c-8.2 3-19 2.8-27.6-0.20.3-6.1-1.5-12.3-5.7-17.4a25.4 25.4 0 0 0-1.6-1.7c0.7-0.7 1.5-1.3 2.3-1.7 3.9-1.9 8.6-2.9 13.4-3.2a45.7 45.7 0 0 1 3.1-0.1zm-38.8 13.5c0.3 7.1 3.6 13.4 8.5 17.9-4 6.9-11.2 13.2-18.7 16.7-3.3-3.2-7.5-5.6-12.5-6.6a25.3 25.3 0 0 0-3.7-0.5 24.8 24.8 0 0 0-3.10c-0.1-1.70.1-3.30.5-4.5 4.2-10.6 16.7-21 28-230.3-0.10.6-0.11-0.1zm114.4 14.7l-36.8 25.7 25.8 36.6 36.8-25.7-25.8-36.6zM83.4 92.7c5.3 4.1 11.9 5.7 18.4 5.2 1.8 7.70.7 17.3-2.6 25.2a25.2 25.2 0 0 0-5.5-0.3c-2.40.1-4.80.6-7.1 1.5a24.9 24.9 0 0 0-9.1 5.7c-0.4-0.7-0.8-1.3-1-2-3.4-10.8-0.3-26.5 7-35.3zm185.4 16.5l-36.8 25.7 202.2 287.4c16-4.4 26.9-13.8 36.6-26L268.8 109.2zm-164.3 34.7c7.4 8 11.9 21.7 10.2 32.1a6.9 6.9 0 0 1-0.3 1 25 25 0 0 0-14 6.6c-1-0.4-2-0.9-2.7-1.5-7.7-6.7-12.9-19.6-12.6-30.3 7.40.2 14.2-2.9 19.3-7.9zm109.8 56.1l-32.4 40c11.4 1.4 22.8 4.8 33.7 10.2l-1.4-50.2zm-132.4 14.8l21.1 90.7c21.5 5.7 50.4-10 53.9-35.4l-22.4-16.6c0.100.300.4-0.1l-32.1-23.3-20.8-15.3zm85.7 36.3c-4.90-9.70.5-14.5 1.2 5.5 3.8 8.2 5.9 16.3 11.3l-0.2 3.9c-1.9 37.1-42.5 59.7-73.4 48.3l-3-1.1-0.7-3.2-3.9-16.6a97.1 97.1 0 0 0-4.9 8.7C59.6 350.7 78.5 407.8 125.6 431.5a97.3 97.3 0 0 0 7.4 3.3l-11.7-25-1.4-2.9 1.7-2.7c14.6-23.8 48.9-33.2 75-20.3a53.1 53.1 0 0 1 16.4 12.6l2.1 2.4-0.9 3.1-8.9 32.1c20.1-8.5 37.5-23.9 48.1-45a96 96 0 0 0 6.7-17.3l-5.2 3.9-2.6 1.9-3-1.1c-31.1-11-47.6-54.4-25.3-84.1l2.5-2.3 2.6-0.1 16.8 1c-8.7-12.2-20.5-22.6-34.9-29.8l00c-14-7-28.9-10.3-43.5-10.2zm-94.9 46.8l-55.3 3 44.4 33.9a106.8 106.8 0 0 1 10.8-36.6c0.1-0.10.1-0.20.2-0.4h0zm159.2 4.4c-13.6 21.7-1.6 52.3 18.6 61.7l74.3-56.1-93-5.7zm-60.5 88.2c-14.80-29.7 6.6-37.8 17.5l41.9 89.2 26.2-94.9c-3.2-3.1-6.8-5.7-10.7-7.5-6.1-2.9-12.9-4.2-19.6-4.2zm89.1 10.7a106.5 106.5 0 0 1-25.4 29.1l51.7 20.3-26.3-49.4zM80.3 407.6l-21.9 55.9 51.3-27.4a106.4 106.4 0 0 1-29.4-28.6zm399.9 2.2c-9.5 11-21.1 20.7-36.5 26.2l14.1 20c17.9-2 29.1-10.4 36.8-25.7l-14.4-20.5z","glaive":"M488.7 24.7c-25.6 25.5-51.7 50.9-78 76.3-57-13.4-129.6 16.5-170.7 43 49.3-8 98.8-16.3 120.4 4.7-85.4 80.4-173.5 159.8-261.9 239l38.9 44.9c23.9-8.7 56.6-29.2 92-57.6 38-30.6 79.2-70.3 117.4-113.7 67.7-76.8 125.6-166.1 141.9-236.6zM95 409.3l-13.6 12.5 19.9 22.6 14-12.9-20.3-22.2zM68.1 434L18 480.1V494h29.4l40.6-37.4L68.1 434z","greataxe":"M410.1 19.2c-30.3 24.2-54 38.4-64.2 48.6-3.3 3.3-6.3 9-6.9 13.7-0.6 4.7 0 7.4 3.7 9.9l00 26.2 18.3c3.3 2.3 5.4 1.8 9.3-0.8 3.9-2.5 7.7-7.9 9-11.8 4.9-15.1 10.2-40.7 22.8-77.9zM223.7 80.4l22.5 49.9 12.2-3.7 26.3 18.3 20.6-29.5-26.3-18.3-0.8-12.8zm213.6 10.1c-8.6 27.1-19.1 42.8-30.4 51.7 9.5 86.2-6.9 139.6-36.2 176.1-29.5 36.7-70.6 55.7-107.8 76.8l-0.3-0.6c-25 65.3-80.1 86.5-90.4 96.2 22.8-4.8 59.3-12.9 99.3-27.1l13.9-25.7 14.8 12 19.4-24.2 18.9 8.6c45.4-24.3 87.8-58.1 112.5-105.4l-29.9-31.1s23.2 9.6 37.3 15.2c16-38.7 20.6-85.6 7.1-142.6l-19.7-8.5 14.7-10.4c-5.7-19.2-13.3-39.5-23.2-60.9zM333.3 106.8l-8 11.5 24.6 17.1 8-11.5zm-18.3 26.3L206.4 289l24.6 17.1 108.6-155.9zm74.8 17.9c-10.2 2.9-20.4 2.4-29.9 1.6l-9.7 13.9c4.50 9.60.1 17.10.4l70.3 1.4 6.9c3.1 15.4 2.4 23.20.2 33.5l-1.4 6.4-41.2 4.3-8.8-15-39.8 57.2c7.5 7 12.3 17 16.9 27.7 5.5 12.9 9.9 27 13.2 37.7l-17.2 5.3c-3.3-10.6-7.5-24.2-12.6-35.9-3.5-8.1-7.6-15.1-11-19.5l-14.7 21.1c11.2-5.1 14.5-1.9 15.2 11.4 1.2 23.7-0.7 44.2-4.8 62.1 32.7-18.1 64.3-35.5 86.9-63.6 25.3-31.5 40.7-77 33.1-155.9zM153.8 180.9l22.8 49.5 12.2-3.7 26.3 18.3 19.5-28-26.1-18.6-0.7-12.9zm184.1 3.3l-2 2.8 7.1 12.1 16.6-1.7c0.6-3.90.6-7.3-0.2-12.7-7.8-0.2-13.7-0.1-21.4-0.5zm10.2 46.4c5-0.1 9.90.2 14.70.6l9.60.7-1.3 9.5c-3.2 22.3-9.3 40.6-34.4 57l-6.2 4-5.2-5.2c-7.1-7.2-13-15.6-16.6-24.3-3.6-8.7-5.5-18.50-27.1 5.6-8.7 15.2-12.3 24.7-14 4.8-0.8 9.7-1.2 14.7-1.2zm-0.6 18.1c-40-7.80.3-11.10.8-7 1.2-11.1 3.5-12.6 5.9-0.50.7-1 4.6 1.5 10.5 1.7 4 4.5 8.6 7.9 12.8 12.5-9.4 16.1-17.6 18.4-30.1-1.40-2.70-40zm-151.3 55l-8 11.5 24.6 17.1 8-11.5zm-18.3 26.3L63.8 494h36.6l102.2-146.8z","greatsword":"M495.1 17.1L323.4 64.4 19 368.7v56.2l297.5-297.5c22.1-22.1 44.2-31.3 61.7-30.5 38.3 1.6 54.9 49 5.8 98L85.3 493h54.7L446 187l49.1-170zM360.8 126l-18.70.30.4 23-23-0.4-0.3 18.7 23.60.40.4 23.6 18.7-0.3-0.4-23 230.40.3-18.7-23.6-0.4L360.8 126zm-69.1 61.5l-18.2 4.1 7.2 31.9 1.3 5.9 5.9 1.2 31.2 6.6 3.9-18.3-13.6-2.9 12.5-12.5-13.2-13.2-13.3 13.3-3.7-16.2zm-49.7 38.2l-2.2 28.2-27.5 1.8 1.2 18.7 30.8-2 17.9 17.9 13.2-13.2-17.5-17.5 2.6-32.3-18.6-1.5zm-43.4 55.6l-18.3 3.9 7.2 34.1-34.8-6.9L149 330.8l48.7 9.6 13.9 2.7-2.9-13.8-10.1-47.9zm-57 76.1l-16.8 16.8L97.1 368l-4.1 18.2 26.1 5.9 5.3 25.3 18.3-3.8-5.4-25.5 17.4-17.4-13.2-13.2zm-57.2 44.9l-18.70.30.4 23-22.9-0.4L42.8 444l23.60.40.4 23.6 18.7-0.3-1.1-65.2zm-53.8 66l-11.5 11.5V493h13.4l11.3-11.3-13.2-13.2z","halberd":"M235 28.9l-56.7 24.7 104.8 104.8c20.1 20.1 20.1 53.1 0 73.2-20.1 20.1-53.1 20.1-73.2 0l-104.4-104.4-20.7 51.8C113 210 131.5 258 135 307.4c1.2 170.6 34.2-2.1 51 149-19.6 267.1-137.1 285.5-283.5-17.8 3.4-36.1 4.4-54.2 3.4-50-2.9-98.1-21.2-129.2-49.4zm258 12.3c-16.4 13.4-35.3 22.9-55.2 28.9-16.8 160.3-146.3 289.2-309.1 307.6 0 0000 0-5.4 19.9-14.2 38.5-27 54.6 77.8-1.2 148.9-22.3 208.5-58.7l106.7 6.6L419 273.6c46.9-64.2 74-144.1 74-232.4zm-289.4 64.1l-46.9 46.8 44.4 44.4 46.9-46.8-44.4-44.4zM90.2 218.5L20 288.6v88.8l93.2-93.1c-4.4-23.9-12.4-46.7-23.1-65.8z","longsword":"M491.8 22.5l-83.4 14.9L196.6 249.2c3.3 4.8 5.4 10.7 5.4 16.9 0 5.9-1.7 11.3-4.6 16-5.1-1.6-10.4-2.5-16-2.5-15.7 0-29.9 6.9-39.7 17.8l-9.1-9.1 17.2-17.2c-4.5-5.8-8.9-11.6-13.2-17.6l-19.4 19.4-13.2-13.2 21.8-21.8c-4.4-6.6-8.7-13.3-12.8-20.1l-40.8 40.8 58.3 58.3c-1.6 5.1-2.5 10.5-2.5 16.1 0 7.7 1.6 15 4.6 21.6l-72.1 72.1-14.6-14.6L21 437l14.6 14.6-8.6 8.6 27.2 27.2 8.6-8.6 14.6 14.6 24.8-24.8-14.6-14.6 72.2-72.2c6.6 2.9 13.9 4.6 21.5 4.6 5.6 0 11-0.9 16.1-2.5l58.4 58.4L296.5 401.5c-6.8-4.1-13.5-8.4-20.1-12.8l-21.8 21.8L241.4 397.3l19.4-19.4c-6-4.3-11.8-8.7-17.6-13.2l-17.2 17.2-9.2-9.2c10.9-9.8 17.8-24 17.8-39.7 0-5.3-0.8-10.5-2.3-15.4 4.7-3 10.3-4.8 16.3-4.8 6.2 0 11.8 1.8 16.5 5L477 106l14.9-83.4zm-66.2 53l13.2 13.2-191.7 191.7-13.2-13.2L425.6 75.5zM181.3 298.4c19.3 0 34.7 15.4 34.7 34.7 0 19.3-15.4 34.7-34.7 34.7-19.3 0-34.7-15.4-34.7-34.7s15.4-34.7 34.7-34.7z","maul":"M266 32.4l-85.2 85.2v19.8L285.8 32.4h-19.8zm41.5 3.7L184.5 159.2l168.3 168.3L475.9 204.4 307.6 36.1zm172 190L374.5 331.2h19.8l85.2-85.2v-19.8zm-239.9 13.6l-9.9 9.9 32.5 32.5 9.9-9.9-32.5-32.5zm-22.6 22.6l-23.5 23.5h47.1l-23.5-23.5zm-41.5 41.5l-27.3 27.3h65.1l27.3-27.3h-65.1zm-45.3 45.3l-27.3 27.3h65.1l27.3-27.3h-65.1zm-27.3 45.3l23.5 23.5 23.5-23.5h-47.1zm-21.7 3.7l-9.9 9.9 32.5 32.5 9.9-9.9-32.5-32.5zm-38.8 18.9l-7.5 22.5 37.4 37.4 22.5-7.5v-12.4L54.9 417.1H42.5z","morningstar":"M246.5 16.3l43.8 85.9 40.6-42.9L246.5 16.3zm179.8 23.8l-13.5 13.5 46.8 46.8 13.5-13.5-46.8-46.8zm-52.40.9L113.9 315.7l81.7 81.7L471.8 139l-97.9-97.9zm-3.1 50.6c13 0 25.9 4.9 35.7 14.7 19.7 19.7 19.7 51.8 0 71.5-19.7 19.7-51.8 19.7-71.5 0-19.7-19.7-19.7-51.8 0-71.5 9.8-9.8 22.8-14.7 35.7-14.7zM167.4 105l42.2 82.5 38.9-41-81-41.4zm203.4 5.2c-8.1 0-16.3 3.1-22.5 9.4-12.5 12.5-12.5 32.5 0 45 12.5 12.5 32.5 12.5 45.1 0 12.5-12.5 12.5-32.5 0-45-6.3-6.3-14.4-9.4-22.5-9.4zM286.9 177.1c12.50 25.1 4.8 34.6 14.3 19 19 19.1 50.10.1 69.1-19 19-50.1 18.9-69.1-0.1-19-19-19.1-50.1-0.1-69.1 9.5-9.5 22-14.2 34.5-14.2zm166.6 4.6l-43.4 40.6 86.6 44.1-43.1-84.7zM88.9 194.9l40 77.8 36.4-38.5-76.4-39.3zm197.90.8c-7.70-15.4 2.9-21.3 8.8-11.8 11.8-11.8 30.80.1 42.7 11.9 11.9 30.9 12 42.70.1 11.8-11.8 11.8-30.8-0.1-42.7-6-6-13.7-8.9-21.4-9zm-84.2 67.6c120.1 24 4.7 33.2 13.8 18.3 18.3 18.5 48.10.3 66.3-18.2 18.2-48 17.9-66.3-0.3-18.3-18.3-18.5-48.1-0.3-66.3 9.1-9.1 21.1-13.6 33.1-13.5zm163.40.2l-41.9 39.2 83.8 42.9-42-82zM202.6 281.9c-7.20-14.3 2.7-19.8 8.1-10.9 10.9-10.9 28.60.3 39.8 11.2 11.2 28.9 11.3 39.80.3 10.9-10.9 10.9-28.6-0.3-39.8-5.6-5.6-12.8-8.4-20-8.5zm75.3 64l-39.7 37.1 79.8 41-40.1-78.1zm-158.8 1.4L18.9 447.5V494.9h45.6l101.1-101-46.6-46.6z","rapier":"M24.7 24.7c-3.5 3.5-5.8 9.8-5.8 16.3 0 4.4 1.1 8.6 2.9 12l23.4-7.8 7.8-23.4c-3.4-1.8-7.6-2.9-12-2.9-6.5 0-12.7 2.3-16.3 5.8zm17.1 40.5L84.5 105.8c2.9-4.5 6-8.3 9.5-11.8 3.5-3.5 7.4-6.5 11.8-9.5L65.2 41.8l-5.9 17.6zm64.9 41.5c-3.1 3.1-5.8 6.8-8.9 11.8l77.4 73.7c2.6-3.3 5.2-6.2 7.9-8.9 2.7-2.7 5.6-5.3 9-7.9l-73.7-77.4c-5 3.1-8.7 5.8-11.8 8.9zm88.9 88.9c-9.1 9.1-17.1 22.4-35.7 50.6l11.1 11.1c34.2-51.6 34.6-52.1 86.3-86.3l-11.1-11.1c-28.1 18.6-41.5 26.6-50.6 35.7zm24 24c-4 4-7.6 8.5-11.9 14.7l242.9 237.6 42.5 21.2-21.2-42.5L234.3 207.8c-6.1 4.3-10.7 7.9-14.7 11.9z","scimitar":"M485.8 19.1l-85.6 28.6c5.5 36.3 1.4 77.7-19.1 122.9-25.5 56.3-76 118.5-163.5 186.2l-11.2-14.9c85.8-66.4 133.9-126.5 157.8-179 17.4-38.5 22-73 18.8-103.7L170.9 295.1l-22-29.1-14.9 11.2 23.1 30.6-0.20.2 34.2 45c00000.1-0.1l11.8 15.61 1.4 6.8 9-21 35.2 16 9.6L230 383l3.2-5.4-0.1-0.2c149.2-99 283.8-234.4 252.7-358.3zm-27.4 211.6c-3.2 44.6-12.6 64.1-21.9 78-4.7 7-9.5 14-9.5 23 0 18.1 14.4 33.1 32.5 33.1 18.1 0 33.1-14.9 33.1-33.1 0-10.1-6.3-17.2-11.8-24.7-9.7-13.5-18.6-32.9-22.5-76.3zm-85 83.2c-4.2 58.4-16.5 83.9-28.7 102.2-6.1 9.2-12.5 18.3-12.5 30.2 0 23.8 18.9 43.3 42.6 43.3 23.8 0 43.4-19.6 43.4-43.3 0-13.2-8.3-22.5-15.4-32.4-12.7-17.6-24.3-43.1-29.4-100zM142 319.3c-4.9 3.8-9.7 7.7-14.4 11.7 3.4 9.2 7.5 20.7 11.9 32.7 3.4 9.4 6.6 18.5 9.6 26.9 8.9-9.1 18-17.8 27.5-25.9l-34.6-45.5zm-29.5 24.9c-7.3 6.6-14.5 13.4-21.5 20.3l25 63.6c6.1-7.6 12.4-15 18.8-22.1-0.1-0.1-0.1-0.3-0.1-0.4-3.5-9.9-8.1-22.8-12.7-35.5-3.4-9.5-6.5-17.8-9.4-25.9zm-35.8 35c-8.4 8.8-16.5 17.9-24.5 27.2l32.2 64.3c6-8.7 12.1-17.2 18.2-25.4l-26-66.1zm-37.5 43c-6.5 8.1-12.8 16.3-19 24.7 2.2 26.8 25.8 46.1 46.1 51.1 2-3.2 4.1-6.3 6.2-9.4l-33.2-66.3z","shortsword":"M62.9 16.7L19.7 60c1.6 12.5 7.6 26.9 19.4 41.9l66-66C90.1 24.2 75.5 18.3 62.9 16.7zM96.1 71.3L74.9 92.5c6.3 11.1 15.4 23.8 26.5 37l25.2-36.9c-10.9-8.7-21.3-15.9-30.5-21.2zM258.6 88.3l19.4 19.4L112.2 273.6l-19.4-19.4 34.9 101.3 54.1-12.3-51.9-51.9 165.9-165.9 51.9 51.9 12.3-54.1L258.6 88.3zm-117.7 16.4L114.2 143.8c2.6 2.8 5.3 5.6 8.1 8.4 1.3 1.3 2.6 2.6 3.9 3.9l38-28.5c-2.8-2.9-5.6-5.9-8.5-8.8-5-5-9.9-9.6-14.9-14.1zm35.9 36.9l-36.6 27.4c9.7 8.5 19.2 15.9 28 22l26.3-26.3c-5.1-7.4-11-15.1-17.7-23.1zm101.3 27.7l-23 23c54.5 55.2 93.5 99.9 117.9 132.9 13 17.6 22 31.8 27.2 43.2 2.6 5.7 4.3 10.7 4.9 15.60.6 4.90 10.7-4.3 15-4.2 4.3-10.1 5-15 4.4-4.9-0.6-9.9-2.3-15.5-4.9-11.4-5.2-25.6-14.1-43.2-27.1-33-24.4-77.7-63.4-133-118l-21.5 21.5c78.4 65 223.2 187.3 324.5 219.4-36.2-99.9-156-246.1-219-324.9zm-36.2 36.2l-34.6 34.6c54.9 54.2 99.1 92.6 130.9 116.2 17 12.6 30.6 20.9 39.8 25.2 3.5 1.6 6.1 2.4 8.1 2.9-0.5-2-1.3-4.6-2.9-8.2-4.2-9.3-12.6-22.9-25.2-39.9-23.6-31.9-62-76-116.1-130.8z","trident":"M17.2 16.4v41.7L192.8 234.2l-51.4 51.4-12 12L140.8 309l106.7 106.7-24.5 24.5 125.8 53.8-53.9-125.7-23.4 23.4-94.7-94.7 48.4-48.4 135.8 135.8-24 23.9 125.7 53.9-53.8-125.7-24 24-135.8-135.8 48.5-48.5 94.7 94.7-23.4 23.4 125.7 53.8-53.9-125.7-24.5 24.5L309.5 140.3l-11.4-11.4-12 12-51.5 51.4L58.8 16.4H17.2z","warpick":"M136.5 27.7c-2.10-4.20.2-6.20.3 42.9 23 87.2 59.4 121.9 96.6 8.7 9.3 12.4 18.8 16.4 27.4 2.5 5.4 5.2 10.7 9.3 16.4l30.6-26.4c-3.1-5-5.2-10.6-6-16.4-0.9-6.40.1-13.3 3-19.5-32.9-24-68.7-47.2-102.8-62-22.8-9.9-44.5-15.8-64.1-16.4-0.70-1.40-2.10zm226.5 99.3c-2.8 0-5.60.5-8.1 1.3l28.9 28.9c0.8-2.5 1.3-5.3 1.3-8.1 0-6.5-2.3-12.7-5.8-16.3-3.5-3.5-9.8-5.8-16.3-5.8zm-23.1 11.8l-21.9 18.8c10-2.5 210.1 28.7 7.8 7.7 7.7 10.3 18.8 7.8 28.7l18.8-21.9zm-14.4 35.8c-3.1 0-6.1 1.2-8.5 3.6-4.8 4.8-4.8 12.2 0 17 4.8 4.8 12.2 4.8 17 0 4.8-4.8 4.8-12.2 0-17-2.4-2.4-5.4-3.6-8.5-3.6zm-27.60.3l-9.8 8.5-5.4 46 46-5.4 8.5-9.8c-10.9 4.6-24.1 2.5-32.9-6.4-8.8-8.8-11-22-6.4-32.9zm72.1 28.7l-26.4 30.6c5.7 4.1 11 6.8 16.4 9.3 8.7 4 18.2 7.7 27.4 16.4 37.1 34.7 73.5 79 96.6 121.9 1.3-21.6-4.8-46.4-16.1-72.5-14.8-34.1-38-69.8-62-102.8-6.2 3-13 4-19.5 3-5.8-0.8-11.4-3-16.4-6zm-103.4 7.8l-28.4 26.6L274.1 273.8l26.6-28.4-38.5 4.5zm-41.5 38.9l-11.7 10.9 37.4 37.4 10.9-11.7zm-24.8 23.3l-90.6 84.8 44 44 84.8-90.6zM96.6 370.6l-21.9 20.5 46.2 46.2 20.5-21.9zm-28.1 39.8l-5.7 17 21.8 21.8 17-5.7zm-18.8 29.3l-18.5 9.7a106.2 106.2 0 0 0-2.7 13.7c-0.6 4.5-0.9 9.3-0.5 12.90.4 3.6 1.5 5.7 1.9 6.20.40.4 2.5 1.5 6.2 1.9 3.60.4 8.40.1 12.9-0.5a106.2 106.2 0 0 0 13.7-2.7l9.7-18.5z","warhammer":"M351.4 31.4l-55.9 27.8 54 34.6 1.9-62.4zM143.2 67.3l20 33.5L182 71.5l-38.8-4.2zm57 9.2l-7.6 11.8 100.2 64.2-9.7 15.1-100.2-64.1-24.8 38.7 100.2 64.1-9.7 15.2-100.2-64.1-7.5 11.7 150 96.1 37.9-7.6 44.8-70L200.2 76.5zm93.2 2.7l-16.2 25.3 38.7 24.7 16.2-25.2-38.7-24.8zM108.7 121.2l20 33.5 18.8-29.3-38.8-4.2zm280.1 76.1L346.7 263l11.8 7.5 42.1-65.7-11.8-7.5zm-224.1 8.5l0.6 36 72.8 46.6 33-14.5-106.4-68.1zm250.4 9.9l-33.2 51.8c11.7 2.8 24 7.3 36.5 12.3 19.3 7.6 39.1 16.7 56.6 24-9.5-27.2-22.2-57.9-59.9-88.1zm-242.5 52.1L27.8 494h54.6L211.4 292.6l-38.8-24.8z","whip":"M258.9 29.5c-8.60-17.30.4-26.2 1.2-1.40-2.80.1-4.20.1-20.60.8-41.1 4.4-60.7 10.8-52.4 17.2-98.9 55.5-126.4 118.1-48.4 110.4 2.2 219.5 82.7 274 40.2 27.2 88.1 41.2 135.2 34.8 47.1-6.4 92.9-33.5 127.7-86.1 26.4-39.8 22.9-82.7-3.6-105.4-26.5-22.6-72.5-22.5-123.8 12.9-26 18-47.8 20.7-65.7 15.8s-32.5-18-41.9-34.4c-9.4-16.4-13.2-35.7-10.4-51.1 2.5-13.9 9.4-24.5 23.2-30 40.3-2 54.4 32.3 41.8 56.7h0c37.9-22.4 21.2-56.5-8.5-65.4 38.4-3.1 55.5 24.4 57 44 14.3-25.3 2.4-55.3-37.6-61.4 18.2-7.8 55.8 1.2 70.4 20.8-1-52.4-83.1-50-133.2-10.6-17.7 8.6-28.2 24.8-31.5 42.6-3.8 20.8 1.2 43.9 12.6 63.8 11.4 19.9 29.6 36.7 53.2 43.1 23.6 6.4 51.8 1.9 81.2-18.5 47.1-32.6 82.7-29.7 101-14.1 18.3 15.6 22.8 46.50.1 80.8-32.3 48.8-72.9 72.2-114.7 77.9-41.8 5.7-85.3-6.7-122.2-31.8-73.9-50.1-120.7-149.2-76-251.1 25.5-58.1 67.4-92.2 115.1-107.9 35.6-11.7 74.7-12.8 112.3-5.2 103.9 25.7 164.4 102.7 170.2 174.3 4.1-1.5 8.5-2.3 12.9-2.5 2.8-0.1 5.70.1 8.60.6 50.9 9.6 2.6 13.8 4.9C484.3 130.8 389.9 30.1 258.9 29.5zm211.9 215.2c-0.40-0.80-1.20-11.30.3-21.1 8.5-23.1 20.2-0.9 5.2-0.1 10.3 2 14.6 2.9-0.7 5.9-1.1 8.8-1.1 4.20 8.40.8 12.5 2.1 5.2 1.7 10.2 4.6 14.5 8.4 5.1-3.6 8.9-9.1 10-15.9 2.3-13.3-6.5-25.7-19.8-28-1.2-0.2-2.5-0.3-3.7-0.4zm-13.5 52.5c-2.10-40.3-5.60.9-3 1.1-4.6 2.6-5.5 6.3-5.1 60.2-43.1 110.5-90 157.1-1.1 4.3-0.5 7.6 1.3 11.2 2.1 4 6.2 8.2 11.3 11.5 8.5 5.6 20.1 8.1 26 8.4 16.3-25.1 35.4-59.5 51.4-91.7 16.7-33.5 30-65.3 32.9-78.1 1.8-14.1-6-21.4-15.1-24.4-2.3-0.7-4.6-1.1-6.7-1.1z","scythe":"M296.6 25.4c-63.80.4-135.8 14.7-206 32.8-3.5 34.1 2.2 68.9 14 104.2C181.2 75.9 393.6 44.8 486.7 128 456 50.5 384 24.9 296.6 25.4zM65.7 61.4L27.9 71c5.6 78 28.5 132.4 60.4 174.5-16.5 10.3-40.7 19.7-68.8 26.8 5.7 6.6 14.2 16.2 30.5 18.5 24.8-4.3 39.9-15 53.8-26.6 76.2 85.1 190.2 119 253.1 224.2l49.4-0.1C291 275.3 81 364.8 65.7 61.4z","reaper":"M171.1 20.3c-3.70-7.30-10.80.1l-5.70.1-2.5 5.1c-6.5 13.3-23.6 23.7-45.9 31.6-8.7 3.1-18.1 5.8-27.7 8.3l9.7 16.8c8.3-2.2 16.4-4.7 24.3-7.5 22-7.8 42.3-18.3 53.4-35.8 54.3-0.5 123.2 6.7 181.7 29.1 54.8 21 99.7 54.4 117.8 106.6-2.1-0.7-4.2-1.3-6.3-2l-63.3-52.6-25.9 30-43.1-46.5-23.2 34.3-45.3-45.9-27.9 38.1-46-45.8-23.8 45.1-38.8-27.7-7.4 26.3 23.6 41.1c13.6-7.1 32.6-14.5 49.9-17.7 12.6-2.4 24.4-2.6 32.1-0.3 7.7 2.2 11.2 5.2 12.7 13l1.8 10 9.8-2.6c74.6-19.8 168 4.5 232 26.4l15.8 5.4-3.6-16.3C472.8 117.8 417.8 75.1 354.1 50.7c-59.7-22.9-127.8-30.5-183-30.4zM40.7 50.3c-12.60.5-23.8 10.6-23.4 28.6 94.1 133.7 175.3 272.6 239.5 417.6h41.4L52.4 53.2c-2.1-0.9-4.3-2-6.4-2.3-1.8-0.3-3.5-0.6-5.2-0.6zM382.8 256c-8.90.1-17.9 1.3-27 3.7-55.2 14.8-88 69.1-74.3 120.2 3.3 12.1 14.7 25.2 29.5 36.3 10.1 7.6 21.5 14.3 32.1 19.7-2.1-13.7-5.9-27-13.1-39.9l16.3-9.1c18.7 33.6 17.7 68.1 18 100.9 9.3 1.5 18.5 3 27.5 4.2l1.8-34 18.7 1-1.9 34.8c11.10.6 220.4 32.8-1.4l-1.7-35.4 18.7-0.8 1.4 31.5c6.7-2.4 13.4-5.5 20-9.60.6-5.6 2.9-25.6 4-540.6-13.70.8-28.60.3-43.1-15.6 4-31.6-5.3-35.8-20.9-4.2-15.7 5.1-31.9 20.8-36.1 2.5-0.7 4.9-1 7.4-1h0.1C465.9 283.5 428.7 257.1 386.5 256c-1.30-2.50-3.80zm4.7 70.9c15.2-0.1 29.1 9.9 33.2 25.2 4.9 18.1-5.9 36.8-24 41.6-18.2 4.9-36.8-5.9-41.7-24-4.9-18.1 5.9-36.8 24.1-41.6 2.8-0.8 5.7-1.1 8.5-1.2zm51.9 46.2L465 426.7l-38.6 6.1 13-59.7z","katana":"M482.4 42.8c-10.5-8.8-24.8-4.2-43.3 11.6-76.1 65.3-202.8 179.1-282.4 269.1l21.1 21.1c82.2-87.3 203.4-205.5 304.6-301.8zm-338.5 293.4l-17.2 17 22.3 22.3c5.3-5.8 10.8-11.8 16.4-17.8zm-56.80l-12.7 12.7 79.2 79.2 12.7-12.7zm2.9 54.2l-60.5 60.5c0.4 11.5 10.7 22.3 22.6 22.6l60.5-60.5-8.1-8.1c2.7 4.3 2.8 8.70.5 11.1-3.1 3.1-9.6 1.8-14.4-3 4.8 4.8 6.2 11.2 3 14.4-3.1 3.1-9.6 1.8-14.4-3 4.8 4.8 6.2 11.2 3 14.4-3.1 3.1-9.6 1.8-14.4-3 4.8 4.8 6.2 11.2 3 14.4-3.1 3.1-9.6 1.8-14.4-3 4.8 4.8 6.2 11.2 3 14.4-3.1 3.1-9.6 1.8-14.4-3-4.8-4.8-6.2-11.2-3-14.4 3.1-3.1 9.6-1.8 14.4 3-4.8-4.8-6.2-11.2-3-14.4 3.1-3.1 9.6-1.8 14.4 3-4.8-4.8-6.2-11.2-3-14.4 3.1-3.1 9.6-1.8 14.4 3-4.8-4.8-6.2-11.2-3-14.4 3.1-3.1 9.6-1.8 14.4 3-4.8-4.8-6.2-11.2-3-14.4 2.4-2.4 6.8-2.2 11.10.5z","bigaxe":"M284.7 29.2c-2.30-4.70-70-330.7-67.8 7.5-98.3 21.2-34.9 15.7-64.1 40.2-80 74.7-15 32.5-18.4 74.6-2.5 128.3a201.4 201.4 0 0 1 13.5-5.6c-9.9-44-5.6-80.2 8.3-109 15.5-32 42.5-54.1 73-68.3 30.5-14.2 64.6-20.5 95.7-20.9 1.90 3.90 5.80 22.80.2 43.8 3.5 60.6 9.8 7.1-3.4 13.6-6.9 18.9-10.9-20.4-11.1-49.4-18.2-81-19.2a258 258 0 0 0-7-0.1zm8.3 38.4c-1.80-3.60-5.40-28.90.4-60.8 6.4-88.4 19.3-27.7 12.8-51 32.3-64.3 59.8-11.9 24.5-16.1 55.8-7.2 95.9 12.4-2.9 23.7-3.5 33.6-1.2 9.9 2.3 18.9 9.1 21.7 19.30.3 1.10.5 2.20.7 3.4l102.2-102.2c-11.9-19-15.8-34.8-12.2-48.4 4-15.1 16.4-24.6 30-31.8 7.4-3.9 15.5-7.4 23.5-10.8-10.3-2-22-3.1-34.2-3.3zm83.1 68.3l-48.5 9.7-34.2 34.2h38.8v38.8l34.2-34.2zm87.3 3.4c-4 5.3-7.5 11.8-10.8 18.9 6.9 18.2 10.2 41.3 9.8 66.4-0.5 31.2-6.8 65.3-20.9 95.7-14.2 30.5-36.3 57.5-68.3 72.9-28.8 13.9-65 18.2-109 8.3a201.4 201.4 0 0 1-5.6 13.5c53.7 15.9 95.8 12.5 128.3-2.5 34.5-15.9 59-45.1 74.7-80 15.7-34.9 22.4-75.4 21.1-112.3-1.1-31.6-8.1-60.6-19.2-81zm-22.3 45.5c-3.4 8.1-6.9 16.1-10.8 23.5-7.2 13.6-16.7 26-31.8 30-13.6 3.6-29.4-0.4-48.4-12.2L247.9 328.3c1.10.2 2.30.4 3.40.7 10.2 2.8 17 11.8 19.3 21.7 2.3 9.8 1.7 21.2-1.2 33.6 40.1 8.8 71.4 4.6 95.9-7.2 27.5-13.3 47-36.7 59.8-64.3 12.8-27.7 18.9-59.5 19.3-88.40.2-14.2-1-27.7-3.3-39.6zm-160.5 13.1v33.5h33.5v-33.5zm-18 12.7l-34.2 34.2-9.7 48.5 48.5-9.7 34.2-34.2h-38.8zm-57.2 57.2l-37 37 38.8 38.8 37-37-48.5 9.7zm-49.8 49.8l-25.9 25.9 38.8 38.8 25.9-25.9zm-38.7 38.6L16 457.2V496h38.8l101-101z","pike":"M355.4 37.1l-72.9 35 38.5 38.5zM76.8 60c5.9 22.9 6.8 41 7 57.7 12.3 1.8 26.1 6.8 41 12.6 12.3 4.7 24.7 9.7 36.6 14.3-4.6-12-9.6-24.4-14.3-36.6-5.7-14.9-10.8-28.7-12.6-41-16.7-0.1-34.8-1-57.7-7zm201.7 33.4l-47.2 47.2c9.5 4.9 19.1 9.5 28.7 13.8l39.8-39.8zM175.2 130c3.7 9.3 7.2 18.4 10.1 27l5.7 17.1-17.1-5.7c-8.6-2.9-17.8-6.4-27-10.1 20.6 34.5 39.2 70 52.5 105.9 19 51.3 26.7 103.9 13 154 108.6-34.6 188.2-114.1 222.8-222.8-50.1 13.7-102.6 6-154-13-35.9-13.3-71.4-31.9-105.9-52.5zm316.6 39.4c-11.7 7.8-23.7 14.1-35.8 19-35.1 124.3-126.4 215.6-250.7 250.7-4.9 12.1-11.2 24.1-19 35.8 69.4-15.5 138.2-56.9 193.4-112.1 55.2-55.2 96.6-124.1 112.1-193.4zm-334.3 45.1l-47.2 47.2 21.2 21.2L171.2 243.2c-4.3-9.6-8.9-19.1-13.8-28.7zm-59.9 59.9l-12.2 12.2h24.4zm-30.2 30.2L51.3 320.6h42.4l15.9-15.9zM51.3 338.6l12.2 12.2L75.8 338.6zm-21.7 3.7L18 354v42.4l32.8-32.8z","knife":"M59.9 17.8L15.8 61.9l32.1 32L92 49.8 59.9 17.8zM93.2 75L74.4 93.8c17.8 31.9 50.6 65.3 80.8 83.8l21.7-21.7C158 125.2 124.4 92.7 93.2 75zM240 119.2L112.8 246.4l13.3 13.3 127.2-127.2L240 119.2zm4.9 48.8l-75 75 12 12c5.2-4.9 11.8-7.3 18.5-7.3 6.9 0 13.8 2.6 19.1 7.9 10.3 10.3 10.5 270.6 37.5l132.7 132.7c35.1 35.1 93.4 77.7 141.7 66.8-23.4-21.3-81.8-106.7-71.7-146.2l-40.7 7.2 7.7-40.1-40.6 7.2 8.1-39.6-40.1 7.6 7.6-40.1-40.5 7.2 7.8-40.6-47.2-47.2z","ritual":"M51.4 20.3c-0.50-1.10-1.60.1-8.40.5-16.7 4.3-22.7 11.1-12 13.6-10.6 34.6 3 46.6 10.5 9.3 25.5 10.6 37.2 4.4 25.1 37.4 71.6 79.4 109.8 98.7l-54.8 62.2-75.8-35.3 60.2 53-0.10.1 15 13.2L261.5 115.4l00 19.4-22-74.8-65.9 44.4 70.2-58 66c-22.8-35.3-69.3-77.6-109.7-98.6C87.4 52.6 84.3 37.8 73.7 28.5c-6.4-5.6-14.4-8.3-22.3-8.2zm1 18.6c3.20.1 6.3 1.3 9 3.6 6 5.3 6.6 14.2 1.3 20.2C57.4 68.7 48.5 69.3 42.5 64c-6-5.3-6.6-14.2-1.3-20.2 2.6-3 6.2-4.6 9.8-4.90.500.90 1.40zM243.8 163.8L190.4 224.5l303.3 266.9c6.1-69.3-117.5-205.1-172.2-258.3-13 11.3-32.7 11.5-46-0.2-13.5-11.9-15.6-31.8-5.6-46.2l-26.1-22.9z","cleaver":"M312.8 24.3L88.5 282.9l65.6 95.7c90.4-68.1 182.1-177.9 254.8-295.8l-96.1-58.5zm9.1 30c2.70 4.80.8 6.6 2 3.5 2.4 6.4 7.4 6.4 16.4 0 17.9-14.4 41-29.7 48.1-7.6 3.6-12.7 2.8-16.20.5-3.5-2.4-6.5-7.4-6.5-16.4 0-17.9 14.5-41 29.7-48.1 3.8-1.8 7-2.5 9.6-2.5zm102.9 38.2c-73.9 119.8-166.7 231.4-260.2 301.6l42.5 62.1c94-68.2 219.3-202.6 281.6-324.8L424.9 92.5zM73.5 294.1c-17.8 17.1-35.7 32.7-53.6 46.8V461.6c27.8-33.6 57.4-75.5 87.8-117.5L73.5 294.1z","sabre":"M403.6 16.9c-34.1 33.7-53.9 25.4-89.1 4.8 31.1 27.8 44.7 40.7 9.2 76.1 32.6-26.1 44.4-29.2 85.3-15-23.5-25.8-21.3-36.9-5.5-66zm90.3 24.4C463.2 68 425.4 93.7 386.7 113c1.2 61.5-37.8 117.8-99.1 165.4C221 330.1 127.3 372.8 24.3 404.3v41.2c15.8-3.2 32.1-6.9 48.7-11-2.7 14.5-11.3 27.4-28.9 39.8 43.2-14.9 52.4-1.3 76.2 18.8-7.6-26.8-5.3-36.3 34.6-58.4-32.3 9.3-48.7 5.8-63-5.1 74.5-20 153.4-49.7 221.2-93.6 6.4 31.1 5.3 56.5-36.2 94.3 67.3-35.7 96.2-34.3 131 7.2-34.9-53.1-31-75.3 14.1-124-42.7 33.8-70.8 31-94.1 12.60.6-0.4 1.2-0.8 1.8-1.3 90.4-63.5 157.5-153.4 164.2-283.5zM240.8 71c4.9 36.6-4.4 56.5-23.9 78.5 31.6-24.9 40-22.6 71.2-23-28.6-13.4-36.2-20.4-47.2-55.5zm-110.8 40.7c-27.3 60.2-58.6 70.7-107.6 70.1 59.8 20.1 64.9 53 69.9 106.2 19.3-59 36.2-76 78.7-58.2-41.8-31.8-45.7-49-41-118.2zm237.9 10.2c-30.9 13.6-61.6 22.6-88.9 24.3-2.3 16.5-11.6 32.9-25.2 49-15.8 18.8-37.6 37.5-62.8 55.7-49 35.4-111 68.7-166.7 94.3v39.6c99.3-30.8 189.1-72.5 251.8-121.1 55.7-43.2 89.4-90.9 91.8-141.8zm99.5 99c-7.6 35.5-13.9 44.5-46.7 65.3 35.9-8.1 51.3-1.5 74.5 15-22.4-30-28.5-42-27.9-80.3zM259.8 400.8c-30 43.1-55.4 48.9-98.7 52.2 51.7 7.8 65.3 14.2 95.9 41.1-12.9-35.4-15.3-48.1 2.8-93.3z","c_fighter":"M256 16c-36.4 0-73.3 13.4-140 40h279.9C329.3 29.4 292.4 16 256 16zM95.3 72L64 448c56 28 112 31.5 168 31.9V240H112v-48h288v48H280v239.9C336 479.5 392 476 448 448L416.7 72H95.3zm64.9 88a8 8 0 0 1 7.8 8 8 8 0 0 1-16 0 8 8 0 0 1 8.2-8zm48 0a8 8 0 0 1 7.8 8 8 8 0 0 1-16 0 8 8 0 0 1 8.2-8zm48 0a8 8 0 0 1 7.8 8 8 8 0 0 1-16 0 8 8 0 0 1 8.2-8zm48 0a8 8 0 0 1 7.8 8 8 8 0 0 1-16 0 8 8 0 0 1 8.2-8zm48 0a8 8 0 0 1 7.8 8 8 8 0 0 1-16 0 8 8 0 0 1 8.2-8zM248 240v240c2.70 5.3 0 8 0s5.30 8 0V240h-16zm-120 48h16v16h-16v-16zm32 0h16v16h-16v-16zm32 0h16v16h-16v-16zm112 0h16v16h-16v-16zm32 0h16v16h-16v-16zm32 0h16v16h-16v-16zm-240 32h16v16h-16v-16zm32 0h16v16h-16v-16zm32 0h16v16h-16v-16zm112 0h16v16h-16v-16zm32 0h16v16h-16v-16zm32 0h16v16h-16v-16zm-240 32h16v16h-16v-16zm32 0h16v16h-16v-16zm32 0h16v16h-16v-16zm112 0h16v16h-16v-16zm32 0h16v16h-16v-16zm32 0h16v16h-16v-16z","c_rogue":"M332 66.1c-28.80-55.4 14.1-67.9 40.6 20.8 1.7 16 55.1 16 55.1-11.8 16.7-24.7 33.2-36.6 50.1 0 0-99 132.3-178.4 168-28 22.6-33.3 36.5-44.1 52.6-4.9 9.5 9.3 14.3 11.7 13.2 22.7-10.5 25.2-20.9 47.1-35.7 12.8-5 23.8-15.9 31.9-11 35 20.9 107.6 44.3 118.3 38.7 17.9-9.3-5.8-43.6 16.2-89.1 32-3.4 58.9-0.9 88.3-12.1 3.5 50.3 10.1 54.6 6.8 107.1l71.2 10.7-14.6-41.8-11.1c11.5-56.1 11.8-79 4.7-128-1-6.6-53.7-8.3-81-3.8 24.4-24.2 40.3-45.2 47.5-68.4l00.2c7.6 15.9 30.1 34 35.3 37.1 27.7 11 38.2 8 63 3.9 4.9-0.8 27.5 24.5 44.8 9.6 2.6-20.2 16.5-20.4-4.9-32.7-4.8-2.7-27.1 7.5-31.4 6.9-20.2-2.5-31-5.2-58.5-12.7-10.2-13.2-32.7-56.1-55.4-59.7 6.5-14.2 28.2-53.1 73.7-66.2-20.9-26.5-49.9-39.1-77-39.1zm82.4 46.7c-46.7 19.5-58.3 50.4-58.3 50.4l9.9 7.6s9.6-4.8 48.4-58zm23 160l-4.7 11.4c5.2-0.1 10.40.5 15.3 1.6-12.8 30.9-23.9 59.6-28.2 93.1l-0.9 7.6 4.9-5.9c20.8-25.7 32.3-55.2 45-85.8 4.2 2.7 8.2 5.9 12.1 9.3l4.8-11.4-20.5-8.5-31.8 66.6 24.1-69.7-20-8.3z","c_wizard":"M256.3 19.4C204 57.2 177.2 111 152.5 160.7c43.4-24.6 101.7-32.9 126.9-28.7-63.8 10.6-108 25.8-144.4 64.3-2.2 4.5-4.1 8.3-6.4 13.1 115.4-27.8 134.4-27 250.9-0.7C368 158.6 343 126.6 304 65.8 345.9 118.4 428.1 208.1 424.3 190.6 401.4 85.7 324.2 23.5 256.3 19.4zM88 231.3c-31 7.4-53.9 17.5-62.8 26.70.9 11.7 6.7 22.1 17.5 32 11.8 10.8 29.6 20.4 51.3 28.1 2.70.9 5.4 1.8 8.1 2.7-8.4-11-11.2-26.3-13-41.1 0-15.4-3-33.5-1.1-48.4zm336 0c2.2 16.20.6 34.5-1.1 48.4-1.8 14.8-4.6 30.1-13 41.1 20.2-7 44.6-17.6 59.4-30.8 10.8-9.9 16.6-20.3 17.5-32-8.9-9.2-31.7-19.3-62.8-26.7zm-274.40.3l-7 14h98.8l-7-14zm128 0l-7 14h98.8l-7-14zM119 241c-4.7 1.3-9.4 2.6-14 4.1 1 19.90.6 47.6 11.6 64.5h2.4zm274 0v68.6h2.4c10.5-20.7 11.3-41.8 11.6-64.5-4.6-1.5-9.3-2.8-14-4.1zm-255.9 22.6c-0.3 18.8 2 39.5 6.2 55.7 21.1-14.1 41.9-25.7 64.7-25.7 3.2 0 6.40.2 9.40.4l5.2-15.7c-5.6 5.7-12.9 8.9-23.2 8.5-25.2-0.8-33.9-11.1-37.5-23.2zm109.4 0l-12.4 37.2 21.9 27.4 21.9-27.4-12.4-37.2zm103.6 0c-3.6 12.1-12.3 22.4-37.5 23.2-10.30.4-17.6-2.8-23.2-8.5l5.2 15.7c3.1-0.3 6.3-0.4 9.4-0.4 22.8 0 43.6 11.6 64.7 25.7 4.4-20.1 6.8-37.6 6.2-55.7zm-142.1 48c-20 0-43 14.5-68.9 32.4-19.2 13.3-39.9 28.1-63.3 38.4 28.6 6.1 65.8 4.8 98.2-2.6 21.3-4.8 40.5-12.1 53.7-20.5 8.5-5.5 14.1-11.1 17-16.4l-24.2-30.3c-3.7-0.6-7.9-1-12.5-1zm96 0c-4.6 0-8.80.4-12.5 1l-24.2 30.3c2.9 5.3 8.5 10.9 17 16.4 13.2 8.4 32.4 15.7 53.7 20.5 32.4 7.4 69.6 8.7 98.2 2.6-23.4-10.3-44.1-25.1-63.3-38.4-25.9-17.9-48.9-32.4-68.9-32.4zm-48 46.7c-4.6 5.7-10.6 10.8-17.4 15.3h34.8c-6.8-4.5-12.8-9.6-17.4-15.3zm-56.7 33.3c-6.9 2.2-14 4.1-21.3 5.8-9.5 2.2-19.2 3.9-28.9 5.1 6.1 19.6 14.1 39.5 23 58.2l0.10.2c4.3-6.7 9.4-13.1 13.5-19.8-2.4 13.9-3.3 27.9-2.3 41.8 1.7 3.3 3.5 6.5 5.3 9.7h134.6c3.6-6.3 7-12.7 10.3-19.2 5.4-21.9 3.9-42.8 5.4-64.2 3.1 11.5 6.1 23 8.5 34.7 5.8-13.6 11.1-27.6 15.4-41.4-9.7-1.2-19.4-2.9-28.9-5.1-7.3-1.7-14.4-3.6-21.3-5.8z","c_cleric":"M478.6 22.1c-11.2 11.3-19.5 24.5-26.3 38.5l25 37.4c4.4-3.2 9.9-6.1 16.9-8.5-20.7-10-26.7-29.1-10.3-44.8zm-445.20.6L28.1 45.2c16.4 15.7 10.4 34.8-10.3 44.8 6.7 2.4 12 5.2 16.4 8.2l25.1-37.7C52.7 46.7 44.4 33.8 33.4 22.7zm187 4.2l-17.2 5.3 9.1 29.7c5.4-2.4 11.1-4.4 17-6zm70.8 0l-8.9 29.1c5.9 1.5 11.6 3.5 17 6l9.1-29.7zm-141 28.3l-12.8 12.7 28.8 28.9c1-1.1 1.9-2.2 2.9-3.3 3.1-3.4 6.3-6.6 9.7-9.7zm211.2 0l-28.6 28.6c3.4 3.1 6.6 6.3 9.7 9.7 1 1.1 1.9 2.1 2.8 3.2l28.9-28.8zM255.8 70.5c-29 0-54.7 14.6-73.3 35-16.1 17.7-26.5 39.8-29 59h204.6c-2.5-19.2-12.9-41.3-29-59-18.6-20.5-44.3-35-73.3-35zM61.4 89.9L40.5 121.1c-7.1 61 8.7 105.3 31.4 126.3C83.4 258 96.3 262.9 110 262c13.7-0.8 28.6-7.6 43.4-22.4l11.9-11.9 3.3 16.5c7.8 38.7 23.2 69.4 40.2 90.1 16.9 20.7 35.5 30.7 47 30.7s30.1-10 47-30.7c17-20.7 32.4-51.4 40.2-90.1l3.3-16.5 11.9 11.9c14.8 14.8 29.7 21.6 43.4 22.4 13.70.9 26.6-4 38.1-14.6 22.7-21 38.5-65.3 31.4-126.3l-20.9-31.2c-15.4 40-35.1 68.7-63.4 87.6-13 8.6-27.5 15.1-44 19.7-4.2 17.9-14.7 38.6-27.5 57.8-8.3 12.5-17.7 24-27.5 32.7-9.9 8.8-20.2 15.3-32 15.3s-22.1-6.5-32-15.3c-9.8-8.7-19.2-20.2-27.5-32.7-12.8-19.2-23.3-39.9-27.5-57.8-16.5-4.6-31-11.1-44-19.7-28.3-18.9-48-47.6-63.4-87.6zM114.6 117l-5.6 17 30.5 10.1c1.8-5.5 4-11.1 6.6-16.6zm282.4 0l-31.5 10.5c2.6 5.5 4.8 11.1 6.6 16.6l30.5-10.1zm-177.5 65.5c5.7 17.9 20.2 30 36.3 30 16.1 0 30.6-12.1 36.3-30zm-30 19.5c4.7 13 12.4 29 21.8 43 7.7 11.5 16.3 22 24.5 29.3 8.1 7.2 15.8 10.7 20 10.7 4.2 0 11.9-3.5 20-10.7 8.2-7.3 16.8-17.8 24.5-29.3 9.4-14 17.1-30 21.8-43-6.7 1.2-13.7 2.2-21 2.9-10.3 15.4-26.5 25.6-45.3 25.6-18.8 0-35-10.2-45.3-25.6-7.3-0.7-14.3-1.7-21-2.9zm-4.6 130.3c-14.8 56.6-37.6 115.1-57 156.7 48.5-10.6 80.3-10.3 118.90.9V382.1c-17.7-3.4-35.7-16.5-52-36.4-3.4-4.2-6.7-8.6-9.9-13.4zm141.8 0c-3.2 4.8-6.5 9.2-9.9 13.4-16.3 19.9-34.3 33-52 36.4v107.8c38.6-11.2 70.4-11.5 118.9-0.9-19.4-41.6-42.2-100.1-57-156.7z","c_barbarian":"M197.6 23.3c-18.30.2-34.4 4.4-48.5 12.3C120.9 51.4 102 80.7 87.6 117.4c-0.6 1.6-1.3 3.3-1.9 4.9a433.1 433.1 0 0 0 16.7 6.7c0.6-1.7 1.3-3.4 1.9-5 13.6-34.8 30.7-59.9 53.5-72.7 11.4-6.4 24.5-10 40.1-10.1 15.6-0.1 33.6 3.3 54.9 11.1L256 53.3l3.1-1.1c42.5-15.4 72.2-13.7 95-0.9 22.8 12.8 39.9 38 53.5 72.70.6 1.6 1.3 3.3 1.9 5a433.1 433.1 0 0 0 16.7-6.7c-0.6-1.7-1.2-3.3-1.9-4.9-14.4-36.7-33.3-66.1-61.5-81.9C335.4 20.1 300 18.9 256 34.3c-21.5-7.5-41-11.2-58.4-11zm-16.1 85.3c-4.8 5.4-9.2 11.5-13.3 18.1-3.7 5.9-7 12.3-10 19l0.20c0.200.500.70a32.6 32.6 0 0 1 13.8 3 439.4 439.4 0 0 0 49.5 6.6c-15.2-15.6-29.1-32.1-40.8-46.8zm157.5 10.7c-9.5 9.6-17.3 20.8-23.1 33.3a438.2 438.2 0 0 0 23.4-3.8 32.6 32.6 0 0 1 13.8-3c0.2 0 0.500.70l0.20c-3-6.7-6.4-13.1-10-19a147.5 147.5 0 0 0-4.9-7.4zM37.7 138.7l22.3 22.3 7.4-22.3zm406.8 0l7.4 22.3 22.3-22.3zM85.5 141.6l-10.2 30.6c17.4 6.2 34.7 11.6 52.1 16-0.9-3-1.4-6.2-1.4-9.4 0-7.9 2.8-15.1 7.5-20.8a453 453 0 0 1-48-16.3zm340.9 0a453 453 0 0 1-48 16.3c4.7 5.7 7.5 13 7.5 20.8 0 3.3-0.5 6.4-1.4 9.4a579.1 579.1 0 0 0 52.1-16zM159 163.7c-8.4 0-15 6.6-15 15s6.6 15 15 15 15-6.6 15-15-6.6-15-15-15zm194 0c-8.4 0-15 6.6-15 15s6.6 15 15 15 15-6.6 15-15-6.6-15-15-15zm-31.8 6.2a454.3 454.3 0 0 1-12.2 1.6c-2.6 9.6-4.3 19.9-4.8 30.8a509.8 509.8 0 0 0 23.3-2.8c-4.7-5.7-7.5-13-7.5-20.8 0-30.4-6 1.2-8.8zm-130.40a32.6 32.6 0 0 1 1.2 8.8c0 7.9-2.8 15.1-7.5 20.8a510.6 510.6 0 0 0 34.6 3.7c0.3-6.5-3.4-30.5-3.4-30.5a456.8 456.8 0 0 1-24.9-2.9zm51.6 4.6l-8.6 6.9 13.9 83.3h16.8L275.4 198.6c-11.2-6.3-22.3-14.6-33-24zM66.3 188.2c-15.2 63.4-26.1 138-43 211.5l-1.8 7.8 7.5 2.7a14845.5 14845.5 0 0 0 43.4 15.5 417.7 417.7 0 0 1 12.8-4.5c5.1-1.7 10.2-3.3 15.1-4.9-17.5-6.1-36.6-12.8-57.8-20.4C58.5 324.8 69.4 253.7 83.5 194.1a613.7 613.7 0 0 1-17.2-6zm379.4 0a613.7 613.7 0 0 1-17.2 6c14.1 59.5 25 130.6 41 201.7-21.2 7.6-40.3 14.3-57.8 20.4 4.9 1.6 10 3.2 15.1 4.9a417.7 417.7 0 0 1 12.8 4.5c13.5-4.8 27.9-9.9 43.4-15.5l7.5-2.7-1.8-7.8c-17-73.5-27.8-148.1-43-211.5zm-305.4 21.7c-2.2 15.2-3.3 31.3-3.3 47.9 0 48 0.6 86.7 14.8 111.5 7.1 12.4 17.2 21.8 33.6 28.7 16.4 6.8 39.3 10.8 70.5 10.8 31.2 0 54.1-4 70.5-10.8 16.4-6.8 26.6-16.3 33.6-28.7C374.4 344.5 375 305.7 375 257.7c0-16.6-1.1-32.6-3.3-47.9-27.3 6-54.6 9.9-81.9 11.7l-2.4 14.5c21.6 2.3 46.5-7 77.4-18.7l6.4 16.8c-7.8 3-15.4 5.9-22.9 8.6 4.4 3.6 7.7 8.7 7.7 15 0 8.2-5.7 14.3-11.9 17.8-6.2 3.5-13.8 5.3-22.1 5.3-8.3 0-15.9-1.8-22.1-5.3-6.2-3.5-11.9-9.6-11.9-17.8 0-1.20.1-2.30.3-3.4a79.1 79.1 0 0 1-3.9-0.4l-4.8 28.8h-47.2L227.6 253.9c-1.30.2-2.60.3-3.90.40.2 1.10.3 2.20.3 3.4 0 8.2-5.7 14.3-11.9 17.8-6.2 3.5-13.8 5.3-22.1 5.3-8.3 0-15.9-1.8-22.1-5.3-6.2-3.5-11.9-9.6-11.9-17.8 0-6.3 3.3-11.3 7.7-15-7.5-2.7-15.1-5.7-22.9-8.6l6.4-16.8c30.9 11.7 55.8 21.1 77.4 18.7l-2.4-14.5c-27.3-1.8-54.6-5.7-81.9-11.7zm-36.2 6.5c-0.20-0.50.2-0.80.3-9.2 30.8-5.5 47.10.2 66.9l15.4 7.7v-62.6c-4.4-6.5-8.4-10-11.1-11.2-1.5-0.7-2.6-1-3.8-1zm303.7 0c-1.2-0.1-2.30.3-3.81-2.7 1.3-6.7 4.8-11.1 11.2v62.6l15.4-7.7c5.7-19.7 9.5-36.10.2-66.9-0.20-0.5-0.2-0.8-0.3zM190 252.6c-5.5 0-10.4 1.4-13.2 3-2 1.1-2.5 1.9-2.7 2.20.10.20.7 1 2.7 2.2 2.8 1.6 7.7 3 13.2 3 5.5 0 10.4-1.4 13.2-3 2-1.1 2.5-1.9 2.7-2.2-0.1-0.2-0.7-1-2.7-2.2-2.8-1.6-7.7-3-13.2-3zm15.9 5.1c0.10.10.10.10.1 0s0-0.1-0.1 0zm-31.8 0c-0.1-0.1-0.1-0.1-0.1 0s00.10.1 0zm147.9-5.1c-5.5 0-10.4 1.4-13.2 3-2 1.1-2.5 1.9-2.7 2.20.10.20.7 1 2.7 2.2 2.8 1.6 7.7 3 13.2 3 5.5 0 10.4-1.4 13.2-3 2-1.1 2.5-1.9 2.7-2.2-0.1-0.2-0.7-1-2.7-2.2-2.8-1.6-7.7-3-13.2-3zm15.9 5.1c0.10.10.10.10.1 0s0-0.1-0.1 0zm-31.8 0c-0.1-0.1-0.1-0.1-0.1 0s00.10.1 0zm-91.1 32h18s0.1 6.1 3 12c2.9 5.9 7 11 19.9 11s17-5.2 19.9-11c2.9-5.9 3-12 3-12h18s0.1 9.9-5 20c-5.1 10.1-17.1 21-36 21-19 0-31-10.8-36-21-5.1-10.1-5-20-5-20zm41 53.2c21.1 0 42.3 4.1 66.8 12.3l-5.7 17.1c-46.9-15.6-75.4-15.6-122.3 0l-5.7-17.1c24.6-8.2 45.7-12.3 66.8-12.3zm-94.2 62.7a30.3 30.3 0 0 1-1.3 1.5c-5.1 5.6-11.7 9.7-19.1 13.2-14.7 7.1-32.8 12-50.6 17.9-17.7 5.9-34.9 12.8-46.8 22.1-9.7 7.6-16.1 16.2-18.2 28.4H173.8c12.6-6.5 23.5-11.9 30.6-17.7 7.4-6 10.8-11.2 10.6-21.2l18-0.2c0.2 15.2-7.2 27.2-17.3 35.4a81.5 81.5 0 0 1-5 3.7h90.4a81.5 81.5 0 0 1-5-3.7c-10.1-8.2-17.4-20.2-17.3-35.4l18 0.2c-0.1 10 3.2 15.2 10.6 21.2 7 5.7 18 11.2 30.6 17.7h148c-2.1-12.2-8.5-20.8-18.2-28.4-12-9.3-29.1-16.2-46.8-22.1-17.7-5.9-35.9-10.9-50.6-17.9-7.3-3.5-13.9-7.6-19.1-13.2-0.5-0.5-0.9-1-1.3-1.5-5 3.4-10.6 6.4-16.8 9-19.6 8.2-44.7 12.2-77.5 12.2-32.8 0-57.9-4-77.5-12.2-6.2-2.6-11.7-5.6-16.8-9z","c_paladin":"M256 21.9l-4 2c-96 48-93.5 47.2-189.5 63.2l-8.6 1.4 1.1 8.6c16.1 120.9 48.3 217.9 85 285.1 18.3 33.6 37.8 59.9 57.3 78C216.8 478.5 236.6 489 256 489s39.1-10.5 58.6-28.7c19.5-18.2 38.9-44.4 57.3-78 36.7-67.3 68.9-164.2 85-285.1l1.1-8.6-8.6-1.4c-96-16-93.5-15.2-189.5-63.2L256 21.9zM224 64c16 0 16 0 32 16 16-16 16-16 32-16-16 16-16 16-16 32l2.7 48h109.2S400 144 416 128c0 16 0 16-16 32 16 16 16 16 16 32-16-16-32.2-16-32.2-16h-107.4L288 384s0 32 16 64c-16 0-48 0-48-16 0 16-32 16-48 16 16-32 16-64 16-64l11.6-208H128.1S112 176 96 192c0-16 0-16 16-32-16-16-16-16-16-32 16 16 32.1 16 32.1 16h109.2L240 96c0-16 0-16-16-32z","c_ranger":"M341 26c-25.5 42.4-21.2 82.1-10.9 117.1 10.3 35.1 25.6 66.5 25.6 95.5h0.1c6.3-1.4 12.1-1.9 17.9-0.9-0.3-34.7-16.8-67-26.4-99.6-9.7-33-13.4-65.3 9.1-102.9zm-33.3 36.3L154.2 227.7c7.6 0 15.60.9 23.2 2.9 7.2-2.9 13.8-8 19.3-15.1 4.1-5.3 7.5-11.6 10-18.7L304 92c0.1-9.7 1.2-19.6 3.7-29.7zM164.2 107.1c-12.3 0-23.7 6.3-32.5 17.6s-14.5 27.4-14.5 45.4 5.7 34.1 14.5 45.4c1.4 1.8 2.9 3.5 4.4 5l70.9-76.3c-2.5-7.4-6.1-14-10.3-19.5-8.8-11.3-20.2-17.6-32.5-17.6zm264.5 119.5v19h-34c5.9 4.9 9 11.3 10.2 18h23.8v19l64-28zm-225.2 19c1.4 2 2.5 4.3 3.3 6.80.8 2.40.5 5.1-0.2 6.7-0.7 1.9-1.8 3.1-3.2 4.5h131.5c0.1-0.20.1-0.40.1-0.6 1.9-8.2 2.5-12.6 8-17.4zm-58.30.5c-8.5 1.3-14.4 4.5-21 6.7l-74.5-1c-23-0.1-31.7 34.4-7.9 35.4 16.10.3 27.7-2 39.5-4 11.9-2 24.2-3.8 39.6-1.3 9.3 2.2 18.1 7.4 25.3 12 8.7 2.2 17.5 2 23.80.2 5.7-1.6 8.7-4.1 9.9-6.1-5-7.6-12.3-14.2-9.6-22.3 3-6.4 9.5-9.1 15-12.10.1 0 0.2-0.10.3-0.1-2.6-1.9-6.4-3.8-11.3-5.1-10.2-2.3-19.5-3.2-29.1-2.3zm209 13.7c0.9-1-0.8 1.7-1.3 5.7-0.6 4-0.8 9.2-0.4 14.4 1.3 6.90.7 16.2 6.2 21.4 6.5 4.1 24.2 5.1 27.2-1.2 1.3-12.3 4.1-23.50.8-35.2-0.8-3-1.9-4.3-2.2-4.5-8.6-4.6-22.7-8.8-30.3-0.6zm-19.7 21.1c-51 0.9-87.90.2-137.80.6 5.7 15.3-9.3 26.3-21.9 29.9-0.1 0-0.2 0-0.30.1l130.8 171c-1.4-9.8-1.5-19.3-0.9-28.6l-84.2-110.1c0.7-14.3 0-25.5-0.9-39.3 40.6 2.7 82.7 1.5 119.6-1.7-2.5-7-3.9-15-4.4-21.6zM112.9 299c-12.5 41.7-2.7 92.3-7.3 138v-0.2L101 494h121.1l-16.7-63.3c3.5-12.9 6.8-26.4 8.9-37.6l-61.1-79.9c-17.7-0.3-25.6-12.5-40.3-14.2zm242.8 21.2c-0.6 28.6-15.5 59.4-25.6 93.9-7.2 24.5-11.5 51.4-4.6 79.9h18.4c-7.7-26.2-3.8-50.4 3.4-74.9 9.3-31.5 25-62.8 26.3-96.1-6 0.3-12.2-0.5-17.9-2.8z","c_bard":"M108.7 35.1c-15.10.1-33.4 5.4-47 15.8-10.8 8.3-18.8 19.3-21.2 34.40.2-0.10.4-0.30.6-0.4-0.8 2.8-1.3 5.8-1.3 8.9 0 17.1 13.8 30.9 30.9 30.9 14.3 0 26.3-9.7 29.9-22.90-0.10.1-0.20.1-0.30.5-2.10.8-40.9-5.80-0.30-0.70-10-0.10-0.20-0.40-0.20-0.4 0-0.5 0-1.5-0.1-3-0.3-4.5-1.4-8-6.8-12.2-12.6-13.7-8.5-2.3-19.10.6-23.8 18.2l-0.5-0.1C62 74.1 72.2 63.9 83.9 60.8c2.5-0.7 5.1-1 7.7-1 9.10.1 18.4 4.9 24.6 17.10.10.20.20.40.20.5 5.2 15.2 2.1 43.3-3.3 57.6-7.3 18.8-22.4 40.5-47.7 65.5C7 258.3 4 329.8 40 388.8 75.9 447.8 152.1 493.6 254.4 493.6c102.3 0 178.5-45.8 214.4-104.8 35.9-58.8 33-130.2-25-187.8l-0.4-0.4h0c-25.3-25-40.4-46.7-47.7-65.5-5.2-16.5-9.1-43-2.7-57.60.1-0.10.1-0.20.2-0.40-0.10-0.10.1-0.2 6.1-12.2 15.5-17 24.6-17.1 2.60 5.20.3 7.71 11.7 3.1 21.9 13.3 19.3 32.8l-0.40.1c-4.7-17.5-15.2-20.4-23.8-18.2-4.4 1.2-8.6 3.9-11 8.60000.100.1-1 3-1.5 6.2-1.5 9.5 0 17.1 13.8 30.9 30.9 30.9 17.1 0 30.9-13.8 30.9-30.9 0-4.4-0.9-8.5-2.5-12.2-3.1-13.2-10.6-23.1-20.4-30.7-14.5-11.1-34.4-16.4-49.9-15.8-13.40.5-24.9 4.1-33.2 10.5-3.4 2.6-6.4 5.7-8.8 9.4-69.5 35.5-138.9 38.8-208.3-7.8-0.6-0.6-1.3-1.1-2-1.6-8.4-6.4-19.8-10-33.2-10.5-10-20-30zm52.8 53.1c6.3 2.6 12.7 5 19 7v313.1c-30.7-8.3-57.9-22-77.4-41.3-17.1-16.9-28.1-38.6-28.9-63.6-0.8-25 8.3-52.7 29-82.6 41.3-59.8 57.2-103.6 58.3-132.6zm186 1.4c1.6 29 17.6 72.4 58.2 131.2 20.7 29.9 29.8 57.7 29 82.6-0.8 25-11.8 46.7-28.9 63.6-19 18.8-45.4 32.4-75.2 40.7V94.8c5.6-1.6 11.3-3.4 16.9-5.2zm-35.6 10v312.5c-8.2 1.6-16.6 2.9-25.1 3.8V104.1c8.4-1.1 16.8-2.6 25.1-4.5zm-112.80.8c8.4 2 16.9 3.4 25.3 4.4v311.3c-8.6-0.8-17.1-2-25.3-3.6V100.4zm68.9 5.6v311.4c-4.50.2-9.10.3-13.70.3-3.8 0-7.5-0.1-11.2-0.2V106.3c8.30.3 16.60.2 24.9-0.3z","c_warlock":"M256 16l-32 112 32 32 32-32-32-112zM64 96l32 80 64 16-96-96zm384 0l-96 96 64-16 32-80zm-192 80l-64 48-128 32c80 16 128 96 192 128 64-32 112.5-110.2 192-128l-128-28.3L256 176zm-39.5 52.7l28.3 8.9-7.5 21L256 310.9l18.6-52.4-7.5-21 28.3-8.9c14.9 11 24.5 28 24.5 47.3C320 309.2 291.5 336 256 336s-64-26.8-64-60c0-19.3 9.6-36.3 24.5-47.3zM96 336l-64 48-16 64 32-32 64-48s-16-27.6-16-32zm320 0l-16 32 64 48 32 32-16-64-64-48zm-272 64l-16 64 48-48-32-16zm112 0l-48 16 48 80 48-80-48-16zm112 0l-32 16 48 48-16-64z","c_druid":"M337.9 23c-1.4 0-2.90-4.40.1-13.50.8-28.8 5.1-45.8 14.4-14.2-9.4-30.2-13-45.8-12.7-10.90.2-21.7 2.3-31.6 5.5-8 2.6-15.6 5.9-22.5 9.7l0.3-1.4c-15.7-3.3-30.2-4.9-43.3-4.9-91.4-0.1-121.8 72.6-106.6 111.4-4.8 4.3-8.5 8.9-10.9 13.8-5.8 11.6-3.8 24.3 2.6 33.3 7.2 10.1 19.4 16.8 32.5 17.8-1.9 11.7 2 22.8 9.6 29.9 5.9 5.5 13.9 8.7 22.4 8.1 3.1-0.2 6.2-1 9.3-2.3 8.3 6.2 16 10 23.4 11.6 9.2 2 180.1 24.6-4 6.7-4.2 11.4-10.1 14.7-16.1 29.3 42.2 26 92 23.5 98.7-19.3 51.4-15.1 47.2-32 64-23.1 23-88.1 37.1-87.8 43.30.4 9.5 57.1 8.4 99.2 1.5 0 0-30.6 47.1-25.3 50.1 5.3 3 60.8-42.7 80.7-41.3 4.70.3 45.1 52.6 62.4 41.6 4.3-2.7-32.1-36.8-30.7-39.1 1.7-2.6 107.2 33 115 25.4-10.1-19.1-54-35.5-77.7-50.6 49.5-7.2 157.9 26.3 155.3 12.8l-77-37.3c21 1.2 41.8 1.4 62.3-1.1 2.6-13.1-172.9-34-119-115.2l22.8-34.4c3.5 3.4 7.6 6.3 12 8.9 9.8 5.8 21.6 9.7 33.1 10.4 11.50.7 24.1-2.2 30.9-12.8 1.6-2.4 2.7-5.1 3.5-8 26.6-5.7 45.9-30.8 47.9-58.2 1.1-14.1-3.1-28.8-13.2-41.3 18.8-40.8 16.9-74.20.5-93.5-8.3-9.7-20.2-15.2-33.1-15.5-8.1-0.2-16.6 1.6-25 5.4-7.4-8.5-17.1-17.2-29.9-22.7-8-3.5-17.1-5.5-27.2-5.5zm20 22c18.1 7.9 29.6 25.6 36.8 36.4l15-10c-1-1.5-2.2-3.3-3.5-5.2 12.2-4.1 25.4-1.9 33.1 6.9 9.5 11.2 13.5 34.8-0.7 68.7-7.1-5.2-15.8-9.6-25.9-12.9-0.1-4.1-0.7-8.1-1.9-12.1-4.3-13.9-17.1-24.6-37.5-29.3l-4.1 17.5c16.7 3.9 22 9.7 24.4 17.1 2.3 7.50.7 19-3.8 32.3l17.1 5.7c1.5-4.4 2.8-8.7 3.8-13 30.4 10.8 38.6 29.7 37.2 47.8-1.3 18.1-14.3 35.4-29.9 40.8-1-5.3-2.8-11.1-5.4-17.2l-16.6 6.9c6.7 16 5.4 24 3.3 27.2-2.1 3.2-6.8 5.1-14.7 4.6-7.9-0.5-17.7-3.7-25.1-8-5.2-3-8.8-6.8-10.6-9.4l6.6-9.9c12.3-18.5-25.9-38.1-33.8-31.3-5.6 4.8-11.1 9.7-16.5 14.5-7.8-4.8-15.1-12.9-17.1-20.8 6.8-2.4 13.7-6.3 20.5-12.1l-11.6-13.7c-19.9 14.5-31.2 13.1-48.40.7l8-38.2-15.9-20c-34.2 117.9-72.6 75.6-125.2 55.8-4.5-1.7-11.6 24.5-5.6 27.1 18.3 7.9 32.5 18.2 43.7 29.8-2.8 6.6-6.9 13.5-11.5 16.4-15.9 4.8-27-5.8-38.2-14.8-12.2 16.6-28.4-2.6-22.1-16.2a45.1 45.1 0 0 0 10.8-6.1l-10.9-14.3c-11.5 7.8-29 6.1-37.2-4.9-10.4-17.9 17.3-31.7 27.2-35.9l-6.9-16.6a125.6 125.6 0 0 0-11.1 5.2c-4.3-19.6 5.8-58.2 45.6-74.9-1.7 8.4-4.5 19.1-8.6 24.4C85.5 90.9 69.5 96.2 69.5 96.2s16 5.3 21.2 12.1c7.3 9.7 10.6 36.4 10.6 36.4s3.3-26.7 10.6-36.4c5.2-6.8 21.2-12.1 21.2-12.1s-16-5.3-21.2-12.1c-4.3-5.7-7.2-17.3-8.9-25.9 16.7-6.2 38.2-8.6 65.6-4.7-6.3 5.8-11.2 12.2-14 19l16.6 6.9c21.5-29.5 68.6-44.5 99-30.9a225.9 225.9 0 0 0-7.6 5.5L273.6 68.2c26.2-17.3 54.9-35.7 84.3-23.1zm-40.8 26.5s-4.4 25.4-14.3 34.6c-7 6.5-28.7 11.5-28.7 11.5s21.7 5 28.7 11.5c9.9 9.2 14.3 34.6 14.3 34.6s4.4-25.4 14.3-34.6c7-6.5 28.7-11.5 28.7-11.5s-21.7-5-28.7-11.5c-9.9-9.2-14.3-34.6-14.3-34.6zM204.7 180.4s3.9 27.9 12.7 38c6.2 7.1 25.4 12.7 25.4 12.7s-19.2 5.5-25.4 12.7c-8.8 10.1-12.7 38-12.7 38s-3.9-27.9-12.7-38c-6.2-7.1-25.4-12.7-25.4-12.7s19.2-5.5 25.4-12.7c8.8-10.1 12.7-38 12.7-38zm39.9 6c8.4 4.9 16.8 8.2 25.8 8.7 4.7 13.6 10.7 22.9 20.6 30.3-14.3 11.7-27.2 19.3-37.1 14.6-16.3-17.9-14-31.8-9.4-53.6zM77.4 261.3s-3.7 21.6-12 29.4c-5.9 5.5-24.1 9.8-24.1 9.8s18.2 4.3 24.1 9.8c8.3 7.8 12 29.4 12 29.4s3.7-21.6 12-29.4c5.9-5.5 24.1-9.8 24.1-9.8s-18.2-4.3-24.1-9.8c-8.3-7.8-12-29.4-12-29.4zm362.8 9.3s-5 31.7-16 43.2c-7.8 8.1-32 14.4-32 14.4s24.2 6.3 32 14.4c11.1 11.5 16 43.2 16 43.2s4.9-31.7 16-43.2c7.8-8.1 32-14.4 32-14.4s-24.2-6.3-32-14.4c-11.1-11.5-16-43.2-16-43.2zm-135.4 67.7s3.2 17.5 10.4 23.9c5.1 4.5 20.8 8 20.8 8s-15.7 3.5-20.8 8c-7.2 6.3-10.4 23.9-10.4 23.9s-3.2-17.5-10.4-23.9c-5.1-4.5-20.8-8-20.8-8s15.7-3.5 20.8-8c7.2-6.3 10.4-23.9 10.4-23.9zM188.7 382.8s2.5 14.8 8.1 20.1c3.9 3.8 16.1 6.7 16.1 6.7s-12.2 2.9-16.1 6.7c-5.6 5.3-8.1 20.1-8.1 20.1s-2.5-14.8-8.1-20.1c-3.9-3.8-16.1-6.7-16.1-6.7s12.2-2.9 16.1-6.7c5.6-5.3 8.1-20.1 8.1-20.1z","r_human":"M250.9 22.8c-23.4 3-44.6 30.4-44.6 65.9 0 19.6 6.8 36.9 16.7 48.8l11.8 14.3-18.2 3.4c-12.9 2.4-22.4 9.2-30.4 20.3-8.1 11.1-14.3 26.6-18.6 44.4-7.8 32.3-9.6 71.7-9.8 106.4h42.9l11.8 157.8c29.9 6.7 61.8 6.5 90.60l10.4-157.9h40.8c0-35.2-0.5-75.1-7.6-107.7-3.9-17.9-9.9-33.4-18-44.3-8.2-11-18.1-17.7-32.6-20l-18.6-2.9 11.7-14.7c9.5-11.9 15.9-29 15.9-48.1 0-37.8-23.7-65.8-49.4-65.8z","r_elf":"M256 41c-28.2 0-58.4 18.2-81.2 44.9-3.1 3.7-6.1 7.5-8.9 11.4L208 69.2l23.1 15.4c0.5-6.9 2.6-13.3 6.1-18.6C241.3 59.9 247.9 55 256 55s14.7 4.9 18.8 11c3.5 5.3 5.6 11.6 6.1 18.6L304 69.2l42.1 28.1c-2.8-3.9-5.8-7.7-8.9-11.4C314.4 59.2 284.2 41 256 41zm0 32c-0.8 0-2.10.4-3.8 3C250.4 78.6 249 83 249 88c0 3.80.8 7.3 2 9.9l5 3.3 5-3.3C262.1 95.3 263 91.8 263 88c0-5-1.4-9.4-3.2-12C258.1 73.4 256.8 73 256 73zm-48 17.8l-28.6 19.1 5.3 1.1c16.9 2.1 36.5 3.4 56.6 3.9-1.4-1.3-2.6-2.7-3.7-4.3L208 90.8zm96 0l-29.6 19.7c-1.1 1.5-2.3 3-3.7 4.3 20.1-0.4 39.7-1.8 56.6-3.9l5.3-1.1L304 90.8zM32 112c33.3 33.3 58.9 89.7 71.5 126.5 3.2-25.8 7.4-52.1 12.5-74.7 1.2-5.2 2.4-10.2 3.6-14.9C98.7 132.5 44.8 112 32 112zm448 0c-12.8 0-66.7 20.5-87.6 36.9 1.2 4.7 2.4 9.7 3.6 14.9 5.1 22.6 9.4 48.9 12.5 74.7C421.1 201.7 446.7 145.3 480 112zm-331.5 10.1c-4.6 8.8-10.4 25.4-15 45.7-5.5 24.2-10.1 53.4-13.3 81.4-2.7 23.8-4.4 46.5-4.8 64.8 6.9-23.3 15.3-51.5 26.1-79.9 14.9-39.4 33.5-78.5 59.8-101.4l-52.8-10.6zm214.9 0l-52.8 10.6c26.3 22.9 44.8 62.1 59.8 101.4 10.8 28.4 19.3 56.7 26.1 79.9-0.5-18.3-2.1-41-4.8-64.8-3.2-28-7.8-57.2-13.3-81.4-4.6-20.3-10.3-37-15-45.7zm-128.8 10.6l-6.7 3.3c-6.4 3.2-12.6 8-18.6 14.1 6.70.8 13 2.1 18.6 3.9 8.7 2.7 16.8 5.4 20.4 14.8l-16.8 6.4c0.7 1.9-2.3-1.9-8.9-4-6.7-2.1-15.9-3.6-25.3-4-0.60-1.30-1.90-3.2 4.6-6.4 9.4-9.4 14.6 4.8-1.2 9.4-1.8 14-1.8 12 0 24 4 40 12 0 16-16 32-32 32-9.9 0-25.8-6.1-36.6-14.5-4.7 10-9 20.4-13 31-2.3 6.1-4.5 12.3-6.7 18.4 9.2 24.8 21.8 46.2 35.4 63.6 13.5 17.3 27.9 30.8 40.6 39.7C240.3 371.1 251.8 375 256 375s15.7-4 28.3-12.9c12.7-8.9 27.1-22.3 40.6-39.7 13.6-17.5 26.2-38.8 35.4-63.6-2.1-6.1-4.3-12.3-6.7-18.4-4-10.6-8.4-21-13-31C329.8 217.9 313.9 224 304 224c-16 0-32-16-32-32 16-8 28-12 40-12 4.6 0 9.20.6 14 1.8-3-5.1-6.2-10-9.4-14.5-9.20.4-18.2 1.9-24.7 4-6.7 2.1-9.6 5.9-8.9 4l-16.8-6.4c3.6-9.3 11.7-12 20.4-14.8 5-1.5 10.5-2.7 16.3-3.5-6.1-6.2-12.4-11.2-18.9-14.4l-6.7-3.3c-70.2-14.20.3-21.30.3-7.1 0-14.2-0.1-21.3-0.3zM200 192a8 8 0 0 0-8 8 8 8 0 0 0 8 8 8 8 0 0 0 8-8 8 8 0 0 0-8-8zm111.6 0a8 8 0 0 0-8 8 8 8 0 0 0 8 8 8 8 0 0 0 8-8 8 8 0 0 0-8-8zM240 256l16 4.1L272 256c0 16-16 16-16 16s-16 0-16-16zm-96.8 28.9c-4.5 14.2-8.3 27.1-11.8 39.2-9.4 62.5-29.6 99.1-52.6 146.4 4.7-0.5 9.6-1.3 14.5-2.9 10.3-3.4 19.9-9.6 26.8-23.5l8.1-16.1 8.1 16.1c7.8 15.7 12.1 21.1 14.3 22.8 1.10.8 1.8 1.1 3.9 1.80.20.10.70.210.3 12.9-29.8 25.8-82 27.5-123.4-3.3-3.8-6.6-7.7-9.9-11.9-10.9-14-21.1-30.3-29.7-48.7zm225.7 0c-8.6 18.4-18.9 34.7-29.7 48.7-3.3 4.2-6.6 8.1-9.9 11.9 1.8 42.4 15.2 96.1 28.4 125.50.9-0.1 1.7-0.1 2.2-0.2 1.1-0.20.9-0.1 1.8-1 1.9-1.9 6.3-9.7 14.3-25.7l8.1-16.1 8.1 16.1c6.9 13.9 16.5 20.1 26.8 23.5 5.3 1.8 10.7 2.6 15.9 3.1-17.6-45.8-38.8-79.5-50.5-134.6-4.4-14.5-9.4-32.2-15.4-51.1zM240 288s16 0 16 6.7C256 288 272 288 272 288c16 0 32 16 48 16 0 0-28.9 29.8-48 32-5.70.7-16-6-16-6s-10.3 6.6-16 6c-19.1-2.2-48-32-48-32 16 0 32-16 48-16zm-40.5 74.5c-0.4 4.7-1 9.4-1.6 14.2l1.6 2.3 25.9 38.9 24.2-24.2 1-1.1c-10.2-1.5-21.2-7.1-33.4-15.7-5.8-4.1-11.8-8.9-17.8-14.4zm113 0c-6 5.5-12 10.3-17.8 14.4-12.2 8.6-23.1 14.2-33.4 15.7l25.3 25.3 25.9-38.9 1.6-2.3c-0.6-4.8-1.1-9.5-1.6-14.2zm-118.8 40.2c-5 25.2-12 49.4-19.8 68.3h70.4l-28.2-35.1-22.4-33.2zm124.7 0l-22.4 33.2L267.8 471h70.4c-7.8-18.9-14.8-43.1-19.8-68.3zM256 412.7l-19.9 19.9L256 456.9l19.9-24.3L256 412.7z","r_halfelf":"M397.1 35.6c-0.50-10-1.60-3.70.2-10.3 1.2-18.3 3.9-10.6 3.5-24 9.3-38.8 16.8-29.7 15-65.6 36.7-100 60.8-34.4 24.1-67.4 50.6-91.6 74.9-23.3 23.3-37.1 45.4-38.2 56.8 12.6 31.9 32.4 64.8 23.7 110.8l-0.10.3-0.10.3c-6.6 25.6-2.8 44.2 4.5 53.6 7.3 9.4 17.6 12.2 33.2 5 2-0.9 4.3-2 6.8-3.2-2.5-10.8-7.1-21.6-12.4-30a9 9 0 0 1-0.2-0.4 9 9 0 0 1 1.2-11.2 9 9 0 0 1 4.1-2.3 9 9 0 0 1 1-0.2c2.6-0.6 5.3-0.9 7.9-1 8.8-0.1 17.3 2.9 24.6 7.7 5.6 3.7 10.7 8.3 15.2 13.6 23.1-16.3 48.9-40.6 68.8-77.2 33-60.5 66.4-123.8 89-175.6 13.7-31.5 23.4-58.8 26.7-77.8 1.6-9.5 1.5-16.70.3-20.7-1.1-3.9-1.7-4.4-4.6-5.1-0.3-0.1-0.6-0.1-1.1-0.1zm-59.1 53.5c5.1-0.2 10.1 1.1 13.9 4.6 5.1 4.6 6.5 11.3 6.2 17.6-0.3 6.3-2.1 13-5.1 20.4a9 9 0 0 1-16.7-6.8c2.5-6.1 3.7-11.2 3.8-14.40.1-2.2-0.2-3.1-0.3-3.3-0.3-0.1-1.1-0.2-3.20.3-3.40.7-9.1 3-16.4 7.5-10.1 6.3-23.2 16.7-39.2 31.9 2.60.8 5 2.1 6.8 4 6.7 6.7 6.9 15.3 6.3 25.5-0.6 10.2-2.8 22.7-6.2 37.8a9 9 0 1 1-17.6-3.9c3.3-14.6 5.3-26.5 5.8-34.80.4-7.4-1-10.8-0.9-11.2-0.90.1-2.70.6-5.5 1.9-5.4 2.7-13.5 8.3-23.9 16.9-23 25.3-50 57.7-80.8 98.3 11 9.3 20 18.6 24.3 29.2 2.6 6.4 3.1 14.1-0.2 20.8-3.4 6.6-9.6 11.3-17.8 14.8a9 9 0 1 1-7-16.6c5.8-2.5 8.1-5 8.8-6.40.7-1.40.9-2.7-0.4-5.9-2.6-6.4-12.4-17-25.6-27.5a9 9 0 0 1-1.6-12.5c31-41.3 58.1-74.4 81.7-100.7a9 9 0 0 1 2.6-3.4c0.7-0.6 1.4-1.2 2.1-1.8 33.6-37.1 59.6-59.7 78.9-71.7 8.4-5.2 15.5-8.5 22.2-9.8 1.7-0.3 3.4-0.6 5.1-0.6zM186.8 390.3c4.7 10.4 8.1 21.8 9.3 33.5 1.5 14.7-0.8 30-9.5 42.4 8.5 8.4 14.5 9.8 18.6 8.9 4.9-1 10.2-6.1 13.7-12.3 5.6-10.2 2.6-32-7.6-49.2-5.1-8.6-11.7-15.9-18.4-20.3-2.1-1.4-4.1-2.3-6.2-3.1z","r_dwarf":"M127.4 14.4c-74.3 104.4-5.3 124.5 37.5 148.1 7.4-16.1 15.9-30.7 27.3-44.4-52-22.1-61.4-70.2-64.8-103.7zm257.2 0c-3.4 33.5-12.8 81.6-64.8 103.7 11.4 13.7 19.9 28.3 27.3 44.4 42.9-23.6 111.7-43.7 37.5-148.1zM256 89.5c-45.3 27.6-62.3 54.4-78.4 94.8 47.9 11.7 108.8 11.7 156.8 0-16.1-40.4-33.1-67.2-78.4-94.8zM148.8 196.1c-5.3 10.3-24.6 74.7-24.8 91.8 4.7-4.9 9.5-9.9 14.2-14.9l6.6 5.8c1.1-25.6 12.6-52.8 25.1-77.5-6.5-1.6-14.5-3.3-21.1-5.2zm214.4 0c-6.2 1.7-15.3 3.9-21.1 5.2 12.4 24.7 24 51.9 25 77.5l6.7-5.8 14.2 14.9c10.5-12.4-19.5-81.5-24.8-91.8zm-173.6 8.8l-7.9 23.8c22.8 6.5 43.6 12.6 69 20l-6.5 17c-5.6-1.6-11.4-3.2-17.1-4.9-2.9 5.8-9.5 9.6-16.7 9.6-10.2 0-18.3-7.2-18.3-16 0-1.30.1-2.50.4-3.7l-16.6-4.7-13.9 41.7 36.1 34.3 14.6-27h86.5l14.7 27 36.1-34.3-13.9-41.7c-5.4 1.5-10.8 3-16.1 4.60.4 1.20.5 2.50.5 3.8 0 8.8-8.1 16-18.4 16-7.3 0-13.9-3.9-16.8-9.7-5.9 1.7-11.7 3.3-17.5 5l-6.6-17c23.2-6.8 44.4-12.9 69.1-20l-8-23.8c-47.7 11.1-84.9 11.1-132.7 0zm-43.2 94.8l-70.4 73.7h47.4l-18.4 48h57.5L147.8 447l37.5-10.9 70.7 61.5 70.7-61.5 37.4 10.9-14.7-25.6h57.5l-18.3-48H436l-70.5-73.7-57.4 49.9-21.9-38.2h-60.7l-21.9 38.2zm91.2 25.7h36.8v18h-36.8z","r_halfling":"M246.6 18.4c-11.8-0.2-23.9 8.6-29.4 22.4-6.7 17-0.8 35.3 13.1 40.8 13.9 5.5 30.7-3.8 37.4-20.8 6.7-170.8-35.3-13.1-40.8-2.6-1-5.3-1.6-8-1.6zm74.8 15.9c-110-22.7 6-30.8 16.9-12.2 16.5-11.2 38.1 2.3 48.1 13.5 10 34.4 4.8 46.7-11.8 12.2-16.5 11.2-38.1-2.3-48.1-4.7-3.5-10.2-5.1-15.9-5.1zm67.2 37.5c-10.3-0.1-21.5 4.3-30.5 12.9-15.9 15.4-18.5 38.3-5.9 51.3 12.6 13 35.7 11.1 51.5-4.3 15.9-15.4 18.5-38.3 5.9-51.3-5.5-5.7-13-8.5-21.1-8.6zm-156.4 32.1c-22.5-0.3-44.4 6.9-63.5 24C107.7 182.5 48.2 261 28.3 387 5 534.1 186.3 507.5 168.3 428.9c-22.9-100.4 34.1-141.1 108-124.2 32.8 7.5 66.5-4.9 86-40.4 23.4-42.7-7.4-106.8-62.9-139.6-21.6-12.8-44.7-20.5-67.2-20.8zM449.4 134c-10.50-21.7 2.8-32.1 8.6-27.8 15.5-40.1 46.5-27.5 69.3 12.7 22.8 45.5 28.7 73.4 13.2 27.8-15.5 40.1-46.5 27.4-69.3-7.9-14.3-23.7-21.9-41.2-21.9z","r_gnome":"M310.4 45.6c-9.3-0.1-18.5 2.7-28.4 5.3-27.1 10.1-57.9 26.6-82.3 47.1-20.4 17.1-35.8 36.8-41.7 57.3 61.5 5.1 117.7 4.4 158.3-12.20.4-1.30.8-2.40.9-3.40.4-2.90.1-5.3-1.6-9-3.5-7.5-13.9-19.4-33.6-38.9L268.2 78.1c16.50.1 34.3 2.3 49.4-6.8 10.2 18.9 27.3 36.2 51 44.2l7.1 1.3-0.5 7.2c-0.8 10.8 4.4 26 13.3 38.6 9 12.6 21.5 22.4 32.8 24.8 8.8 1.9 12.90.2 15.4-2.6 2.5-2.8 4.1-8.7 2.5-17.9-1.5-8.3-6.2-18.8-13.1-27.4-6.3-7.7-17.2-15.5-29-17.8-5-10.7-8.1-21-16.1-32.2-5.3-7.4-12.1-12.9-17.7-17.9-6-5.3-11.7-8.7-19.6-9.6l-3.7-0.4c-5.9-8.8-11.2-12.3-23.1-15.5a43.1 43.1 0 0 0-6.5-0.5zM53.6 113.3l2.5 19.1-10.2-1.2c-5.6-0.7-10.10.6-15.9 3.9-2.4 1.3-5 3.2-7.7 5.1 7.1 3.3 13 7.6 18.8 12.2l7.5 6-23.3 20.4c14.21 290.1 41.8-4l16.4-33.3c-2.9-13.9-7.9-19.2-14.4-22.7-4.2-2.3-9.6-3.7-15.3-5.2zm43.5 37.8l-2.5 3.5-12.2 25c9.8 5.1 17.4 11.9 23.8 19.30.8-0.6 1.6-1.3 2.4-1.9l23.3-29.8c-10.2-6.5-21.3-12.2-34.8-16.1zm218.5 9.3c-35 12.7-77.3 15.1-123 13.1l28.9 14.6c-2.1 6.4-6 13.6-8.7 16.6-12.4 14.3-26.6 30.5-37.7 46.8-9.2 13.4-15.9 26.7-18.5 38.1 54.1-11.7 76.7-36.1 92.8-54.8 1.3-4.1 1.2-70.3-7.4-3.1-1.4-12.2-5.4-15.3-3.6-1.40.9-3.9 3.5-8 6.9l-5.1-6.1-5.1-6.1c3.3-2.8 5.7-5.5 9.5-8a18.7 18.7 0 0 1 3.4-1.7c1.9-17.3 17.9-27.1 38.5-34.4 6.7 8-1.7 23.2-10.7 38.6a21 21 0 0 1 3.8 2.9c23-6.1 46.6-15 70.2-26.5zm-166 10.2l-27.6 35.3c16 9.6 34.3 15.3 54.1 17.7 5.3-6.6 10.6-13 15.8-19.1-7.2-7-12.4-15.5-6.9-31.3-11.6-0.6-23.4-1.5-35.3-2.6zM341.7 201.8c-25.2 12.6-50.7 22.6-75.7 29.3-0.6 4.4-0.1 9.2-2.5 11.9-3.4 3.9-7.2 8.3-11.6 12.9 19.1-1.8 36.5-6 53.1-17.6l17.5-12.2-15.2 61.2-2.1 1.7c-7 5.6-14.7 13-27.8 17.5-13.1 4.5-31 6-59 2.3-12.3-1.6-21.6-6.5-28.8-12.1-11.8 4.4-25.2 8.2-40.6 10.8l-9.2 1.6-0.2-9.3c-0.4-19.3 9.7-38.6 22.4-57.20.9-1.4 1.9-2.8 2.9-4.1-20-3.5-38.6-10.4-55.4-21.3-0.50.4-10.8-1.5 1.2-11.3 9.6-21.6 19.6-29.4 28 2-0.3 4-0.7 6-0.9 9.3-1 18.3-1.1 26.3 3.1l10.1 5.2-8.3 7.7c-10.2 9.5-18.8 21-24.1 32a64.5 64.5 0 0 0-4.7 13.2c0.9-0.7 1.4-1.1 2.4-1.8 6.1-4.6 12.5-9.1 19.5-11.6l15.8-5.5-5.6 15.7c-4 11.3-8.3 20.6-10.1 28.7-1.1 4.9-1.3 9.3-0.4 14.1l19.7-17.1 2 14.6c2.1 15.1 1.7 23.5 5.4 33.4l29-32.1-5.3 28.1c-3.5 18.2-1.7 33.1 3.6 46.6l26.8-37.7 4.3 16.6c3.6 13.8 8.6 22.6 14 27.5 3.2 2.9 6.6 4.6 10.4 5.4-0.3-4.5-0.2-9.21-13.9 1-4.2 3-8.5 6.7-11.8 3.6-3.3 8.8-5.3 14.3-5.5 7.8-0.3 14.7 3.1 19.7 7.7 5 4.6 8.6 10.3 11.7 16 3 5.5 5.7 11.1 8.2 16 4.6-12.3 8.1-26.2 7.1-35l-1.2-10.6 10.5 1.9a55.7 55.7 0 0 1 10.7 3c11.5-15.5 26.7-22.6 42.6-23.4a61.1 61.1 0 0 1 7.50.1l0.70.10.70.2c4 1 7.5 2.6 10.5 4.4 2.4-21.3-0.9-41.8-9.4-61.6l-4.7-10.9 11.9-0.2c4.4-0.1 8.70.5 12.8 1.7-4.4-14.8-11.9-28.3-25.1-43.3l-12.6-14.3 191c7.90.4 14.7 2.6 20.9 5.8-8.4-20.8-22-41-36.7-57.2zm52.3 26.6c-3.50-7.30.5-11.8 1.4 8.5 14.7 15.1 30.6 18.4 46.8l1 5c4.2 2.2 8 5.1 11.4 8.4 10.6-9.5 21.8-15.6 33.1-19.8-12.7-15.5-22.5-28.3-31.6-34.8-5.5-4-11.1-6.5-18.3-6.9a36.3 36.3 0 0 0-2.3-0.1zm-96.7 32.6c-17.4 7.9-35.6 10.5-53.6 11.5-3.70.2-7.30.3-110.5-7.3 5.5-15.7 11-25.6 16 3.7 1.8 8 3.2 13.4 3.9 26.6 3.5 41.7 1.9 51.7-1.5 8.9-3.1 14.3-7.8 20.9-13.2zm164.2 21c-14.7 4.3-28.2 10.1-40.7 22.7-4.8 6.6-6.4 18-4.7 29.90.8 5.6 2.4 11.3 4.2 16.40.7-1.9 1.4-3.7 2.1-5.6 3.2-8.2 5.7-16 12.2-21.6l7.2-6.2 15.5 26.1c5.6-7.6 8.1-15.4 7-24.1l-1.9-15.2 27.3 14.3c-1.5-5.6-3.2-11.1-5.5-16-4.5-9.8-10.5-17.1-22.8-20.7zM117.6 383.3c-0.60.2-1.20.5-1.80.8-4 1.9-9.1 5-13.7 8.8-7.7 6.4-13.5 14.1-14.2 21.6 10.6 5.3 23.6 6.6 39.8 3l12-10.8a99.5 99.5 0 0 1-1.2-12.4l-9.3 10.3-5.6-9.3c-2.6-4.3-4.5-8.3-5.9-12.2zm229.2 8.7c-10.10.2-18.5 3.5-26.3 12.2 6.7 3.3 12.3 8.3 15.7 14.6l32.1-9.8c-1.9-3.5-3.4-6.6-5.1-9-2.5-3.6-5.1-6-11.4-7.8-1.7-0.1-3.3-0.2-4.9-0.2zm32.6 30.3l-39.6 12.10.8 15.9c20.1 10.8 34.4 12.9 45.7 12 9.3-0.8 16.8-3.7 24.5-6.5-1.9-5-5.8-10.1-11.4-15.7-5.8-5.7-13-11.5-20-17.8zm-299.3 6.3c-16.4 4.7-23.6 9.8-28.9 15.4-3.6 3.8-6.6 8.5-10.5 13.6 11.4 4.5 24.2 7.9 36.4 8.6 150.9 28.5-2.2 38.9-11.3l4.5-20c-14.9 1.7-28.6-0.3-40.3-6.4z","r_halforc":"M256 51c-1.2 1.2-3.2 3.7-5.6 7.5-4.6 7.3-10.6 19.2-18.4 34.8v9.9c6.2 4.8 14.9 7.6 24 7.6 9.1 0 17.8-2.9 24-7.6v-9.9c-7.8-15.6-13.8-27.5-18.4-34.8-2.4-3.8-4.4-6.3-5.6-7.5zm-42.7 54.3c-28.2 6.9-55.9 20.6-82.2 41.1-16 80.7-31.2 175.8-16.9 254.6 6.2 2.3 12.7 4.4 19.4 6.4l-3.1-12.3-4.3-6.5 7.8-5.2c6.3-4.2 13.5-7.8 21.5-11-5-6.8-8.3-15.4-11.5-24.3-5.5-15-9.7-31.8-13.7-44l-9.8-29.9 24.6 19.6c24.5 19.5 49.1 32.7 82.9 56.3l10.1 7c5.9-0.3 11.9-0.4 17.9-0.4 6 0 120.1 17.90.4l10.1-7c33.8-23.6 58.5-36.8 82.9-56.3l24.6-19.6-9.8 29.9c-4 12.2-8.2 29-13.7 44-3.2 8.8-6.5 17.5-11.5 24.3 7.9 3.1 15.2 6.8 21.5 11l7.8 5.2-4.3 6.5-3.1 12.3c6.7-2 13.2-4.1 19.4-6.4 14.3-78.7-0.8-173.9-16.9-254.6-26.3-20.5-54-34.2-82.2-41.1v6.3l-2.8 2.7c-10.6 10.6-25.4 15.3-40 15.3-14.6 0-29.4-4.7-40-15.3l-2.8-2.7v-6.3zm76 55.9l13.4 13.1-6.6 6.7c-12.9 13.1-27.2 19.6-41.3 18.9-14.1-0.7-26.8-8.1-38.4-18.4l-7-6.3 12.5-14 7 6.2c9.8 8.7 18.8 13.3 26.9 13.7 8.10.4 16.5-2.7 26.9-13.3l6.6-6.7zm-150 3.9c19.8 0 41.4 9.1 60.9 19.9 19.5 10.8 36.4 23.4 45.9 32.8l-13.3 13.3c-7.2-7.2-23.7-19.7-41.7-29.7-18-10-38.2-17.6-51.7-17.6v-18.8zm233.5 0v18.8c-13.6 0-33.7 7.6-51.7 17.6-18 10-34.5 22.5-41.7 29.7l-13.3-13.3c9.4-9.4 26.4-22 45.9-32.8 19.5-10.8 41-19.9 60.9-19.9zm-226.9 36.1c16.7 16.7 47.6 47.3 93.4 47.3v0.3l16.8-24.2 16.6 24.5v-0.6c45.9 0 76.8-30.6 93.4-47.3l13.3 13.3c-8.2 8.2-21.1 21.2-38.6 32.2 4.9 4.8 8 11.4 8 18.7 0 14.3-11.8 26.1-26.1 26.1-14.3 0-26.1-11.8-26.1-26.1 0-0.20-0.40-0.5-3.90.8-7.9 1.4-12.1 1.8l28.1 41.4-3.8 5.3c-7.2 10-16.7 15.7-26 18.2-9.4 2.5-18.5 2.4-26.9 2.4s-17.50.1-26.9-2.4-19.1-8.1-26.7-17.9l-4.2-5.4 28.8-41.6c-4-0.4-7.9-1-11.7-1.800.200.400.5 0 14.3-11.8 26.1-26.1 26.1-14.3 0-26.1-11.8-26.1-26.1 0-7.3 3.1-13.9 8-18.7-17.5-11-30.4-24-38.6-32.2l13.3-13.3zm-128.1 16.1c3 6.9 8.4 15.7 16.5 27.4 12.5 17.8 29.6 41.6 46.6 75.7 1.8 3.7 4.6 6.1 8.6 7.80.1-13.80.7-27.7 1.7-41.7l-24.9-21.6 12.3-14.2 14.6 12.7c0.9-9 2-18 3.2-26.9-7.9-6.2-17.7-10.4-28.6-13.4-16.6-4.5-34.9-5.6-50.2-5.8zm476.4 0c-15.20.2-33.5 1.3-50.2 5.8-10.8 3-20.6 7.1-28.6 13.4 1.2 8.9 2.3 17.9 3.2 26.9l14.6-12.7 12.3 14.2-24.9 21.6c1 13.9 1.6 27.8 1.7 41.7 4-1.7 6.8-4.1 8.6-7.8 17-34 34.1-57.9 46.6-75.7 8.2-11.7 13.6-20.5 16.5-27.4zm-238.3 40.5L221.8 307c3.7 3.3 7.6 5.2 12.1 6.4 6.3 1.7 13.8 1.8 22.1 1.8s15.9-0.1 22-1.8c4.3-1.2 8-2.9 11.5-6.2l-33.5-49.4zm-66.60.3c-4.1 0-7.3 3.2-7.3 7.3 0 4.1 3.2 7.3 7.3 7.3 4.1 0 7.3-3.2 7.3-7.3 0-4.1-3.2-7.3-7.3-7.3zm133.4 0c-4.1 0-7.3 3.2-7.3 7.3 0 4.1 3.2 7.3 7.3 7.3 4.1 0 7.3-3.2 7.3-7.3 0-4.1-3.2-7.3-7.3-7.3zm-166.3 67.3c1.7 5.6 3.4 11.3 5.2 16.4 4.1 11.1 9.2 19.2 12.5 22.4l27.5-9.2c-16.4-10.9-31.1-20.1-45.2-29.7zm199.2 0c-14.1 9.6-28.8 18.8-45.2 29.7l27.5 9.2c3.2-3.2 8.4-11.3 12.5-22.4 1.9-5.1 3.5-10.8 5.2-16.4zM256 375.6c-41.2 0-82.6 7.6-106 20.1l13.6 54.3c61.7 14.6 123.1 14.6 184.8 0l13.6-54.3c-23.3-12.6-64.8-20.1-106-20.1zm0 10.5c23.4-0.1 46.8 4.2 70.1 13l8.8 3.3-6.7 17.5-8.8-3.3c-42.5-16.1-84.2-15.6-126.90l-8.8 3.2-6.4-17.6 8.8-3.2c23.2-8.5 46.5-12.9 69.9-13z","r_tiefling":"M86.5 31.4C59 60.6 45.4 99.1 47 136c1.9 43.1 23.9 83.8 69 106.3l5 2.5v5.6c0 45 23.1 100.1 52.5 145.2 14.6 22.5 30.8 42.6 46 57.8 13.9 13.8 27.1 23.2 36.5 27.2 9.4-4 22.5-13.4 36.4-27.3 15.2-15.2 31.4-35.3 46.1-57.8 29.3-45.1 52.5-100.1 52.5-145.1v-5.6l5-2.5c45.1-22.5 67.1-63.2 69-106.3 1.6-36.9-12-75.4-39.5-104.60.9 28.6 2.9 50.9-0.6 70.6-4.5 24.4-19.5 43.8-52.9 60.5l-4.9 2.4-4.5-3.3c-2.1-1.6-4.2-3-6.3-4.5-3.3 7-7.9 13.6-13.9 19.7-11.2 11.1-27.4 10.9-39.7 6-12.3-5-23.7-14.4-23.7-28.4v-3.7l2.6-2.7c6-6 10.7-11.2 14.6-16.2-26.3-5.7-54-5.7-80.4 0 3.9 5 8.6 10.2 14.6 16.2l2.6 2.7v3.7c0 14-11.4 23.4-23.7 28.4-12.3 4.9-28.5 5.1-39.7-6-6-6.1-10.6-12.7-13.9-19.7-2.1 1.4-4.2 2.9-6.3 4.5l-4.5 3.3-4.9-2.4c-33.4-16.7-48.4-36.1-52.9-60.5-3.6-19.7-1.5-42-0.6-70.6zm88.2 52.7C171 94.3 168 104.9 167 115.3c-1.9 18.2 1.5 34.9 15.4 48.7 4.8 4.9 12.6 5.1 20.3 2 5.6-2.2 9.6-6.3 11.3-9.2-14.1-14.7-22.4-27.1-28.3-40.9-4-9.3-7.3-19.9-11-31.8zm162.6 0c-3.7 11.9-7 22.5-11 31.8-5.9 13.8-14.2 26.2-28.3 40.9 1.7 2.9 5.7 7 11.3 9.2 7.7 3.1 15.5 2.9 20.3-2 13.9-13.8 17.3-30.5 15.4-48.7-1-10.4-4-21-7.7-31.2zM157.2 192.6l10.9 21.8c11.1 22.2 31.3 45.3 53.3 61.7l-21.8-54.4 16.8-6.6 30.7 76.8 1.90.9v0.9h14v-0.9l1.9-0.9 30.7-76.8 16.8 6.6-21.8 54.4c22-16.4 42.2-39.5 53.3-61.7l10.9-21.8 22.2 88.7v1.1c0 6.2-2.6 12.1-6.3 16.4-3.8 4.4-8.6 7.5-13.9 10-10.5 5-23.3 7.5-36.1 8.6-2.10.2-4.10.3-6.10.4l-17 33.9c9.7-3.6 21.1-8.1 35.1-13.7l12.3-4.9v13.3c0 20.5-13.6 41.3-30.6 58.4-17.1 17-37.9 30.6-58.4 30.6s-41.3-13.6-58.4-30.6c-17-17.1-30.6-37.9-30.6-58.4v-13.3l12.3 4.9c14 5.6 25.4 10.1 35.1 13.7l-17-33.9c-2-0.1-4-0.2-6.1-0.4-12.8-1.1-25.6-3.6-36.1-8.6-5.3-2.5-10.1-5.6-13.9-10-3.7-4.3-6.3-10.2-6.3-16.4v-1.1zm6.3 49l-10.4 41.5c0.1 1.30.5 2.5 1.8 3.9 1.5 1.8 4.2 3.8 7.9 5.5 7.5 3.5 18.7 6 29.9 6.9 10.80.9 21.50.5 29.3-0.9-22.5-14.2-43.4-34.6-58.5-56.9zm185 0c-15.1 22.3-36 42.7-58.5 56.9 7.8 1.4 18.5 1.8 29.30.9 11.2-0.9 22.4-3.4 29.9-6.9 3.7-1.7 6.4-3.7 7.9-5.5 1.3-1.4 1.7-2.6 1.8-3.9zm-106.4 70.1l-22 11 35.9 71.9 35.9-71.9-22-11zm-53.3 49.4c4.3 10 12 21.3 21.6 30.9 11.3 11.3 25 20.1 36 23.6l-20.6-41.1c-10.6-3.1-22.5-7.6-37-13.4zm134.4 0c-14.5 5.8-26.4 10.3-37 13.4l-20.6 41.1c11-3.5 24.7-12.3 36-23.6 9.6-9.6 17.3-20.9 21.6-30.9z","r_dragonborn":"M188.8 20.4c-5.3 26.9 4.6 55.7 34.1 86.5 11.2-7.3 31.6-10.9 50-8.2-46-22.3-66.5-47.1-84.1-78.4zM29.2 26.6C43.6 73.1 81.1 128.8 129.6 168.3 93.5 166 49.9 153.1 18.8 143c25 35.2 64.2 52.9 103.3 66.3C97.1 227 67 245 18.7 248c54.6 19.2 107.5 8.9 131.30.7-17.9 34.9-100.7 66.2-122.3 77 53.3 4.2 121.7-11 167-32.9 10 24.6-1.6 53.2-10.1 77.8-1.9 4.5-3.8 8.9-5.7 13.3 5.1-3.5 10.1-7 14.9-10.6 23.6-16.2 47.8-31.9 59.5-58.8 26.1 31.2 62.7 62.1 107 85.4 17.4 22.1 28.3 49 34.2 73.8 8.3-19.1 13.8-40.2 9.7-60.3 24.5-3.6 35.6-29.7 35.5-54.4-12.6 6.2-15.1 6.3-31.2 8.2 0-10.10.6-12.5-3-28.7-10.3 8.4-21 11.2-30.8 11.8 2.1-7.6 3-19.5 3.7-27.3-13 7.1-19.2 9.7-30.1 10.8-0.4-10.9-0.1-20-4.1-30.4-29.6 19-48.6 1.5-68-21.3 19.8-17 96.4-21.8 95.1 7.1 14-7.3 18.8-11.2 23.6-15.9 9.1 8.5 13.4 20.9 15.1 31.4 9.3-9.4 10.3-10.5 17.1-23.8 5.7 10.1 8.8 17 10.7 30.6 8.5-6.2 15.4-13.1 19.8-21.4 7.5 15.5 8.3 16 12.4 33 17.8-13.1 21.8-31.2 22.8-47.6 2-33-0.3-108.2-31-142.9 1.7 36.3-13.1 70-33.8 80.7-12.6 4.9-96.5-74.6-137.6-93.3-23.5-10.2-48.1 7.1-67.8 9.3C147 106.2 83.6 70.9 29.2 26.6zM296.1 152.8c13.3 20.9 32.2 36.9 60.1 55-19.4 2.9-65.8-6.7-77.7-24-5.5-7.9 7.1-21.3 17.6-31zM180.6 319.1c-14.4 6.2-29.2 10.9-43.8 14.3-2.4 3.6-4.6 7.1-6.7 10.5 14.8 5.3 31.5 7 44.1 2.8 3.3-9.8 5.5-19.3 6.4-27.6zm-68 19.1l-10.2 1.5c-31.8 36.6-61.9 103.2-48.2 151.9h36.1c-11.1-37.7-16.5-87.1 22.3-153.4zm8.5 21.5c-5.9 11.4-10.4 22.1-13.8 32.1 12.9 6.7 29.1 8.9 44.8 8.2 4.6-10.5 9.8-21.8 14.6-33.3-15.4 1.8-31.4-1.4-45.6-7zm111.4 6.6c-12 10.5-25.2 20.3-38.9 29.6 7 34 33.4 63.4 73.9 95.7h83.3c-57.2-31.8-94.6-73.3-118.3-125.3zm-130 43.2c-2.5 11.8-3.3 22.7-3 32.9 37.3 14.2 62.5 13.5 97.5 4.1-7.2-10.3-13-21-16.9-32.3-32.7 9.4-55.4 5.7-77.6-4.7zm106.6 52.4c-38.1 10.9-68.8 13.2-107.50.3 1.8 10.4 4.5 20.1 7.5 29.4h130.1c-11.3-9.8-21.4-19.6-30.1-29.7z","i_leather":"M339.8 33.5l14 2.8c-1.2 3-2.5 6.3-4 9.8-5.8 13.6-14.2 29.3-20 35.1-4.9 4.8-19.8 9.6-33.1 11.5-11.2 1.8-22.4 3.9-33.7 3.9v16h-14V96.5c-12 0.1-24.2-2.6-33.7-3.9-13.3-1.9-28.2-6.6-33.1-11.4-5.8-5.8-14.2-21.5-20-35.1-1.5-3.4-2.8-6.8-4-9.8l14-2.8c8.4 11.4 38 47.1 83.8 47.1s75.4-35.7 83.8-47.1zm31.9 6.4l31.9 6.4-29.7 74.4 32.7 49-9.5 66.1c-1.8 1.4-3.8 2.8-6 4.3-11.3 7.5-26.1 14.5-39.1 14.5-4.3 0-12-3.5-20.2-10.4-8.3-6.9-17-16.5-24.8-26.2-14.2-17.9-24.3-34.2-26-37v-18.4h11v-18h-11v-14h11v-18s38.9-7.7 50.4-18.6c10.2-10.1 17.8-26.4 24-40.8 2-4.8 3.8-9.3 5.3-13.3zm-231.4 0c1.5 4 3.3 8.5 5.3 13.3 6.2 14.4 13.8 30.7 24 40.8C185 107.1 220 112.5 220 112.5v18h11v14h-11v18h11v18.4c-1.7 2.8-11.8 19.1-26 37-7.8 9.7-16.5 19.3-24.8 26.2-8.2 6.9-15.9 10.4-20.2 10.4-13 0-27.8-7-39.1-14.5-2.2-1.5-4.2-2.9-6-4.3l-9.5-66.1 32.7-49-29.7-74.4zM263 130.5v14h-14v-14zm0 32V186l1.3 2.1s12.2 20.4 28.7 41c8.2 10.3 17.5 20.7 27.2 28.8 9.8 8.1 20.1 14.6 31.8 14.6 15.6 0 30-6.1 41.7-13l-2.1 15-54.2 40.7-81.4-97.8-81.4 97.8-54.2-40.7-2.1-15c11.7 6.9 26.1 13 41.7 13 11.7 0 22-6.5 31.8-14.6 9.7-8.1 19-18.5 27.2-28.8 16.5-20.6 28.7-41 28.7-41l1.3-2.1v-23.5zm-7 83.1l78.6 94.2 33.1-24.8-7.4 37c-13.1 3.1-64.2 14.5-104.3 14.5-40.1 0-91.2-11.4-104.3-14.5l-7.4-37 33.1 24.8zm90.3 128l8.7 34.9c-5.9 2-12.5 4.2-19.6 6.4-4.2 1.3-8.6 2.6-13 3.8l-6.6-39.6c11.3-1.8 21.8-3.8 30.5-5.5zm-180.6 0c8.7 1.7 19.2 3.7 30.5 5.5l-6.6 39.6c-4.4-1.2-8.8-2.5-13-3.8-7.1-2.2-13.7-4.4-19.6-6.4zm132.2 8l6.9 41.7c-13.9 3.3-27.8 5.9-39.8 6.8v-45.8c10.8-0.3 22-1.4 32.9-2.7zm-83.8 0c10.9 1.3 22.1 2.4 32.9 2.7v45.8c-12-0.9-25.9-3.5-39.8-6.8zm163.6 37.9l11.2 44.7s-56.2 20.2-85.6 24.3c-31.2 4.3-63.4 4.3-94.6 0-29.4-4.1-85.6-24.3-85.6-24.3l11.2-44.7c8.1 3.1 20.1 7.4 37.1 12.6 26.3 8.1 58.6 16.4 84.6 16.4 26 0 58.3-8.3 84.6-16.4 17-5.2 29-9.5 37.1-12.6z","i_mail":"M260.2 21.8c-35.4 0-63 5.2-82.3 12.8-9.7 3.8-17.1 8.2-22.8 13.4-2.9 2.6-5.4 5.5-7.1 8.8-20.7 19-36 48.8-45.8 81.7-9.4 31.5-13.8 66-11.5 97.6-1.8 22.8 10.7 55.1 25 81l0.10.100c33.9 35 83.5 60.8 135.3 67.6V129.6c30.1 6.10.2 9.20.2 3.2 0 6.4-0.1 9.5-0.2v255c62-8.6 120.5-44.5 152.6-90.2 6.3-18.6 9-38.5 7.3-54.9 3-32.4-1.4-68.4-11.2-101-10-33.2-25.3-63.2-46.2-82.1-1.8-3.1-4.1-5.8-6.9-8.3-5.7-5.2-13.1-9.6-22.8-13.4-19.3-7.7-46.9-12.8-82.3-12.8zm0 18.7c33.6 0 59.1 5.2 75.3 11.7 8.1 3.2 14.2 6.3 17.5 9.3 3.3 3 3.5 5.5 3.5 5.8 0 10.5-8.3 21.1-25.7 29.8-17.4 8.6-42.7 14-70.7 14-28.1 0-53.3-5.1-70.7-13.4-17.3-8.4-25.7-18.5-25.7-30.4 0-0.40.8-2.8 4.1-5.8 3.3-3 8.8-6.1 16.9-9.3 16.3-6.5 41.8-11.7 75.3-11.7zm111.4 43.2c11.8 15.7 22 36.9 29 60.2 7.6 25.3 11.6 53 11.2 78.6-16.2-13.4-28.5-34.7-36.6-57.4-8.7-24.4-12.6-51-8-73.8 1.7-2.4 3.2-4.9 4.4-7.6zm-222.90.4c0.6 1.3 1.2 2.6 1.9 3.8 5.5 261 54.8-8.9 80.2-7.9 20.5-19.2 39-33 51.8-0.1-24.9 3.9-51.6 11.2-76 6.9-23.2 17-44.2 28.7-59.8zm242.1 269.3c-36.6 28-82.7 47-130.6 51.1l-0.80.1-0.8-0.1c-47.3-4-92.8-22.7-129.1-50.2-1 3-1.4 6.1-1.4 9.2 0 15.5 12.5 31.5 36.4 43.9 23.9 12.5 58 20.6 95.8 20.6 37.8 0 71.9-8.1 95.8-20.6 23.9-12.5 36.4-28.4 36.4-43.9 0-3.3-0.6-6.7-1.7-10zm-275.7 33.3c-17.4 12.9-26.6 27.5-26.6 41.8 0 11.5 10.3 29.3 26.2 43.1 14 12.2 31.9 21.2 47.3 23.1 9.7-22.7 20.3-41.6 31.7-56.4-13.9-3.7-26.7-8.5-37.8-14.4-18.4-9.6-33.1-22.3-40.7-37.2zm290.30.1c-7.6 14.9-22.3 27.6-40.7 37.2-11.2 5.9-24 10.7-38 14.4 11.4 14.9 22 33.7 31.7 56.4 14.7-2 32.6-10.9 46.7-23.1 16.1-13.8 26.7-31.7 26.7-43.1 0-14.3-9.1-28.9-26.4-41.8z","i_plate":"M156.7 25.8L89 39.4c-0.1 58.6-1.7 119.3-43.5 167.2C104.4 246.5 189 260.7 247 248.8v-99L108.3 88.2l7.4-16.4L256 134.2l140.3-62.4 7.4 16.4L265 149.8v99c58 11.9 142.6-2.3 201.5-42.2-41.8-47.9-43.4-108.7-43.5-167.2l-67.7-13.6c-12.9 13.9-20.6 28.1-32.9 40.5C308.9 79.8 289.5 89 256 89c-33.5 0-52.9-9.2-66.4-22.6-12.3-12.4-20-26.6-32.9-40.5zM53.9 232.9C76 281 96.1 336.6 102.7 392.8l65 22.8c4.2-52.7 28.2-104 63.7-146.1-55.1 6.3-122.7-5.8-177.5-36.6zm404.2 0c-54.8 30.8-122.4 42.9-177.5 36.6 35.5 42.1 59.5 93.4 63.7 146.1l65.2-22.9c6.6-56.8 26.6-111.8 48.6-159.8zM256 269c-40.5 43.1-67.7 97.9-70.7 152.7l61.7 21.6V336h18v107.3l61.7-21.6c-3.1-54.8-30.2-109.6-70.7-152.7zm151.7 143.4L297 451.1v18.8l110.2-44.1c0.1-4.50.3-8.90.5-13.4zm-303.30.1c0.3 4.50.4 8.90.5 13.4l110.1 44v-18.7l-110.6-38.7zM279 457.4l-23 8.1-23-8v19.6l23 9.2 23-9.2v-19.7z","i_shield":"M256 20c-52 0-104 4-160 12-16.4 224-16 224 0 448 112 16 208 16 320 0 16-224 16-224 0-448-56-8-108-12-160-12zm0 12l16 16h-7v151h18.2l25.2-37.9L275.3 128l32-32-32-32L297.6 41.7l-5.1-5.1h22.6V59.2l-4.8-4.8L300.7 64l32 32-32 32 30.9 30.9-25.9 38.8c44.4-18.9 68.1-73.2 53.6-131.5l-6.6-26.4 21.1 17.3c21.4 17.6 36.2 44.5 42.7 72.9 6.6 28.4 5 58.5-8.6 82.5-9.4 16.7-24.2 26.5-41.7 31.3-5.4 1.5-11.1 2.5-17.1 3.3H416v18h-66.9c60.8 11.7 1.8 17.1 3.3 17.5 4.8 32.3 14.6 41.7 31.3 13.6 24 15.2 54.1 8.6 82.5-6.6 28.4-21.3 55.3-42.8 72.9l-21.1 17.3 6.6-26.4c14.6-58.3-9.2-112.5-53.6-131.5l25.9 38.8L300.7 384l32 32-32 32 9.6 9.6 4.8-4.8v22.6h-22.6l5.1-5.1L275.3 448l32-32-32-32 33.1-33.1L283.2 313H265v151h7l-16 16-16-16h7V313h-18.2l-25.2 37.9L236.7 384l-32 32 32 32-22.3 22.3 5.1 5.1h-22.6V452.8l4.8 4.8 9.6-9.6-32-32 32-32-30.9-30.9 25.9-38.8c-44.4 18.9-68.1 73.2-53.6 131.5l6.6 26.4-21.1-17.3c-21.4-17.6-36.2-44.5-42.7-72.9-6.6-28.4-5-58.5 8.6-82.5 9.4-16.7 24.2-26.5 41.7-31.3 5.4-1.5 11.1-2.5 17.1-3.3H96v-18h66.9c-6-0.8-11.7-1.8-17.1-3.3-17.5-4.8-32.3-14.6-41.7-31.3-13.6-24-15.2-54.1-8.6-82.5 6.6-28.4 21.3-55.3 42.8-72.9l21.1-17.3-6.6 26.4c-14.6 58.3 9.2 112.5 53.6 131.5l-25.9-38.8L211.3 128 179.3 96l32-32-9.6-9.6-4.8 4.8V36.5h22.6l-5.1 5.1L236.7 64l-32 32 32 32-33.1 33.1L228.8 199H247V48h-7l16-16zM130.8 92.4c-8.1 12.3-14.3 26.7-17.7 41.6-5.8 24.9-3.9 50.8 6.8 69.6 7.2 12.7 16.4 18.9 30.8 22.8 12.4 3.4 28.8 4.4 48.4 4.6v-16.9c-44.8-19.3-70.8-67.7-68.2-121.5zm250.4 0c2.7 53.8-23.3 102.2-68.2 121.5v16.9c19.6-0.2 36-1.2 48.4-4.6 14.3-3.9 23.6-10.1 30.8-22.8 10.6-18.8 12.5-44.6 6.8-69.6-3.4-14.9-9.6-29.3-17.7-41.6zM217 217v26.4c4.1-12.5 13.9-22.4 26.4-26.4H217zm51.6 0c12.5 4.1 22.4 13.9 26.4 26.4V217h-26.4zM256 233c-12.8 0-23 10.2-23 23s10.2 23 23 23 23-10.2 23-23-10.2-23-23-23zm-39 35.6V295h26.4c-12.5-4.1-22.4-13.9-26.4-26.4zm78 0c-4.1 12.5-13.9 22.4-26.4 26.4H295v-26.4zm-96 12.5c-19.60.2-36 1.2-48.4 4.6-14.3 3.9-23.6 10.1-30.8 22.8-10.6 18.8-12.5 44.6-6.8 69.6 3.4 14.9 9.6 29.3 17.7 41.6-2.7-53.8 23.3-102.2 68.2-121.5v-16.9zm114 0v16.9c44.8 19.3 70.8 67.7 68.2 121.5 8.1-12.3 14.3-26.7 17.7-41.6 5.8-24.9 3.9-50.8-6.8-69.6-7.2-12.7-16.4-18.9-30.8-22.8-12.4-3.4-28.8-4.4-48.4-4.6z","i_potion":"M192 17.6l16 34h96l16-34zm-9 53v52h32v22.2c-19.3-9-42.6-8.2-55-8.2-50.5 0-82.1 21.9-99.5 48-17.4 26.1-21.5 55.5-21.5 73 0 52.5 38.6 94.4 83.3 131C167 425.1 219 457.3 249.6 488l6.4 6.3 6.4-6.3c30.6-30.7 82.6-62.9 127.3-99.4 44.7-36.6 83.3-78.5 83.3-131 0-17.5-4.1-46.9-21.5-73s-49-48-99.5-48c-12.4 0-35.7-0.8-55 8.2v-22.2h32V70.7zm18 18h110v15.9H201zm32 34h46v60.7l15.4-15.3c11.7-11.8 41.6-13.4 57.6-13.4 45.5 0 69.9 18.1 84.5 40 14.6 21.9 18.5 48.5 18.5 63 0 43.5-33.4 81.7-76.7 117-40.7 33.4-89 63.5-122.3 94.7-33.3-31.2-81.6-61.3-122.3-94.7-43.3-35.3-76.7-73.5-76.7-117 0-14.5 3.9-41.1 18.5-63s39-40 84.5-40c16 0 45.9 1.6 57.6 13.4l15.4 15.3zm-41 71c-64 0-80 48-80 80 0 64 80 96 144 144 64-48 144-80 144-144 0-32-16-80-80-80-32 0-48 0-64 48-16-48-32-48-64-48zm125.7 14.6c3.6-0.1 5.90.3 5.80.6-16.5 7.3-33.9 24.4-44.6 41.7 0 0-3.2-17.7 9.9-31.9 7.4-8.1 21.1-10.3 28.9-10.4zM192 209.6c-24 21.5-41.3 58.2-47.2 90.4 0 0-19.5-23.7-7.7-53.4 9.8-24.5 50.1-36.5 54.9-37z","i_flask":"M257.9 17.1c-19.30.2-39.2 5.7-49.5 16.4l4.5 25.3-18.80.1 3.8 12 12.8 41.2c1.5 31.3-8.6 56.5-23.8 80-18.9 29.2-46 55.1-67.7 84-11.6 15.4-15.8 33.3-13.3 50.6 2.5 17.3 11.3 33.9 24.8 48.3 26.9 28.7 72.6 49 128.3 48.7 52.8-0.4 98.1-21.3 125.3-50.3 13.6-14.5 22.8-31.1 25.6-48.4 2.8-17.3-1.3-35.4-13.2-50.7h0c-22.1-28.5-49.7-54.1-69.1-83-15.9-23.8-26.5-49.2-25.1-81.4l15.2-51.7-17.60.1 4.1-25.4c-8.3-10.8-27.1-16-46.4-15.8zm34.9 59.9l-6.6 22.3c-22.5 10.7-41.3 9.9-59.80.6l-7-22.4 73.4-0.5zm-8.8 43.5c1.3 31.5 12.7 58 28.2 81.1 7.4 11 15.6 21.3 24.1 31.3-20.8-5.7-49.4-9.4-80.8-9.4-28.2 0-54.1 2.9-74.1 7.6 7.5-9.2 14.7-18.7 21.2-28.8 15-23.2 25.9-49.7 26.8-81 17.1 5.7 35.7 5.7 54.7-0.9zm75.6 138.8c4.3 4.8 8.5 9.5 12.5 14.3-7.3 4.7-16.4 8.5-27.3 11.7-23.4 7-54.8 11.1-89.4 11.1s-66-4.1-89.4-11.1c-8.8-2.6-16.5-5.6-22.9-9.2 4-4.9 8.2-9.8 12.4-14.7 4.4 2.1 9.7 4.1 15.8 5.9 21 6.2 51 10.3 84.1 10.3 33.1 0 63.1-4.1 84.1-10.3 8.3-2.5 15.2-5.3 20.1-8.1zM102 364.2c-50.2 13.6-82.5 33.8-82.5 56.2 0 41 106.5 74.3 237.7 74.3 131.2 0 237.7-33.3 237.7-74.3 0-22.3-32.1-42.6-82-56.2 17.2 8.9 27.5 19.2 27.5 30.4 0 32.1-82.3 58.5-183.2 58.5-100.9 0-182.7-26.4-182.7-58.5 0-11.3 10.1-21.5 27.5-30.4h0z","i_backpack":"M186.4 20.6l-13.2 26.4c6.8-0.3 13.6-0.5 20.5-0.7l3.8-7.7h116.9l3.8 7.5c6.80.2 13.70.4 20.50.7l-13.1-26.2H186.4zm69.6 42.7c-45.80.1-91.5 1.6-135.4 4.4-3.2 50.6-8.4 101-0.8 145.8 89.3 12.4 180.1 13 272.8-0.1 7.1-31 5.1-84.7-1-145.9-44-2.9-89.7-4.3-135.6-4.2zm153.8 5.5c6.4 64.1 9.1 119.8-1.1 155.2l-1.6 5.6-5.70.8c-98.8 14.5-195.6 13.8-290.60l-6.3-0.9-1.2-6.2c-9.9-49.5-4.1-102.8-0.7-154.4-4.90.4-9.80.7-14.6 1.1-8.6 58.6-9.4 117-0.1 175.3 110.2 12.1 222.3 12.2 336.20 8.5-57.8 8.3-116.20-175.3-4.7-0.4-9.5-0.8-14.3-1.1zM256 92.3c32.50 65.1 2.7 97.6 8.4l7.5 1.3v7.6c0 15.6 1.7 35.1-12.7 50.2-9.9 10.4-25.7 17.3-51.3 20.6v18.2h-82v-18.5c-24-3.4-39.4-10.2-49.4-20.2C150.8 145.1 151 125.6 151 109.6v-7.6l7.5-1.3c32.4-5.5 65-8.4 97.5-8.4zm0 18c-290-57.9 2.4-86.9 70.3 12.3 1.6 22.3 9.2 29.9 5.9 5.9 17 11.4 36.6 14.6v-29.2h82v29.5c21.4-3.1 32.7-8.8 38.3-14.7 7-7.4 7.7-17.5 7.7-30.1-29-4.6-58-7-87-7zM233 150.6v30h46v-30h-46zm209.7 92.4c-0.5 3.6-1 7.2-1.6 10.90.2 2.40.4 4.70.6 7.1L471 290.2v-22.2l-28.3-25zm-373.50.1L41 268v22.2l29.3-29.3c0.2-2.30.4-4.70.6-7-0.6-3.6-1.2-7.2-1.7-10.8zm354.6 20.4c-10.3 1.1-20.6 2.1-30.8 3v74.1h16v66h-16v80.6c10.3-0.6 20.6-1.3 30.9-2.1 9.4-74 6.5-147.7-0.1-221.6zm-335.60C81.7 338.1 78.6 412.1 88.1 485.1c10.30.8 20.6 1.5 30.9 2.1V406.6h-16v-66h16v-74c-10.3-0.9-20.5-1.9-30.8-3zm286.8 4.4c-100.8-20 1.4-30 2v70.6h30v-72.6zm-238 0.1v72.5h30v-70.5c-10-0.6-20-1.2-30-2zm190 2.8c-47.6 2.2-95 2.2-142 0.1v19.3c23.9-5.2 47.8-7.7 71.5-7.6 23.60.1 47.1 2.7 70.5 7.6v-19.4zM68 288.6L41 315.7v56.9h23.1c0.4-28 1.9-56 4-83.9zm375.90c2.1 27.9 3.6 55.8 4 83.9H471v-56.9l-27-27zm-187.5 11.9c-23.7-0.1-47.5 2.6-71.5 8.1v31.9h16v18.4c17 5.3 31.7 8.5 46 9.4v-2.9h18v2.9c14.3-0.9 29-4.1 46-9.4V340.6h16v-31.9c-23.4-5.3-46.9-8-70.5-8.1zM121 358.6v30h22v-23h18v23h22v-30h-62zm208 0v30h22v-23h18v23h22v-30h-62zM201 377.8v28.8h-16v15.9c48.5 10.9 95.7 10.7 142 0V406.6h-16V377.8c-16.3 4.7-31.3 7.5-46 8.3v11.4h-18v-11.4c-14.7-0.8-29.7-3.6-46-8.3zM41 390.6v14h23.1c-0.1-4.7-0.1-9.3-0.2-14H41zm407 0c0 4.7-0.1 9.3-0.2 14H471v-14h-23zM137 406.6v19.8c6.1 7.2 11.2 9.8 14.9 9.8 3.70.1 8.7-2.1 15.1-9.8V406.6h-6v7h-18v-7h-6zm208 0v19.8c6.1 7.2 11.2 9.8 14.9 9.8 3.70.1 8.7-2.1 15.1-9.8V406.6h-6v7h-18v-7h-6zm-304 16v35.2c5.6 5.5 8.7 8.2 11.8 9.3 2.50.8 7.7 1.1 15 1.3-1.5-15.2-2.6-30.5-3.2-45.8H41zm406.3 0c-0.6 15.2-1.7 30.5-3.2 45.8 7.4-0.2 12.6-0.5 15.1-1.3 3.2-1.1 6.2-3.8 11.8-9.3V422.6h-23.7zM185 440.8v49.5c47.5 1.5 94.9 1.4 142-0.1V440.9c-46.3 10-93.7 10.2-142-0.1zm-48 9.1v38.3c100.5 20 1 30 1.4v-39.7c-4.9 2.8-10 4.3-15.4 4.2-5.2-0.1-10-1.6-14.6-4.2zm208 0v39.7c10-0.4 20-0.9 30-1.4v-38.2c-4.9 2.8-10 4.3-15.4 4.2-5.2-0.1-10-1.6-14.6-4.2z","i_bread":"M439 71c-0.90-1.90.1-30.3-4.60.7-11.1 2.6-18.8 5.8-15.4 6.3-35.5 17.5-58.1 32.1-10.7 6.9-21.9 14.5-33.5 22.8 10.5 1.4 21.9 4 32.6 7.3 13.3 4 25.6 9 34.4 14.7 4.4 2.8 8.2 5.7 10.8 10.3 1.3 2.3 2.3 5.4 1.9 8.8-0.4 3.4-2.2 6.4-4.3 8.5-9 8.8-22 10.9-35.7 10.9-13.70-28.7-2.6-42.3-6.7-13.6-4.1-25.7-9.6-34-17-1.9-1.7-3.7-3.6-5.2-5.6-12.9 10.1-26 20.7-39.1 31.6 13.7 1.6 30.1 5 45.9 9.2 16 4.2 31.2 9.2 42.4 14.2 5.6 2.5 10.1 4.8 13.8 7.8 1.9 1.5 3.7 3.1 5.1 6.2 1.4 3.10.8 8.8-1.7 11.8l-0.10.1-0.10.1c-9.7 11-25 14.7-41.5 15.6-16.51-34.7-1.2-51.3-5.5-16.6-4.2-31.5-10.3-41.7-18.7-3.1-2.5-5.8-5.4-7.8-8.7-11.6 10.5-22.9 21.1-33.9 31.7 3.80.2 7.80.8 11.9 1.5 13.7 2.5 29.2 7.4 43.6 13.4 14.4 6 27.4 12.9 36.6 20.2 4.6 3.6 8.4 7.2 10.6 12.4 1.1 2.6 1.8 5.9 1.1 9.3-0.7 3.4-2.8 6.4-5.2 8.5-10.5 8.7-25.1 9.8-40.3 8.4-15.2-1.4-31.6-5.9-46.2-12-14.6-6.1-27.4-13.5-35.8-22.6-2.5-2.7-4.7-5.7-6.2-9-12.3 13-23.7 25.8-33.9 38.2 3 1.3 6.3 2.8 10.2 4.4 10.3 4.3 23.2 9.5 35.5 14.5 12.3 5 23.9 9.7 31.9 13.3 4 1.8 7 3.1 9.4 4.60.60.4 1.20.7 1.9 1.30.80.6 20.8 3.3 4.60.6 1.90.5 5.7-1.2 8.1-1.4 2.1-3 2.8-4.1 3.2-9.9 8.4-23.1 10.8-36.4 10.2-14.2-0.7-28.9-4.9-41.9-10.9-13-6-24.2-13.7-31.1-23.4-0.1-0.1-0.2-0.3-0.3-0.4-1.2 1.7-2.4 3.4-3.5 5.1-13.5 20.2-22.1 38.3-24.4 51.8-2.3 13.1-0.1 20.6 8.3 26.5 27.2 9.5 68.5-3.5 114-32.5 46-29.4 95.6-73.9 139.2-121.5 43.6-47.6 81.3-98.2 103.7-139.2 11.2-20.5 18.6-38.7 21.2-52.1 1.3-6.7 1.3-12.20.5-16-0.8-3.6-2-5.6-4-7.2-0.1-0.1-0.6-0.2-1.6-0.4-0.6-0.1-1.3-0.1-2.2-0.1zM309.3 148.6c-2.20-4.20.1-5.90.4-0.60.1-1.10.2-1.60.3-1.20.9-2.3 1.8-3.5 2.60.40.7 1.2 1.8 2.7 3.2 4.8 4.3 15.3 9.6 27.3 13.2 12 3.7 25.6 5.9 37 5.9 8.60 15.6-1.6 19.9-3.6-0.7-0.6-1.3-1.1-2.3-1.8-6.3-4.1-17.7-8.9-29.9-12.6-12.3-3.7-25.6-6.5-36.3-7.4-2.7-0.2-5.2-0.3-7.4-0.3zm-79.1 63.1c-1.10-2.10-30.1-1.50.1-2.50.4-3.10.6l-1.2 1.1c-0.50.9-0.6 1.4-0.4 20.2 1 1.5 3.3 4.8 6 6.5 5.4 19.7 11.3 34.7 15.2 14.9 3.8 31.7 5.8 45.8 4.9 9.2-0.5 16.8-2.5 22.3-5.1-1.3-0.7-2.5-1.3-4.1-2-9.7-4.3-24.4-9.2-39.8-13.2-15.3-4.1-31.3-7.4-43.8-8.8-3.1-0.4-6-0.6-8.6-0.7-1.3-0.1-2.5-0.1-3.6-0.1zm-60.9 64.6c-0.50-10-1.50-3.80.2-5.9 1.2-5.9 1.2-2 1.7-1.6 1.6-1.6 2.20.10.60.8 2.8 3.4 5.6 5.1 5.6 16.4 12.7 29.4 18.2 13.1 5.4 28.1 9.5 40.9 10.7 11 1 19.8-0.5 24.7-3-0.9-1-2.2-2.3-3.8-3.6-6.8-5.4-19-12.1-32.3-17.6-13.3-5.6-28-10.1-39.9-12.3-5.2-0.9-9.9-1.4-13.6-1.4zm-68.8 65.7c0.3 1.10.9 2.5 2.1 4.2 3.9 5.4 13 12.4 24.1 17.6 11.1 5.2 24 8.7 35.2 9.3 4.20.2 7.9-0.1 11.4-0.8-7.1-3-14.6-6.2-23.9-10-12.2-5-25.2-10.2-35.7-14.6-5.1-2.1-9.5-4-13.1-5.7zm92.7 21.6c0 0-0.10-0.10l0.60c-0.10-0.2-0.1-0.5-0.1z","i_gem":"M201.2 32L215 87h82l13.8-55H201.2zm-17 5.8L73.2 121.1l53.4 13.3 71.1-42.7-13.5-53.9zm143.6 0l-13.5 53.9 71.1 42.7 53.4-13.3-111-83.3zM210.4 105L137 149.1v213.8l73.4 44.1h91.2l73.4-44.1V149.1L301.6 105h-91.2zM64 137.2v237.6l55-13.8V151l-55-13.8zm384 0L393 151v210l55 13.8V137.2zm-192.1 2.4c-14.6 14.6-21.8 29.1-7.3 50.9 20.2 30.3 95 51.9 94.7 116.5 0 43.6-36.5 65.4-87.4 65.4-50.9 0-87.3-36.4-87.3-72.7 0-14.5 7.3-29.2 29.1-43.7-14.6 36.4 0 58.2 21.9 58.2 21.7 0 36.3-21.8 36.3-36.4 0-36.3-43.6-43.6-43.6-87.3 0-23.3 14.5-43.6 43.6-50.9zm-129.3 238l-53.4 13.3 111 83.3 13.5-53.9-71.1-42.7zm258.8 0l-71.1 42.7 13.5 53.9 111-83.3-53.4-13.3zM215 425l-13.8 55h109.6L297 425h-82z","i_gems":"M303.2 19.3l-162 93.5 93.5 162 162-93.5-4.7-8.1-4.9-8.4-4.1-7.5-0.20.1-79.7-138zm-20.6 33.5l-50.3 90.1c-19.2-7.7-37.9-17.3-56.2-28.7l106.4-61.5zm19.9 2.7l63.2 109.5c-40.6 2.1-79-3.3-115.7-15.5l52.4-94zm-251.6 25.7L23 168l74.3 51.1 27.9-86.8-5.7-3.9-68.6-47.2zm10.1 29.6l32.3 22.2-44.2 15 11.9-37.2zm385.8 22.3l-46.1 17.4 9.1 16.6 20.2-7.6 3 43.5-39.9 15.1-0.9-12.7-18 10.4 2 28.7 76.5-28.9-5.7-82.4zm-270.6 3c31.9 18.6 65.3 32.1 100.3 40l-39.5 65.2L176.3 136.2zm-76.6 14.4l-12.5 38.9-33.7-23.2 46.2-15.7zm196.4 29.3c19 3.1 38.5 4.5 58.4 4.2l-93.7 54.1 35.3-58.2zM21.2 224.7l2 14.3 21.7 158.5 167 49.5-2-14.6-23.5-12.5L80 388.5l59.6-26.1 34.4-54.5 6.9 50.8 16.1-20.3-8.8-64.1-167-49.5zm22.4 26.1l121.5 36-38.3 60.7-66 28.9-17.2-125.7zm313.1 5.2l-88.9 23.8-1.9 2.4-89.3 111.6 197.4 103 118.7-187.7-135.9-53.1zm-13.6 23l31.3 55.3-86.1 22.7 2.5-64 52.3-14zm21.60.2l88.2 34.5-59.8 15.7-28.4-50.2zm-93 25.7l-2.2 57-55 14.5 57.2-71.5zm184.3 27.2l-73.5 116.3 13.9-100.6 59.6-15.7zm-79.2 20.9L362.8 454.1l-67.3-79.6 81.3-21.4zM275.4 379.8l67.5 79.8-124.3-64.9 56.8-15z","i_bed":"M25 169v286h30V169H25zm94.1 52.2c-2.9 0-5.80.5-8.3 1.2-6.7 1.9-11 5.6-13 10.5-1.9 4.9-1.2 10.6 2.4 16.5 3.6 5.9 10 11.6 18.6 14.9 8.6 3.4 17.2 3.6 23.8 1.7 6.7-1.9 11-5.5 13-10.5 1.9-4.9 1.2-10.6-2.4-16.5-3.6-5.9-10.1-11.5-18.6-14.9-4.8-1.9-9.7-2.8-14.2-2.9h-1.3zM73 253.4V295h61.8c1.7-3.4 3.5-6.8 5.5-10.2-9 1.1-18.7-0.1-28.1-3.7-12-4.7-21.6-12.8-27.4-22.4-0.1-0.2-0.2-0.4-0.3-0.6L73 253.4zm108.5 4.5c-17.6 19.3-32.4 46-40.5 67.9-4.2 11.5-6.5 21.9-6.7 28.2 0 2.50.2 4 0.5 4.8 57.4 7.3 98.10.3 150.6-15.4l2-0.6 2 0.3c56.3 8.6 111.6 10 161.6 1.6v-35.6c-67.7-29-178.4-46.5-269.5-51.2zM469 281v174h18V281h-18zM73 313v30h44.5c1.3-7.2 3.6-15 6.6-23.40.8-2.2 1.7-4.4 2.6-6.6H73zm0 48v30h378v-27.9c-51 8.1-106.5 6.4-162.3-1.9-53.2 15.7-97.7 23.2-157.8 15.3-5.3-0.7-10.2-4.9-12.3-9.3-0.9-2-1.5-4.1-1.9-6.2H73z","i_torch":"M476.7 51.4c-5.3 30.2-125 107.9-82.5 16.9-80.2 45.4-107.6 23.4-78.5-5.7-54.8 2.8-62.8 88.2-55.3 112.4l17.4 19.1c-2.1-31.20.4-48.4 19.5-71.5 13.8 20.6 18.5 33.7 52.1 7-9.4 53.5 54.6 18.7 88.8 10.9-15.2 14-35.2 32.7-38.9 55.5-1.2 7.6 6.2 17.9 14.1 25.6-9.4 2.2-41.5 8.9-38.6 26.2 2.9 17.3 12.1 11.9 3.5 15.3-12.4 2.8-21.2 5.6-39.6-2.2l18.9 20.7c28.4 14.8 73.9 7.3 83.6-14.9-14.8-1.2-27.1-4.7-33-11.5 44-8.3 66.8-39.2 85.8-75-33.6 18.9-42.2 17.8-56 16.3 35.5-14.4 46.9-108.9 38.8-145.2zM246.9 186.1l-56.8 70.1 79.2 86.9 75.1-50-97.5-107zm-62.3 90.1L21.7 467.6l21.4 23.5 205.8-144.4-64.3-70.6z","i_rope":"M248.9 57.5c0 3.70.2 7.9 1.1 12.6 20.6-0.3 43 0.3 61.4 2.1-0.4-4.3-0.4-8.30.2-12.1-22.7-2.4-41.8-3.3-62.7-2.6zm-18 1c-30.5 2.3-57.8 7.8-78.9 15.2 1.5 2.6 3.5 5.7 5.6 9.2 18.1-5.9 44.5-10.2 74.3-12-0.7-4.6-1-8.8-1-12.4zm98.5 4.2c-0.5 3.2-0.4 7.10.6 11.9 17.3 2.8 31 6.6 39.8 11.1 6.2-2.2 12.7-3.5 19-4.1-18.7-10.1-40.6-15.6-59.4-18.9zm-194.2 18c-7.4 3.7-13.5 7.6-17.9 11.4-6.8 6-9.2 11.2-9.2 15.8 2.9 14.4 16.6 21.4 28 26.7 3.6-7.3 7.9-14.2 13.3-20.3-10.4-4.1-15.9-8.9-16-13.8 0-3.4 2.6-6.8 7.6-10.1-2.1-3.4-4.1-6.6-5.8-9.7zm243.9 20.9c-3.4 5.5-13.3 10.6-28.4 14.9 2.5 8.6 3.3 17 3.6 25.4 15.8-5 33.1-11.3 45.4-21.9 5.4-5.5 10.7-12.1 8.6-19.4-9.6-2.1-19.9-1.5-29.2 1zm-203.6 13.8c-13.2 8.3-21.9 21.6-27.6 37.80.9 14.7 1.6 34.9 13 45.5 4.4-31.8 21.3-64.2 39.6-81.5-8.2-7.8-16.5-7.1-25-1.8zm157.5 5.3c-17.9 3.5-39.2 5.8-61.7 6.7-6.6 12.4-6.9 17.5-8.3 27.4 26.7-0.5 51.7-3.5 73.2-8.3-0.2-9-0.3-17.6-3.2-25.8zm-116.2 6c-9.2 7.6-16.3 15.7-21.7 24 15.4 2.3 32.1 3.8 49.7 4.2 1.5-9.6 2.2-16.8 6.4-27.1-11.7 0-23.3-0.4-34.4-1.1zm-120.40.1c-10.4 22.3 13.4 36.6 28.3 44 1.2-6.5 2.8-13.1 4.8-19.4-13-6.4-25.3-13.4-33.1-24.6zm318.2 3.9c-9.5 8.9-22 15.9-32 20.2 2.9 10 3.6 20.3 1 29.7 11.6-4.6 21-9.8 27.4-15.2 7.8-6.4 11-12.5 11.2-18.20.2-5.1-2.1-10.5-7.6-16.5zm-48.9 26.5c-19.5 6.4-42.7 11.1-68.1 13.6-8.2 7.1-8.3 18.1-7.2 27.2 24.3-1.2 46.8-4.3 66-9 10.2-11.2 13-18.5 9.3-31.8zm-279.9 7.4c-16.4 29.7 13.6 45.8 34.3 54.70.2-9.60.7-19.7 1.8-29.8-13.9-7.3-26.6-14.2-36.1-24.9zm3490.6c-6.3 9.9-14.8 16.8-24 22.2 2.1 7.4 2.3 14.40.5 21.1 11.6-6.9 26.5-19.5 26.6-32.6 0-3.5-1-7-3.1-10.7zm-248.4 2.4c-2.8 7.2-4.7 14.4-6 21.8 5.1 1.1 10.4 2.1 15.9 3.10.4-8.7 2.7-16 7.3-22.4-5.9-0.7-11.6-1.5-17.2-2.5zm39.8 4.5c-7.2 6.4-13 14.6-11.9 23 20.9 2.4 38.8 3.5 58 3.4-0.6-9.6-0.5-17.9 2.6-26-16.30.7-33.60.5-48.7-0.4zM63.8 194.2c-5.2 10.1-1.1 22.2 4.3 29.4 1.3-4 2.9-8.8 5-14.3-4-4.7-7.2-9.7-9.3-15.1zm330.8 1.4c-21.7 8.8-47.2 14.4-67.5 17.2-6.3 6.7-3.7 16-2.4 23.4 24.5-3.9 46.3-9.7 64.1-16.8 2.8-7.6 7.3-16.4 5.8-23.8zm-255.5 3c-1.7 20.8-1.1 41.8-0.9 58.8 4.9 20.2 23.5 7.1 23.5 4.4-0.3-12.2-1.8-27.1-1.7-43.3-10.2-5.3-16.7-11.2-20.9-19.9zm303.2 8.4c-0.9 1-1.8 1.9-2.8 2.8 1.4 10.5 1.7 22.4 1.4 32 4.7-5.6 7-11.1 7.3-16.70.3-5.8-1.5-11.8-5.9-18.1zm-264 0.4c-0.5 9.6-0.3 19.10.2 28.3 10.6 1.8 21.9 3.3 33.6 4.3-2.1-9.6-2.2-18.6 2-26.8-12.5-1.4-24.4-3.4-35.8-5.8zm127.8 7.6c-25.5 1.7-47.4 1.9-70.70.3-9.1 6.9-6.9 18.2-3.9 26 25.4 1.1 51.8 0 75.3-2.7-1.3-8.4-2.6-15.9-0.7-23.6zm-218.5 7.1c-1.9 5.7-3.4 10.6-5.3 15.4 13.3 9.2 24.6 15.3 37.9 20.8-0.1-6-0.2-12.6-0.3-19.6-12.4-4.8-23.3-10.3-32.3-16.6zm335.10.6c-16.5 9.8-33.3 16.3-50.3 21.3-1.4 11.2-4.9 22-1.1 31.8 16.4-4 32.7-9.4 46.9-16.9 4.9-11.3 5.1-26.1 4.5-36.2zm38.3 23.7c1.3 4.8 1.8 9.9 1.7 15 6.7-3.2 13.7-3.8 20.1-1.2 0-6.3-0.8-12.6-2.4-18.8-5.2-14.1-21.7-5.2-19.4 5zM54 234.8c-3.3 5.4-4.9 10.7-4.9 16 2.7 17.2 12 26.6 24.3 35.3-0.9-10.1 1.9-20.1 7.9-27.4-10.7-7.3-20.1-14.4-27.3-23.9zm298.8 14.3c-18 4.1-37.6 7.2-58.5 8.9-7.4 7.5-7.7 18.4-4.3 27.6 22.7-0.5 44-2.7 63.2-6.1-1.8-10-1.6-21.5-0.4-30.4zm-173.4 5c0.5 7.1-0.1 15.4-4 20.9 5.1 1.1 10.4 2.2 15.8 3.2-1.1-7.9-1.2-15.3 1.5-22.1-4.5-0.6-9-1.3-13.3-2zm32.7 4c-5.8 6.5-3.4 16.3-1.8 23.1 21.7 2.7 40.8 4.2 60.9 4.5-1.8-9.2-1.6-18.1 1.2-26.4-20.10.8-42.10.3-60.3-1.2zm235.3 2.6c-11.1 9.2-24.8 16.7-36 21.3-2.2 7-0.4 13.4 1.2 19.6 14.3-6.1 26-13 34.7-20.2-0.5-7 1.4-14.40.1-20.7zm-350 7c-9.3 8.4-5.5 22.6-2.7 30.7 14 6.6 29.8 11.9 43.2 15.6-2.4-10.8-2.3-20.6 2.9-29.3-15.8-5.2-29.9-10.3-43.4-17zm375.9 8.8c-20.1 14.4-27.9 35-44.1 52.7 2.7 7 6.2 13.1 9.2 19.4 20.3-20.6 36.1-43.9 42-68-1.9-2.2-4.5-4.7-7.1-4.1zm-80.9 12.2c-20.7 6.3-44.7 10.8-70.9 13.2-3.9 7.1-0.5 16.1 1.7 22.5 27.1-3.5 51.7-9.2 72.5-16.3-1.8-6.8-3.4-12.9-3.3-19.4zm-232.9 1.2c-9 9-3.9 22-0.3 29.1 17.7 3.7 37 6.4 57.4 8-2.8-9.1-3-18.60.4-26.8-20.3-2.4-39.6-5.9-57.5-10.3zm77.9 12.3c-7.9 6.9-4.9 18.4-0.6 26 22.70.8 47.20.1 68.1-1.8-2.4-7.7-4-15.8-2.9-23.2-23.60.8-43.50.6-64.6-1zM51.5 359c0.5 7.7 3.5 15.5 7 21.5 19.9-17.9 41.6-25.4 65.1-20.20.9-6.9 4.6-13.9 8.8-18.6-28.2-7.4-60.90.3-80.9 17.3zm362.8-15.1c-10.8 9.8-22.9 19-35.6 27.2 3.4 5.9 7.6 11.7 10.4 17.2 12.5-8.1 24.4-17 35.4-26.7-2.2-4.4-8.1-19.4-10.2-17.7zm-262.2 4.6c-6.4 4.7-11.1 10.2-10.8 17.5 18.5 7.5 37.1 19.4 56.3 31.2 1.3-6 3.5-14.1 6.3-19.6-16.5-10.3-33.6-21.3-51.8-29.1zM36.8 376.4c-6.7 11.2-9.7 24.8-6 38.5 1.9 7.2 5.6 14.2 11.1 20.8 3.1-7.2 6.8-12.5 13-15.9-4.2-6.3-6.4-13.8-5.5-20.8-5.7-6.8-9.9-14.7-12.6-22.6zm326.5 4.1c-19.4 11-39.4 19.7-57.8 24.9-1.8 5.3-2.4 12.2-0.5 20.9 22.2-5.6 45.9-15.5 68.7-28.6-3.3-6.4-7-11.5-10.4-17.2zm-144.2 6.4c-3.1 5.6-5.1 11.7-3.4 21.2 22.4 12.8 46.1 23 71.6 21.2-1.4-7.1-1.7-13.8-1-20-22 1.6-43.9-8.6-67.2-22.4zM61.5 453c4.6 3.2 10.9 1.9 14-2.7 3.1-4.7 1.8-10.9-2.9-14-11.8-7.4-18.8 11.4-11.1 16.7z","i_lantern":"M256 24c-10.1 0-19.2 1.9-26.7 5.6C221.9 33.4 215 39.7 215 49s6.9 15.7 14.3 19.4c5.2 2.6 11.2 4.3 17.7 5.1v11.3h18V73.4c6.5-0.8 12.5-2.5 17.7-5.1C290.1 64.7 297 58.3 297 49s-6.9-15.7-14.3-19.4C275.2 25.9 266.1 24 256 24zm0 18c7.6 0 14.4 1.7 18.6 3.7 3.3 1.6 4.1 3 4.3 3.30.1-0.10.1-0.10.1 0s0 0.1-0.1 0c-0.20.3-1 1.6-4.3 3.3-4.2 2.1-11 3.7-18.6 3.7-7.6 0-14.4-1.7-18.6-3.7-3.3-1.6-4.1-3-4.3-3.3-0.10.1-0.10.1-0.1 0s0-0.10.1 0c0.2-0.3 1-1.6 4.3-3.3 4.2-2.1 11-3.7 18.6-3.7zm-40.9 60.7L203.4 152h105.2l-11.7-49.3zm-18.9 1.7c-6.70.3-13.20.8-19.5 1.7-14.9 2.1-28.9 6.4-39.1 16.5-3.1 3.2-3.9 5.8-5.2 9.3-1.3 3.5-2.5 7.7-3.8 12.6-2.4 9.8-4.9 22.6-7.5 37.5-5 29.8-10 67.9-14.1 106.1-4 38.1-7 76.2-8 106.1-0.5 14.9-0.5 27.70.1 37.70.3 5 0.8 9.2 1.6 12.90.8 3.7 1.3 6.9 4.9 10.6 7.1 7 15.4 11 24 13.3l6.8-16.9c-6.9-1.5-12.5-4-17.3-8.5-0.1-0.4-0.5-1.1-0.8-2.2-0.4-2.3-0.9-5.9-1.2-10.4-0.6-8.9-0.6-21.3-0.1-35.9 1-29.1 4-67 8-104.9 3.9-37.8 8.9-75.7 13.9-104.9 2.4-14.6 4.9-27.1 7.2-36.1 1.1-4.5 2.2-8.2 3.2-10.70.6-1.8 1.4-3 1.5-3.1 5.9-5.7 15.7-9.4 28.5-11.2 3.9-0.6 8.2-1 12.5-1.2zm119.6 0l4.3 18.3c4.40.2 8.60.6 12.6 1.2 12.8 1.8 22.6 5.5 28.5 11.20.10.10.9 1.3 1.5 3.1 1 2.5 2.1 6.2 3.2 10.7 2.3 9 4.8 21.5 7.2 36.1 5 29.2 10 67.1 13.9 104.9 4 37.9 7 75.8 8 104.90.5 14.60.5 27-0.1 35.9-0.3 4.5-0.8 8.1-1.2 10.4-0.3 1.1-0.7 1.8-0.8 2.2-4.8 4.5-10.4 7-17.3 8.5l6.8 16.9c8.6-2.3 16.9-6.3 24-13.3 3.6-3.7 4.1-6.9 4.9-10.60.7-3.7 1.2-7.9 1.6-12.90.6-10 0.6-22.80.1-37.7-1-29.9-4-68-8-106.1-4.1-38.2-9.1-76.3-14.1-106.1-2.6-14.9-5.1-27.7-7.5-37.5-1.3-4.9-2.5-9.1-3.8-12.6-1.3-3.5-2.1-6.1-5.2-9.3-10.2-10.1-24.2-14.4-39.1-16.5-6.3-0.9-12.9-1.4-19.5-1.7zM213.2 170c-2.9 4.9-11.6 19.8-21.6 41.1 21.9 10.3 43.8 25.6 64.4 42.7 20.7-17.1 42.5-32.4 64.4-42.7-10-21.3-18.7-36.2-21.6-41.1zm-28.8 57.7c-10 24.5-17.6 51.3-15.5 68.2 1 7.7 7.3 19.6 15.1 31 15.6-19.6 35.7-41.2 58.1-61.2-18.9-15.4-38.9-28.9-57.7-38zm143.2 0c-18.8 9.2-38.8 22.6-57.7 38 22.4 20.1 42.5 41.7 58.1 61.2 7.8-11.4 14.1-23.3 15.1-31 2.1-16.9-5.5-43.7-15.5-68.2zM256 277.5c-23.7 21-45.2 44.2-60.7 64.2 7.8 9.4 13.9 15.6 16.5 18.3h88.4c2.6-2.7 8.7-8.9 16.5-18.3-15.5-19.9-37-43.3-60.7-64.2zM225.4 378c2.3 4.8 3.6 9.8 3.6 15 0 5.2-1.3 10.2-3.6 15h61.2c-2.3-4.8-3.6-9.8-3.6-15 0-5.2 1.3-10.2 3.6-15zm-59.3 48l-24.8 62h229.4l-24.8-62z","i_holy":"M300.6 39.3c-2.40-5.1 1.1-7.3 3.1-2.1 1.9-3.5 4.5-3.8 6.9-0.3 2.40.2 4.8 3 7.9l6 6.7 40.4 44.6 6 6.7c2.9 3.2 5.2 3.8 7.6 3.8 2.40 5.1-1.1 7.3-3.1 2.1-1.9 3.5-4.5 3.8-6.90.3-2.4-0.2-4.8-3-7.9L308.2 43.1c-2.9-3.2-5.2-3.8-7.6-3.8zm-15.3 36.7l-38.6 35-6-6.7c-23.1-25.6-36.6-26.8-53.1-27.6L23.3 225.4 151 366.4 315.2 217.7c0.8-16.50.9-30-22.2-55.6l-6-6.7 38.6-35-40.3-44.6zm-112.1 54.3l33.9 37.4 37.4-33.9 19.7 21.7-37.4 33.9 33.9 37.4-21.7 19.7-33.9-37.4-95.3 86.3-19.7-21.7 95.3-86.3-33.9-37.4 21.7-19.7zm197.4 4.4s-25.9 52.8-16 73.8c6.2 13.3 25.8 13.3 32 0 9.9-21-16-73.8-16-73.8zm2.2 103l-5.7 46.3c1.2-0.3 2.5-0.5 4-0.5 2.4 0 4.40.5 6.2 1.3l-4.5-47.1zm-59 15l28.1 66.1c2.5-5.8 5.1-11.2 7.7-15.9l-35.8-50.2zm117.5 1.5l-37.2 49.5c2.7 4.7 5.2 9.9 7.6 15.7l29.7-65.1zM270.1 295.1l63.4 47.7c0.6-2.1 1.2-4.2 1.8-6.3 1.1-3.5 2.2-6.9 3.4-10.2l-68.6-31.3zm203.6 2.6l-69.1 29.4c1.1 3.1 2.1 6.3 3.1 9.50.7 2.3 1.3 4.5 1.9 6.9l64.2-45.8zm-102.3 5c-1.5 1.7-3.6 4.5-5.7 8.2-4.5 7.8-9.5 19-13.2 31-3.7 12-6.2 24.9-6.2 360 11.1 2.4 19.9 7 25.2 2.5 2.9 9.9 5.9 17.7 5.9 7.8 0 15.2-3 17.7-5.9 4.6-5.3 7.2-14.3 7.3-25.40.2-11.1-2.1-24-5.6-35.9-3.5-12-8.4-23.1-13-30.8-2.3-3.8-4.5-6.7-6.1-8.3zm-38.7 43.4l-79 7.6 75.8 9.3c0.8-5.7 1.9-11.3 3.3-16.9zm77.8 1c1.3 5.6 2.3 11.2 2.9 16.8l75.4-7.3-78.3-9.6zm-81.8 22.7l-60 42.8 60.1-25.6c-0.3-3.1-0.5-6.2-0.5-9.30-2.60.1-5.30.3-8zm85.2 1.5c0.1 2.20.2 4.40.1 6.6-0.1 3.5-0.3 7-0.8 10.5l59 26.9-58.3-43.9zm-79.9 34.7l-22.8 50.1 30-39.9c-0.5-0.5-1-1-1.4-1.6-2.3-2.7-4.2-5.6-5.7-8.7zm73.4 1.4c-1.4 2.6-3 5-5 7.3-0.80.9-1.6 1.7-2.5 2.5l28.8 40.4-21.3-50.2zm-42.1 19.1l4.4 46 5.6-45.9c-1.40.1-2.90.1-4.30.1-1.9 0-3.8-0.1-5.8-0.3z","i_lockpicks":"M256 23v18c8.4 0 12.5-0.1 15.3 2.6 2.9 2.8 7.2 12.4 7.7 36.5V247h18V79.8c0.8-17.1-3-38.6-13.1-49.1-6.7-6.5-14.8-7.6-21.6-7.8H256zM448 23c-13.7 0-25 11.3-25 25 0 6.8 2.8 13 7.2 17.5-0.40.7-0.9 1.4-1.3 2.1-3.9 6.7-5.9 15-5.9 24 0 9 2 17.3 5.9 24 2.4 4.1 5.8 7.9 10.1 10.2v118.4c3-0.7 6-1.1 9-1.1s6 0.4 9 1.1V125.7c4.3-2.3 7.7-6.1 10.1-10.2 3.9-6.7 5.9-15 5.9-24 0-9-2-17.3-5.9-24-0.4-0.7-0.9-1.4-1.3-2.1 4.4-4.5 7.2-10.7 7.2-17.5 0-13.7-11.3-25-25-25zm-68 0.9L331.9 48l32 16-27.1 13.5L359 99.7V215h18V92.3l-9.8-9.8L404.1 64l-32-16 15.9-8-8-16.1zM119 24v223h18V64l-18-40zm64 31v50h16v161.4l18-9V105h16V55h-50zM39 64v202.3l9 9 9-9V169h23v-18H57v-14h23v-18H57v-14h23V87H57V64H39zm306 169v247c0 20 46 20 46 0V233h-46zm103 28c-11.5 0-23 7-23 27v192c0 20 46 20 46 0V288c0-20-11.5-27-23-27zm-343 4v215c0 20 46 20 46 0V265h-46zm160 0v215c0 20 46 20 46 0V265h-46zm-34 5.6l-46 23V480c0 20 46 20 46 0V270.6zm-206 7.1V480c0 20 46 20 46 0V277.7l-23 23-23-23z","i_scroll":"M103.4 17.8c-1.10-2.20-3.30.1-2.50.1-5.10.3-7.60.7-20.2 2.7-39.2 13.7-52.3 33.7-24.6 37.4 2.2 98 56.6 980.5 0 1.10 1.60v0.7h60.6c-10.8 32-30.3 66.6-52.4 101.4-2.2 3.4-4.3 6.9-6.3 10.4l34.9 35.7-56.3 9.4c-32.7 86-27.4 182.1 48.3 182.1v0l9.30.1c23.8-0.6 46.7-4.3 61.3-12.9 4.2-2.5 7.6-5.2 10.5-8.4h-32.4c-20.3 6-40.8-6.9-47.4-25.9-9-25.8 7.5-52.4 31.9-60.5 5.8-1.9 11.7-2.8 17.6-2.8v-0.4h178.3c-0.6-44.4 16.4-90.1 49.2-126 24-26.2 42-60.6 51.3-94.8l-41.2-24.9 38.3-6.9-43.4-25.8h0l0000 52.1-8.8c-5.2-39.1-28.8-68.1-77.4-68.1C341.1 32.3 222.1 35.3 149.3 28.5c-14.9-6.8-30.5-10.7-45.9-10.7zm0.5 18.7c13.10 27.4 3.8 41.2 10.6l0-0.1c4.7 4.7 8.5 9.7 11.7 15H82.9l10.6 14.8c10.6 14.8 19.8 32 21.1 420.6 5-0.1 7.2-1.8 8.8-1.7 1.7-6.2 3.9-16 3.9-40.6 0-56.9-45-41-69.1C66.2 46.6 79.6 39.2 95 37.1c2.9-0.4 5.9-0.6 8.9-0.6zM118.5 80.8h46.3c4.3 15.7 3.7 33.1-0.5 51.5H131.5c1.9-5 2.3-10.6 1.6-15.8-1.5-11.9-7.4-24.1-14.6-35.7zm101.6 317.1c6.4 6.8 11.2 15.3 13.4 24.9 3.8 16.7 3.1 31.2-1.8 43.2-4.5 11.2-12.6 19.8-22.3 26h237.2c14.4 0 24.9-5.7 32.2-14.3 7.3-8.6 11.2-20.5 10.7-32.4-0.2-4.5-1-8.9-2.4-13.2l-69.9-8.2 42-20.5c-8.3-3.4-18.6-5.5-31.4-5.5H220.1zm-42.70.5c-1.20-2.30-3.50.2-2.60.2-5.30.8-7.8 1.6-15.1 5-25.3 21.5-20.1 36.6 3.7 10.6 15.3 17.7 25.7 13.9l1.6-0.6h43.4c0.9-6.40.8-13.9-1.4-23.2-3.7-16.4-20.5-28.5-37.8-28.5z","i_spyglass":"M84.4 20.8c-0.40-0.80-1.20-2.30.1-4.70.5-7.4 1.1C65.3 24.4 52.9 31.2 42.1 42 31.3 52.8 24.5 65.2 22 75.7c-2.5 10.5-0.7 18.2 3.8 22.7 3.9 3.9 10.3 5.8 18.9 4.5-1.8-5.5-1.8-11.6-0.4-17.3 2.2-9.2 7.5-18.2 15.3-26.1 7.8-7.8 16.8-13.1 26-15.3 2.3-0.5 4.7-0.9 7.1-1 3.5-0.1 70.3 10.3 1.4 1.3-8.7-0.5-15.1-4.5-19-3.2-3.2-7.9-5-14.1-4.9zm9.9 41.1c-0.30-0.70-1.10-10.1-2.10.2-3.30.5-5.1 1.2-11.5 4.7-17.2 10.3-5.6 5.6-9.1 12.1-10.3 17.2-1.2 5.1-0.2 7.7 1 9l0.30.30.30.4 41.3 51.2c4.4-9.2 10.8-18.3 19-26.4 8.2-8.2 17.2-14.6 26.4-19L99.7 64.2l-0.4-0.3-0.3-0.3c-0.8-0.8-2.3-1.6-4.6-1.6zm85.2 55.3c-0.80-1.60-2.40-2.20.1-4.50.5-7.1 1.1-10.1 2.4-22 9-32.4 19.4-10.4 10.4-17 22.3-19.4 32.4-2.4 10.1-0.7 17.4 3.5 21.6l0.30.40.30.4 3.8 4.6c0-0.20.1-0.40.1-0.6 3.6-15.3 12.6-30.9 26.1-44.5 13.5-13.5 29.1-22.5 44.2-26.1l-4.2-3.4-0.4-0.3-0.4-0.3c-2.8-2.8-6.8-4.4-12.2-4.6zm31.2 25.7c-2.90-6.10.4-9.6 1.2-11.1 2.6-24.2 9.8-35.5 21.2-11.3 11.3-18.6 24.4-21.2 35.5-2.1 9-1.3 16.2 1.7 21.1l0.10.2 48.4 59.9c6.2-18.3 17.9-36.7 34.2-53.1 16.3-16.3 34.8-28 53.1-34.2L219.8 144.5c-2.6-1-5.6-1.6-9-1.6zm99.2 65.3c-0.70-1.40-2.10.1-3.80.2-7.80.8-12.1 1.8-17.1 4.1-36.7 15-53.7 32-17 17-27.9 36.6-32 53.7-4.1 17.1-1.4 30.7 6.9 39.1l0.30.30.30.40.30.4c0.4-3.6 1-7.3 1.9-11 5.2-22.4 18.7-45.9 38.9-66.1 20.3-20.3 43.7-33.7 66.1-38.9 3.7-0.9 7.4-1.5 11.1-1.9l-0.4-0.3-0.4-0.3-0.3-0.3c-5.9-5.9-14.3-8.9-24.8-8.8zm35.2 28c-50-10.30.6-16 1.9-18.3 4.3-39.1 15.9-57.2 33.9-18 18-29.7 38.9-33.9 57.2-3.2 13.6-2.4 25.3 2 34.1l55.9 69.3c0.5-3.2 1.1-6.4 1.8-9.6 6.3-27 22.6-55.4 47.1-80 24.6-24.6 53-40.8 79.9-47.1 2.1-0.5 4.1-0.9 6.2-1.2l-67.5-54.5h0c-5.1-2.6-11.3-3.9-18.2-4zm103.1 75.5c-0.90-1.90-2.90.1-5.20.2-10.6 1-16.3 2.3-22.8 5.3-48.7 19.8-71 42.1-22.3 22.3-36.8 48.2-42.1 71-5.3 22.8-1.8 41.7 9.9 53.4 7.9 7.9 19 12 32.4 12.3-0.7-0.6-1.3-1.2-2-1.9-13.4-13.5-16.2-33.7-11.5-53.9 4.7-20.2 16.8-41.2 34.9-59.3 18.1-18.1 39.2-30.2 59.3-34.9 5-1.2 10.1-1.9 15-2.1 14.8-0.6 28.8 3.5 38.8 13.60.70.7 1.3 1.4 1.9 2.1-0.2-13.4-4.4-24.6-12.3-32.5-8.2-8.2-20-12.4-34.2-12.3zm8.3 47.7c-0.70-1.30-20.1-3.60.2-7.40.7-11.4 1.6-16 3.8-34.4 14-50.4 29.9-7.8 7.8-14.3 16.2-19.2 24.7 1.7-2 3.5-4 5.4-5.9 17-17 38.1-25 53.2-21.5-5.9 2.8-11.8 6.9-17.2 12.2-16.2 16.2-21.2 37.5-11.1 47.5 7.7 7.7 22.2 6.6 35.8-1.8-3.1 4.6-6.7 9-11 13.2-18.5 18.5-41.9 26.3-57.1 20.3 7.8 6.1 19.6 7.9 34.2 4.5 16-3.8 34.4-14 50.4-29.9 15.9-15.9 26.2-34.4 29.9-50.4 3.8-16 1.2-28.7-6.5-36.4-5.4-5.4-13.3-8.3-23.1-8.2z","i_coins":"M264.4 95c-35.6-0.1-80.2 11.2-124.2 34.1C96.3 152 61.5 182 41 211.3c-20.4 29.2-26 56.4-15.9 75.8 10.1 19.3 35.5 30.4 71.2 30.4 35.70.1 80.3-11.2 124.2-34 44-22.9 78.8-53 99.2-82.2 20.5-29.2 25.9-56.4 15.9-75.8-10.1-19.3-35.5-30.5-71.2-30.5zm91.9 70.3c-3.5 15.3-11.1 31-21.8 46.3-22.6 32.3-59.5 63.8-105.7 87.8-46.2 24.1-93.1 36.2-132.5 36.2-18.6 0-35.8-2.8-50.4-8.7l10.6 20.4c10.1 19.4 35.5 30.5 71.2 30.5 35.7 0 80.3-11.2 124.2-34.1 44-22.8 78.8-52.9 99.2-82.2 20.4-29.2 26-56.4 15.9-75.7zm28.8 16.8c11.2 26.7 2.2 59.2-19.2 89.7-18.9 27.1-47.8 53.4-83.6 75.4 11.1 1.2 22.7 1.8 34.5 1.8 49.5 0 94.3-10.6 125.9-27.1 31.7-16.5 49.1-38.1 49.1-59.9 0-21.8-17.4-43.4-49.1-59.9-16.1-8.4-35.7-15.3-57.6-20zm106.7 124.8c-10.2 11.9-24.2 22.4-40.7 31-35 18.2-82.2 29.1-134.3 29.1-21.2 0-41.6-1.8-60.7-5.2-23.2 11.7-46.5 20.4-68.9 26.1 1.20.7 2.4 1.3 3.7 2 31.6 16.5 76.4 27.1 125.9 27.1s94.3-10.6 125.9-27.1c31.7-16.5 49.1-38.1 49.1-59.9z","i_chest":"M58.6 89L42.3 211.8H79V89H58.6zM97 89v122.8h38V89H97zm56 0v122.8h56.7v-17.6h92.7v17.6H359V89H153zm224 0v122.8h38V89h-38zm56 0v122.8h36.7L453.4 89H433zM227.7 212.2v105.2h56.7V212.2h-56.7zM256 223.8a18.7 16.1 0 0 1 18.7 16.1 18.7 16.1 0 0 1-9.7 14.1v37.2h-18V254a18.7 16.1 0 0 1-9.7-14.1 18.7 16.1 0 0 1 18.7-16.1zM41 229.8v127.9l19.3 18.2V229.8H41zm37.3 0v158h355.3v-158H302.3v105.6h-92.7V229.8H78.3zm373.3 0v146.1L471 357.7V229.8h-19.3zM41 382.5V423h43L41 382.5zm430 0L428 423H471v-40.5zM92 405.8l18.2 17.2h291.5L420 405.8H92z","i_ale":"M282.6 37.1c-16.6 0-35.2 7.2-49.3 16.8l-4.8 3.3-5-3.1c-8.9-5.6-18.5-8.6-28-8.8-14.5-0.2-23.6 6-25.5 12.7-0.5 1.7-0.6 3.6-0.2 5.9l1.4 8.3-8.2 2c-13.3 3.2-23.8 8.2-30.5 13.4-6.6 5.2-9.1 10.2-9.1 14.4 0 5 3.5 11 12.6 16.9 9 5.9 23 10.9 39.8 13.4l7.5 1.10.2 7.6c0.1 2.80.7 5.3 1.8 7.7h0.1c6 12.2 27.4 19.1 47.7 11.4 2.1-0.8 4.1-1.8 6.3-3l10.7-5.8 2.4 11.9c3.9 19.1 15.3 29.9 25.3 29.9 10.2 0 21.5-10.8 25.4-30l2.1-10.5 10 3.9c2.6 1 5.5 1.6 8 1.6 6.6 0 13.1-3 18.3-9.1l3.6-4.2 5.4 1.4c14.4 3.7 28.1 3.7 37.9 1.1 9.8-2.5 14.7-7 15.9-11.40.9-3.7-0.1-8.4-4.7-14.2-4.6-5.9-12.6-12-23.1-16.8l-20.3-9.2 21-7.5c10-3.6 17.8-8.9 22.4-14.2 4.6-5.3 5.9-9.9 5.1-13.8-1-4.5-5.2-8.9-13.6-11.8-8.4-2.9-20.3-3.7-32.8-1-6.5 1.4-12.8 3.7-18.2 6.5l-5.4 2.8-4.6-3.9c-13.4-11.4-30.4-15.8-47.6-15.8zm73.6 128.5l0.4 26.9a17.6 26.4 0 0 1 9.2 23.2 17.6 26.4 0 0 1-17.6 26.4 17.6 26.4 0 0 1-17.6-26.4 17.6 26.4 0 0 1 8-22.1l-0.3-20.6c-4.7 2-9.8 3.1-15 3.1-1.6 0-3.2-0.3-4.8-0.5-2.3 6.9-5.6 13.3-9.6 18.6l1.1 45.3a17.6 31.5 0 0 1 9.5 28 17.6 31.5 0 0 1-17.6 31.5 17.6 31.5 0 0 1-17.6-31.5 17.6 31.5 0 0 1 7.7-26l-0.8-33.1c-4.2 1.8-8.7 2.7-13.4 2.7-18.4 0-32.9-14.3-39.9-33.7-4.7 1.7-9.5 2.8-14.4 3.5 25 38.6 39.9 71.9 46.7 101 9.3 40.2 2.5 73.1-14.4 99.3 15.2 1.4 29.3 7.6 40.1 16.4 11.3 9.3 19.6 21.7 21.4 35.50.3 1.90.4 3.80.4 5.7 11.3-9.3 21.1-19.7 29.5-31.2 40.9-56.2 47.7-140.1 21.7-240.7-4.1-0.2-8.4-0.6-12.7-1.3zm-107.8 233c-2.20.1-4.40.3-6.60.6-5.5 6-11.4 11.6-17.8 16.9 8.5 2.4 16.2 6.2 22.7 11.1 11 8.4 18.9 20.1 20.3 33.30.3 2.50.3 5.10.1 7.6 8.7-3.5 17-7.4 24.8-11.8 6.9-6.7 8.6-13.5 7.6-20.7-1.1-8.1-6.5-17.1-15-24.1-9.6-7.9-22.4-13.2-36.1-12.9zm-45.1 32.8c-32.1 21.3-70.7 37.5-106.6 54.1 59.8 5.7 109.5 1.7 149.8-10.3 2.5-4.3 3.1-8.5 2.6-12.7-0.8-7.2-5.5-15-13.3-20.9-7.9-6-18.4-10.1-30.1-10.2h-2.4z","i_ring":"M255.2 123c-68.7 0-137.1 18.9-182.9 55.30.2 14.3 1.8 35.6 9.3 48.2 110.6-60.3 236.4-60.3 347.1 0 7.5-12.6 9.1-33.9 9.3-48.2C392.3 141.9 323.8 123 255.2 123zm199.8 76.1c-0.3 3-0.7 6-1.2 9.1-2.2 12.9-6.2 26.5-16 36-14.4 18.6-40.8 30.5-72.9 38.6C332.4 291 293.8 295 255.2 295c-38.6 0-77.2-4-109.7-12.3-31.9-8.1-58.2-19.9-72.6-38.4-12-12-16.2-28.8-17.8-43.9-13.7 27.3-11.5 62.10.7 98.6C70 342 129.4 389 255.2 389c125.8 0 185.2-47 199.5-89.8l0.1-0.30.1-0.3c15.1-36.7 15.6-720.1-99.5z","i_meat":"M440.2 98.1c-4-0.1-8 1.1-11.7 4-1.5 1.2-3.1 2.9-4.5 4.8-22.9 31.2-48.3 57.3-75.2 81-8.8 14.7 10.7 44.4 25.6 44.4 34.1-12.9 69.6-22.5 106.8-26.3 42.6-4.4 17.7-68.1-26.2-45.5 30.3-22.7 7.1-61.8-14.8-62.4zM310.5 108.2c-6.2-0.1-12.2 1.2-17.6 4.3-1.60.9-3 1.9-4.4 3.10-0.1-0.1-0.1-0.1-0.2-79.9 66.4-116.3 73.5-158.2 86.8-6.9 2.2-12.3 7.2-16.5 15.5s-6.9 19.8-7.3 33.1c-0.9 26.6 6.9 59.9 23.7 89 16.7 29 43.4 53.9 67.7 67.1 12.1 6.6 23.7 10.2 32.4 10.4 8.70.3 13.9-1.9 17.8-7.4 31-43.5 89.3-69.1 156.2-92.20000 00 2-0.7 4-1.5 5.8-2.6 8.2-4.7 13.5-12.9 16.3-22.1 2.7-9.2 3.2-19.8 2-31.2-1-9.2-3-19.1-6.2-29.4-5.9 1.4-11.6 3.2-17.9 5.5 2.8 9.2 4.7 18 5.5 25.8 1 9.70.4 18.1-1.4 24-1.8 6-4.4 9.3-7.7 11.2-3.3 1.9-7.5 2.5-13.6 1.1-6.1-1.4-13.6-5.1-21.5-10.8-15.8-11.5-33.3-31.2-47.6-56-14.3-24.8-22.6-49.8-24.6-69.3-1-9.7-0.4-18 1.4-24 1.8-6 4.4-9.4 7.7-11.3 1.7-1 3.5-1.6 5.8-1.80.6-0.1 1.1-0.1 1.8-0.1 1.80 3.80.3 6.10.8 6 1.4 13.5 5 21.4 10.8 8.2 6 16.9 14.2 25.3 24.1 5.1-4.1 9.3-8.2 13.4-13.2-9-10.5-18.4-19.3-27.8-26.1-9.4-6.8-18.7-11.6-28.1-13.8-2.3-0.6-4.7-0.9-7-1.1-0.9-0.1-1.8-0.1-2.7-0.1zm8 34.2c-0.40-0.90.1-1.30.1-17.3 2.5-15 36 5 74.6 20 38.5 50.5 67.6 67.8 65 6-0.9 9.3-5.7 10.7-12.9-1.7 2.2-3.8 3.5-6.7 3.9-15.3 2.2-42.3-23.1-60-57.2-17.7-34.1-19.3-63.9-3.9-66.2 3.6-0.5 7.70.4 12.3 2.8-8.7-6.8-17.4-10.6-23.9-10.2zM102 325.1c-16.6 1.8-35.3 3.3-57.1 4.4-49.1 2.5-25.6 71.6 30.1 52.2-49.4 29.9 3.9 86.9 27 46.8 10.4-18 21.9-33.8 34.4-47.8-8.4-9.6-16.1-20.2-22.6-31.5-4.5-7.8-8.5-15.9-11.8-24.1z","i_cheese":"M265.6 44.1c-11.90-23.90.4-35.7 1.3l-8.8 7.4c10.2 6.3 17 15.6 18.8 26.1 2 11.7-2.5 24.1-12.1 33.6-19.2 19-51.4 23.7-75.7 11.3-3.1-1.6-6-3.4-8.5-5.5L16.8 225.3l73.8-19.4c7.5-18.9 26.3-33.6 48.3-37.6 3.6-0.6 7.1-1 10.6-1 10.30 19.9 2.8 27.7 8.1 2.5 1.7 4.8 3.7 6.8 5.9l292.4-76.7c-45-39.2-127.2-60.5-210.7-60.6zm225 74.7l-298.2 77.7c1.1 3.7 1.7 7.5 1.7 11.6 0 27.1-23.3 50.5-51.9 55.6-14.3 2.6-27.9-0.1-38.2-7.2-10.3-7.1-17-19-17-32.6L19.7 241.5v95.4c0.3-0.10.5-0.20.8-0.3 14.4-3.3 28.2-1.3 38.7 5.6 10.5 6.8 17.2 18.8 17.2 32.4 0 27.2-23.1 51.7-51.9 58.3-1.70.4-3.30.5-4.90.8v13.2l202.6-52.8c-2.6-5.6-4.1-11.7-4.1-18.2 0-26.5 24.7-48 55.1-48 26 0 47.8 15.7 53.6 36.8 1.40.3 2.70.7 4.1 1.1l159.5-41.1V118.8zm-341.1 67.2c-2.30-4.70.2-7.20.7-20.2 3.6-36.5 21.8-36.5 37.2 0 7.7 3.2 13.3 8.9 17.2 5.7 3.9 14.1 6 24.2 4.2 20.2-3.6 36.5-21.8 36.5-37.2 0-7.7-3.2-13.3-8.9-17.2-4.3-3-10.1-4.8-17-4.8zm247.5 64c20.7 0 38.8 15 38.8 35 0 20-18.1 35.1-38.8 35.1-20.7 0-38.9-15.1-38.9-35.1 0-20 18.2-35 38.9-35zm0 18.7c-11.9 0-20.2 7.9-20.2 16.3 0 8.4 8.3 16.3 20.2 16.3 11.9 0 20.2-7.9 20.2-16.3 0-8.4-8.3-16.3-20.2-16.3z","i_candles":"M346.2 121c5.3 26.4-22.5 28.1-26.3 49.5-0.8 4.3 2.8 9.7 7.8 13.9 11-6.4 21.6-12.8 27.4-25.80.1 13.10.9 20.4-2.6 31.3 5.3-2.2 10.1-6.2 12-11.1 7.4-18.9 1.7-33.5-18.3-57.9zm-163.6 2c-21.4 13.2-33.9 38.6-26.3 58.6 1.7 4.4 5.7 7.6 10.5 9.6 8.4-12 10.6-28.2 13.3-44.1 4 14.6 9.2 28.8 7.6 45.2 6.8-2.3 13.4-7.4 15.3-13.9 5.7-18.9-19.7-28.3-20.4-55.5zM96.7 135.8c-20 24.4-35.4 45.6-27 68.8 2.2 6.1 7.9 10.8 14.6 13.50.1-9.1 4.4-17.3 7.9-25.7 2.4 9.5 9.7 17.4 18.2 24.3 4.2-2.8 7.7-6.7 9.2-11.1 7-20.6-28.1-43.4-22.8-69.9zm167.3 8.5c-20 24.4-32 44.7-27 68.8 1.5 7.5 7.2 15.5 14.2 19.2-1.3-16 3.8-29.9 7.7-44.2 2.5 15.3 4.7 30.9 12.4 42.7 7.5-4.3 13.9-11.6 15.7-16.8 7-20.6-15.8-42.7-22.8-69.9zm169.1 2.2c-20 24.4-35.4 40.4-30.9 63.6 1.3 6.7 7.4 13.2 14.1 15.8-1.6-13.9 3.6-25.9 7.6-38.2 2.5 12.7 4.6 25.5 11.8 35.4 4.7-2.8 8.6-6.8 10-10.8 7-20.6-17.9-39.2-12.6-65.7zm-253.7 53.9c-70-14.30.9-22.1 3.5v235h48V204c-8.4-1.9-17-3.5-25.9-3.5zm159.4 3.7c-70.1-14.2 1.8-21.5 6.3l0-0.1s-10.2 20.4-8.5 31.3c1 6.3 5.8 6.1 8.4 3.2v194.2h52.2v-228.5c-10.2-3-20.3-6.4-30.6-6.3zM97.6 229.7c-11.4-0.1-22.2 2.7-32.8 6.3v16.1c-5.9 9.2-16.4 27.7-13.8 39 1.6 7.3 8.4 8.4 13.8 6.5v141.5h60.6V408.9c5.3 1.3 11.80.4 13.4-4.9 2.5-8.3-7.5-21.8-13.4-28.8V236c-9.7-4.5-18.9-6.3-27.8-6.3zm328.7 6c-70-15.6 3-27 10.9v192.4h48v-15.8c3.70 9.1-8 11-19.9 3.4-21.5-9.7-46.3-11-48.7V246.6c-5.8-5.9-12-10.9-21-10.9zm-163.5 6c-6.90-14.4 1.7-22.2 5.3v123.2c-4.6 9-8.6 19.6-6.9 27.11 4.3 3.7 6.4 6.9 7.1v34.7h41.7V246.9c-6-3.5-12.5-5.3-19.4-5.3zM16.8 457l20 30h438.4l20-30H16.8z","i_incense":"M269.9 19.7c-22.6-0.2-45.1 9.9-58.3 28.2-3.3 4.6-4.9 9.2-6.7 14.1 25.2-19.1 64.9-21.1 98.2-2.2 12.3 6.9 22.9 15.3 30 25.2 2.9-21.8-7.2-43.9-29-56.3-10.6-6-22.4-8.9-34.2-9zM114.3 45.4c-40.9 5.1-62.5 44.2-26.8 81.3C152.8 194.6 228 62 314.7 105.8c-54.1-84.6-115.6 4.6-184.2-3-24.4-2.7-40.3-32.7-16.2-57.3zM43.5 89.3c-34.7 69.6 57 143.3 132.7 81.5-52.9 9.8-134.7-13.9-132.7-81.5zM273.1 121c-5.90.1-11.31-17.1 1.8 45.1 13.8 81.1 51.8 85.8 95.6 1.7 16.20.3 31.6-6 44.3 29.5-9.8 48.7-32.6 45.6-61.4-4.3-40.5-50.4-76.5-102.2-80.2-2.1-0.2-4.2-0.2-6.1-0.2zm-22.5 24.1C203.9 145 172.6 233.5 110 220c56.5 55.5 85-29.2 137.5-38.2 18.7-3.2 36.2 17.2 23.1 42.1 29.4-13.1 38-49.1 4.3-70.8-8.7-5.6-16.7-8-24.3-8zm65.3 58.6c-5 26.2-26.8 45.4-55.2 45.4-10.50-20.8-1.8-29.7-6.5 9.1 18.4 25.8 31.3 44.5 31.3 26.30 45.8-25.3 43.6-56.2-0.4-5-1.8-9.4-3.2-14zm82.7 29c-29.1 67-116.2 78.6-179.3 46.7 16.8 62.4 84.3 74.9 132.2 48-6.8 23.1-23.6 48.1-54.7 67.7 72.1-13.2 113-93.8 101.8-162.4zm-210 28.7c-1.3 3.3-2.5 6.5-3.5 9.8-41.7 61.1-27.9 144.9 32.2 189.2 61.5 45.4 148.2 32.4 193.7-29.1 33.9-45.9 35.2-105.9 8.1-152.3 4 47.5-42.9 125.9-99 137.3-53.4 10.9-109.6-17.1-128.6-73.5 23 40.5 77.3 56.5 114 21.5-64.1 21.7-110.7-49.5-116.9-102.9z","i_kit":"M256 73c-62.9 0-91.9 11.9-105.3 27-11.6 13.1-13.3 30.8-13.6 51h30.4c1.6-14 7.3-26.4 19.4-34.5C201.7 106.7 223.3 103 256 103c32.8 0 54.3 3.7 69 13.5 12.1 8.1 17.8 20.5 19.4 34.5h30.4c-0.3-20.2-2-37.9-13.6-51C347.9 84.9 318.9 73 256 73zm-135 94v16h62v-16h-62zm208 0v16h62v-16h-62zM81.5 201c-13.9 0-28.2 6.8-39 17.4C31.8 229 25 243 25 256v192c0 14.5 3.5 23.8 9.4 29.6C40.3 483.5 49.5 487 64.1 487h384.4c14.3 0 23.4-3.5 29.2-9.3C483.5 471.8 487 462.5 487 448V256c0-13-6.8-27.1-17.4-37.6C459.1 207.8 445 201 432 201H81.5zM224 256h64v64h64v64h-64v64h-64v-64h-64v-64h64v-64z","i_key":"M133.3 18.2c-21.20.2-43.8 8-63.6 23-2.7-1-5.6-1.7-8.5-1.9-10.4-0.9-21.1 3.2-28.1 11.8-9 11-9.4 26.4-2.2 37.8-19.7 41.3-13.5 86.9 16.2 110.9 22.2 18.1 52.5 20.7 82.4 9.2l5-1.9 4.2 3.4 46.6 37.8L201.8 228l-43.9-35.7 11.8-14.5 43.9 35.6 15.3-18.9-43.9-35.7 11.8-14.5 43.9 35.7 16.6-20.4-46.5-37.8-4.2-3.40.9-5.3c5.2-31.6-3.6-60.6-25.8-78.7-13.5-11-30.5-16.3-48.3-16.2zm-2.2 25.5l43.8 13.9L139.6 101l-24.2-7.7 15.7-49.7zM57.9 57.8c0.50 1.10 1.70.1 2.60.2 5.2 1.3 7.5 3.1 6 4.9 6.9 13.4 2 19.4-4.9 6-13.4 6.9-19.4 2-6-4.9-6.9-13.4-2-19.4 2.7-3.3 6.4-5.1 10.2-5.2zm56.9 59.8l55.4 11.6-32.7 40.2-22.7-51.8zM91.2 123l12.5 22.2-35.3 43.4-22.5-40.1L91.2 123zm155 80l-22 27 125.2 101.7-24.6 30.2 17.6 14.3 19.9-24.5 14.5 11.8-19.9 24.5 13.2 10.8-16.7 20.5-38.1 44.5 14.2 12.2 32.6-38 19.2 8 22.9-28.2 14.5 11.8-41.1 50.6 18.2 14.8 61.4-75.6 15.4 12.6 22-27L246.2 203z","i_fish":"M345 24.2l23.6 39.4c0.3-0.30.6-0.70.9-1 3.8-3.9 8.9-6.8 14.6-6.9 5.80 11 2.9 14.7 6.90.20.20.40.50.60.7l23.5-39.1C409.8 29.9 397 33 384 33c-13 0-25.8-3.1-39-8.8zm-139.4 1.4l33.5 39.4a35.3 35.3 0 0 1 2.8-2.9c3.9-3.6 8.9-6.2 14.4-6.3 5.50 10.7 2.6 14.5 6.3a33.2 33.2 0 0 1 2.5 2.7l33.3-39.1c-32.4 10.1-68.5 10.1-100.9 0zM85 34.2l20.3 33.8c5.2-6.2 11.4-10.2 19-10.2 5.50 10.8 2.4 14.9 6 1.3 1.2 2.6 2.5 3.8 3.9l20.1-33.5C149.8 39.9 137 43 124 43c-13 0-25.8-3.1-39-8.8zM32 71v18h61.2c0.5-1.2 1.1-2.3 1.6-3.4L86.1 71H32zm129.9 0l-8.9 14.8c0.5 1.10.9 2.1 1.4 3.2h71.7a187.6 187.6 0 0 1 3.2-7.6L220.5 71h-58.6zm129.6 0l-9 10.6a196.5 196.5 0 0 1 2.9 7.5h69.5a225.2 225.2 0 0 1 3.2-7.8L352.1 71h-60.6zm124.4 0l-6.2 10.3A238.1 238.1 0 0 1 412.7 89H480V71h-64.1zm-31.6 2.7c0 0 00000.100.10 00-0.1 0-0.1000zm00c-0.10-0.80.3-2 1.5-1.6 1.7-3.9 5-6.2 9.8C354.7 131.8 345 209.2 345 268.7c0 11.5 3.7 36 11.1 56.2 3.7 10.1 8.4 19.2 13.4 25.1 2.8 3.3 5.4 5.5 8 6.9l7-30.3 17.5 4.1-4.8 20.7c0.4-0.40.8-0.9 1.2-1.4 5-6 9.7-15 13.4-25.1 7.4-20.1 11.1-44.5 11.1-56a1364.4 1364.4 0 0 0-2.9-40.6l-9.9 15.7-15.2-9.6 16.7-26.5c-4.8-0.9-9.4-2.5-13.5-4.7-3.1-1.7-5.9-3.6-8.7-5.6l0.2 38.6-180.1-0.3-80.9 15.5 15.8c6.3 6.4 13.2 12.6 19.9 16.2 3.3 1.8 6.4 3 9.4 3.4-4.9-39.7-12.6-77.6-24.5-105.9-2.1-4.9-4.2-8.2-5.8-9.8-1.1-1.1-1.5-1.3-1.6-1.3zm-1280c0 0-0.6-0.1-2.2 1.4-1.6 1.5-3.8 4.5-6 8.9C226.9 126.2 217 209 217 263.7c0 10.3 3.6 29.8 10.8 45.3 3.6 7.8 8.1 14.5 12.9 19 4.8 4.5 9.6 6.7 15.3 6.7 4 0 7.6-1.1 11-3.4l-6.7-21.8 17.2-5.3 3.4 11a84 84 0 0 0 3.2-6.2c7.2-15.4 10.8-34.8 10.8-45.1-0.4-6-0.8-12.3-1.3-18.6l00-16.7-6.7 12.5-31.3c-11.9-0.6-21.9-3.1-30.7-8l-4.7 53.1-17.9-1.6 7.8-88.8 13.7 14c8.9 9.1 16.7 12.9 30.6 13.5-5-40.3-12.6-79.8-24.5-105.7-2-4.5-4.1-7.4-5.6-8.8-1.5-1.4-1.9-1.3-1.9-1.3zm-132 2c-0.90-5 1.8-9.7 10.6-22.9 42.2-33.6 122.8-33.6 177.4 0 10.1 3.9 29.6 11.7 45.1 7.8 15.5 18.2 25.9 31.3 25.9 2.5 0 5-0.4 7.3-1.1l-1.3-38.3 18-0.60.8 24.9c2.3-3.2 4.5-6.8 6.5-10.7 7.7-15.4 11.6-34.7 11.6-44.9-0.4-6.2-0.9-12.7-1.4-19.3l-3.5 13.9-17.4-4.4 7.7-30.5c-60.1-11.8-1.1-17-3.2-3.3-1.2-6.3-2.8-9.3-4.5l5.1 38.3-17.8 2.4-10.7-80.2 17.4 13.7c7.1 5.6 14.7 10.8 21.8 13.5 7 2.7 12.8 3.1 18.90l0.9-0.5c-5.3-44-13.9-88.5-28.2-117.2-2.2-4.4-4.4-7.3-6.1-8.8-1.7-1.5-2.4-1.5-2.8-1.5zM112 281.7a8 8 0 0 1 8 8 8 8 0 0 1-8 8 8 8 0 0 1-8-8 8 8 0 0 1 8-8zM240 288a8 8 0 0 1 8 8 8 8 0 0 1-8 8 8 8 0 0 1-8-8 8 8 0 0 1 8-8zm126 18.9a8 8 0 0 1 8 8 8 8 0 0 1-8 8 8 8 0 0 1-8-8 8 8 0 0 1 8-8zm98.5 14.3c2.3 10.50.3 31.6-6.6 36.6-4.3 3.1-10.5-4.3-4.8 29.4 6.5-5.7 18.7-14.1 20.8-28.8 1.9-13.1-1.2-23.5-9.3-37.2zM99.2 349.6c3.9 10.8 17.7 20.6 15.9 32.4-1.9 12-19.8 18.2-25.8 27.5 10.8-9.4 35.1-9.4 37.7-24.1 2.6-14.9-18.4-27.9-27.7-35.8zM48 350c-18.6 28.6-27.1 60.2-28.2 90.7C14.8 450.7 18 479 18 492h138.6a384.6 384.6 0 0 1-3.9-6.3c5.8-24.6 11.1-49 7.3-71.7-5.6 17.2-16 28.4-27.8 39.4-5.4-7.1-11.7-13.7-20.2-20.2 5 9.3 9 18.4 12.3 27.4-9.4 8.5-19.4 17.6-28.3 29.8C69 448.1 26.6 440.8 48 350zm255.5 17.6c11 51 27.2 107.6 6.7 124.4H494v-17.5c-4 5.6-8.7 10.5-13.8 15 2-36.1 3.3-71.7-16.7-89.9 11.2 53.2-25.5 59.4-47.5 90.4-11.5-20.8-52.3-27.6-9.2-68.8-32.1-1.2-59.8 24.3-55.3 67.7-13.4-56.9-23.1-70.5-48-121.3zm-53.4 2.8c-5 11.2-21.8 53.3-9.7 44.3 15.1-11.3 16.1 17.1 35.4 19.5-9.5-5.9-9.5-38.5-24.2-35.1-9.3 2.1-0.4-17.2-1.5-28.6zM176 391.7c3.7 57.2-3.9 84.5-18.3 100.3h44.5c-7.8-9.8-10.1-30.9 5.8-76l-23 42.4c-0.5-15.6-2.4-57.4-9-66.8zm63.6 51.6c20.5 23.5 22.4 39.7 10.8 48.8h44c-15.1-8-22.1-23.3-22.9-44.4-3.1 4.8-5.3 9.8-7.1 14.9-6.4-5.9-14.6-12.3-24.8-19.3z"};
+function ico(k, size = 20, cls = "") { const d = ICONS[k]; if (!d) return ""; return `<svg class="gi ${cls}" viewBox="0 0 512 512" width="${size}" height="${size}" aria-hidden="true"><path fill="currentColor" d="${d}"/></svg>`; }
+
+/* HERO */
+/* =========================================================================
+   ГЕРОЙ: расы, классы, оружие с вариациями, черты характера, отношение людей
+   ========================================================================= */
+Object.assign(RACES, {
+  halfelf: { name: "Полуэльф", sub: "Свой среди чужих, чужой среди своих", bonus: { cha: 2, dex: 1, con: 1 }, speed: 30, traits: ["Тёмное зрение", "Владеет Убеждением и Проницательностью", "Устойчив к очарованию"], skills: ["persuasion", "insight"] },
+  gnome: { name: "Гном", sub: "Лесной гном, любопытный выдумщик", bonus: { int: 2, dex: 1 }, speed: 25, gnomish: true, traits: ["Тёмное зрение", "Гномья хитрость: преимущество на спасброски ИНТ, МДР, ХАР", "Мелкий: тяжёлое оружие с помехой"], skills: [] },
+  halforc: { name: "Полуорк", sub: "Сила, шрамы и косые взгляды", bonus: { str: 2, con: 1 }, speed: 30, relentless: true, traits: ["Тёмное зрение", "Неукротимость: раз за долгий отдых остаться на 1 HP вместо 0", "Владеет Запугиванием"], skills: ["intimidation"] },
+  tiefling: { name: "Тифлинг", sub: "Рога, хвост и наследие преисподней", bonus: { cha: 2, int: 1 }, speed: 30, fireRes: true, traits: ["Тёмное зрение", "Адское сопротивление: урон огнём вдвое меньше", "Многие боятся и не доверяют"], skills: [] },
+  dragonborn: { name: "Драконорождённый", sub: "Чешуя, гордость и пламя в груди", bonus: { str: 2, cha: 1 }, speed: 30, breath: true, fireRes: true, traits: ["Оружие дыхания: 2d6 огнём по всем врагам, раз за короткий отдых", "Сопротивление огню"], skills: [] }
+});
+RACES.halfling.small = true; RACES.gnome.small = true;
+RACES.halfling.traits = ["Везение: переброс натуральной 1", "Храбрость", "Мелкий: тяжёлое оружие с помехой"];
+const RACE_ATT = { human: 0, elf: 2, halfelf: 0, dwarf: 1, halfling: 3, gnome: 2, halforc: -8, tiefling: -10, dragonborn: -4 };
+const RACE_SOCIAL = { human: "Свой для всех", elf: "Уважают, хоть и считают надменными", halfelf: "Принимают без вопросов", dwarf: "Уважают за ремесло", halfling: "Любят: улыбчивый и безобидный", gnome: "Принимают за чудака", halforc: "Опасаются: шепчут за спиной", tiefling: "Боятся и не доверяют", dragonborn: "Глазеют с опаской" };
+const RACE_COL = { human: "#e9c99a", elf: "#9fd8b4", halfelf: "#b7c8e8", dwarf: "#d49a6a", halfling: "#e3c06a", gnome: "#c59af0", halforc: "#8fb36a", tiefling: "#e8735a", dragonborn: "#d0814f" };
+Object.assign(CLASSES, {
+  barbarian: { name: "Варвар", role: "Ярость и стойкость", color: "#c4553d", hd: 12, saves: ["str", "con"], prio: ["str", "con", "dex", "wis", "cha", "int"], armor: { name: "Без доспеха: 10 + ЛОВ + ТЕЛ", base: 10, dex: 99 },
+    weapons: ["greataxe"], skillCount: 2, skillList: ["animal", "athletics", "intimidation", "nature", "perception", "survival"], items: [], blurb: "Гнев как оружие. Держит удар, о который ломаются другие.",
+    features: ["Ярость: +2 к урону в ближнем бою и вдвое меньше урона, 2 раза за долгий отдых", "Защита без доспехов: КД 10 + ЛОВ + ТЕЛ"] },
+  paladin: { name: "Паладин", role: "Клятва и сталь", color: "#e6d08a", hd: 10, saves: ["wis", "cha"], prio: ["str", "cha", "con", "wis", "dex", "int"], armor: { name: "Кольчуга и щит", base: 18, dex: 0 },
+    weapons: ["longsword"], skillCount: 2, skillList: ["athletics", "insight", "intimidation", "medicine", "persuasion", "religion"], items: [], cast: "cha", half: true, blurb: "Рыцарь клятвы: лечит касанием, карает светом.",
+    features: ["Наложение рук: запас исцеления 5 × уровень", "Божественное чувство: чует нежить и нечисть рядом"] },
+  ranger: { name: "Следопыт", role: "Охота и выслеживание", color: "#8fb36a", hd: 10, saves: ["str", "dex"], prio: ["dex", "wis", "con", "str", "int", "cha"], armor: { name: "Кожаный доспех", base: 11, dex: 99 },
+    weapons: ["longbow"], skillCount: 3, skillList: ["animal", "athletics", "insight", "investigation", "nature", "perception", "stealth", "survival"], items: [], cast: "wis", half: true, blurb: "Читает следы, бьёт издалека, знает каждую тропу.",
+    features: ["Избранный враг: +2 к урону по нему", "Исследователь природы: не плутает в дебрях"] },
+  bard: { name: "Бард", role: "Слово, песня и обман", color: "#d47fb0", hd: 8, saves: ["dex", "cha"], prio: ["cha", "dex", "con", "wis", "int", "str"], armor: { name: "Кожаный доспех", base: 11, dex: 99 },
+    weapons: ["rapier"], skillCount: 3, skillList: Object.keys(SKILLS), items: [], cast: "cha", spells: ["vicious_mockery", "healing_word", "dissonant_whispers"], blurb: "Очарует трактир, выведает тайну, высмеет врага до крови.",
+    features: ["Вдохновение барда: +1d6 к следующему броску, ХАР раз за долгий отдых", "Колдовство (ХАР)"] },
+  warlock: { name: "Колдун", role: "Сила в долг", color: "#9a72d0", hd: 8, saves: ["wis", "cha"], prio: ["cha", "con", "dex", "wis", "int", "str"], armor: { name: "Кожаный доспех", base: 11, dex: 99 },
+    weapons: ["dagger"], skillCount: 2, skillList: ["arcana", "deception", "history", "intimidation", "investigation", "nature", "religion"], items: [], cast: "cha", pact: true, spells: ["eldritch_blast", "hex", "arms_of_hadar"], blurb: "Получил силу в долг. Платить придётся потом.",
+    features: ["Мистический заряд: 1d10 силовым полем", "Магия договора: ячейки возвращаются после короткого отдыха"] },
+  druid: { name: "Друид", role: "Сила природы", color: "#5fae8a", hd: 8, saves: ["int", "wis"], prio: ["wis", "con", "dex", "int", "cha", "str"], armor: { name: "Кожаный доспех и деревянный щит", base: 13, dex: 99 },
+    weapons: ["staff"], skillCount: 2, skillList: ["arcana", "animal", "insight", "medicine", "nature", "perception", "religion", "survival"], items: [], cast: "wis", spells: ["produce_flame", "cure_wounds", "thunderwave"], blurb: "Говорит с ветром и зверем, зовёт гром и пламя.",
+    features: ["Колдовство (МДР)", "Друидический язык: знаки природы"] }
+});
+const CLASS_META = { fighter: { diff: 1, prim: ["str", "con"] }, rogue: { diff: 2, prim: ["dex"] }, wizard: { diff: 3, prim: ["int"] }, cleric: { diff: 2, prim: ["wis"] }, barbarian: { diff: 1, prim: ["str", "con"] },
+  paladin: { diff: 2, prim: ["str", "cha"] }, ranger: { diff: 2, prim: ["dex", "wis"] }, bard: { diff: 3, prim: ["cha"] }, warlock: { diff: 2, prim: ["cha"] }, druid: { diff: 3, prim: ["wis"] } };
+const CLASS_GEAR = { fighter: ["Набор путешественника"], rogue: ["Воровские инструменты"], wizard: ["Книга заклинаний", "Мешочек с компонентами"], cleric: ["Священный символ"], barbarian: ["Набор путешественника"],
+  paladin: ["Священный символ"], ranger: ["Колчан со стрелами"], bard: ["Лютня"], warlock: ["Книга теней"], druid: ["Омела", "Травяной сбор"] };
+Object.assign(SPELLS, {
+  vicious_mockery: { name: "Злая насмешка", lvl: 0, kind: "save", abil: "wis", dice: "1d4", type: "психической энергией", desc: "Спасбросок МДР, 1d4 психической" },
+  healing_word: { name: "Лечащее слово", lvl: 1, kind: "heal", dice: "1d4", desc: "Восстанавливает 1d4 + ХАР" },
+  dissonant_whispers: { name: "Диссонирующий шёпот", lvl: 1, kind: "save", abil: "wis", dice: "3d6", type: "психической энергией", desc: "Спасбросок МДР, 3d6 психической" },
+  eldritch_blast: { name: "Мистический заряд", lvl: 0, kind: "attack", dice: "1d10", type: "силовым полем", desc: "Атака заклинанием, 1d10 силового поля" },
+  hex: { name: "Сглаз", lvl: 1, kind: "mark", dice: "1d6", type: "некротической энергией", desc: "Ваши попадания по цели: +1d6 некротической" },
+  arms_of_hadar: { name: "Руки Хадара", lvl: 1, kind: "save", abil: "str", dice: "2d6", type: "некротической энергией", desc: "Спасбросок СИЛ, 2d6 некротической" },
+  produce_flame: { name: "Сотворение пламени", lvl: 0, kind: "attack", dice: "1d8", type: "огнём", desc: "Атака заклинанием, 1d8 огня" },
+  thunderwave: { name: "Волна грома", lvl: 1, kind: "save", abil: "con", dice: "2d8", type: "звуком", desc: "Спасбросок ТЕЛ, 2d8 звуком" },
+  moonbeam: { name: "Лунный луч", lvl: 2, kind: "save", abil: "con", dice: "2d10", type: "излучением", desc: "Спасбросок ТЕЛ, 2d10 излучения" },
+  call_lightning: { name: "Призыв молнии", lvl: 3, kind: "save", abil: "dex", dice: "3d10", type: "электричеством", desc: "Спасбросок ЛОВ, 3d10 электричества" },
+  hunters_mark: { name: "Метка охотника", lvl: 1, kind: "mark", dice: "1d6", type: "", desc: "Ваши попадания по цели: +1d6 урона" },
+  bless: { name: "Благословение", lvl: 1, kind: "buff", desc: "Преимущество на следующую проверку или атаку" },
+  divine_smite: { name: "Божественная кара", lvl: 1, kind: "smite", dice: "2d8", type: "излучением", desc: "Следующее попадание: +2d8 излучения, по нежити ещё +1d8" }
+});
+Object.assign(LEVEL_SPELLS, { paladin: { 2: ["divine_smite", "cure_wounds", "bless"] }, ranger: { 2: ["hunters_mark", "cure_wounds"] }, bard: { 3: "shatter" }, warlock: { 3: "shatter" }, druid: { 3: "moonbeam", 5: "call_lightning" } });
+Object.assign(LEVEL_FEATS, {
+  barbarian: { 2: "Безрассудная атака и чувство опасности", 3: "Путь берсерка: третья ярость за отдых", 4: "Увеличение характеристик", 5: "Дополнительная атака" },
+  paladin: { 2: "Божественная кара, Благословение и Лечение ран", 3: "Священная клятва: аура против болезней", 4: "Увеличение характеристик", 5: "Дополнительная атака" },
+  ranger: { 2: "Метка охотника и Лечение ран", 3: "Охотник: +1d8 по раненой цели раз за ход", 4: "Увеличение характеристик", 5: "Дополнительная атака" },
+  bard: { 2: "Мастер на все руки", 3: "Коллегия знаний; заклинание Дребезги", 4: "Увеличение характеристик", 5: "Вдохновение d8, восстанавливается после короткого отдыха" },
+  warlock: { 2: "Мучительный заряд: +ХАР к урону заряда", 3: "Дар договора; заклинание Дребезги", 4: "Увеличение характеристик", 5: "Ячейки 3 круга" },
+  druid: { 2: "Дикий облик (в рассказе)", 3: "Заклинание: Лунный луч", 4: "Увеличение характеристик", 5: "Заклинание: Призыв молнии" }
+});
+const HALF_SLOTS = { 1: {}, 2: { 1: 2 }, 3: { 1: 3 }, 4: { 1: 3 }, 5: { 1: 4, 2: 2 } };
+const PACT_SLOTS = { 1: { 1: 1 }, 2: { 1: 2 }, 3: { 2: 2 }, 4: { 2: 2 }, 5: { 3: 2 } };
+const EXTRA_ATK = new Set(["fighter", "barbarian", "paladin", "ranger"]);
+Object.assign(BACKGROUNDS, {
+  folk: { name: "Народный герой", skills: ["animal", "survival"], hook: "однажды заступились за простых людей и с тех пор не можете пройти мимо беды", gold: 10, item: "Лопата" },
+  noble: { name: "Знать", skills: ["history", "persuasion"], hook: "родом из обедневшей семьи с громким именем и долгами", gold: 25, item: "Перстень с печатью" },
+  hermit: { name: "Отшельник", skills: ["medicine", "religion"], hook: "годы жили в уединении и вернулись к людям с откровением", gold: 5, item: "Набор лекаря" },
+  sailor: { name: "Моряк", skills: ["athletics", "perception"], hook: "ходили под парусом и знаете, о чём молчат портовые", gold: 10, item: "Верёвка, 15 м" },
+  outlander: { name: "Чужеземец", skills: ["athletics", "survival"], hook: "пришли издалека, и здешние обычаи вам непривычны", gold: 10, item: "Охотничий капкан" },
+  entertainer: { name: "Артист", skills: ["acrobatics", "performance"], hook: "выступали на ярмарках и знаете, как увлечь толпу", gold: 15, item: "Костюм артиста" },
+  artisan: { name: "Ремесленник", skills: ["insight", "persuasion"], hook: "состоите в гильдии мастеров и знаете цену хорошей работе", gold: 15, item: "Инструменты ремесленника" }
+});
+Object.assign(BACKGROUNDS.soldier, { gold: 10, item: "Знак различия" }); Object.assign(BACKGROUNDS.sage, { gold: 10, item: "Бутылочка чернил и перо" });
+Object.assign(BACKGROUNDS.criminal, { gold: 15, item: "Воровские инструменты" }); Object.assign(BACKGROUNDS.acolyte, { gold: 15, item: "Молитвенник" });
+const BG_ATT = { soldier: { guard: 6 }, sage: { priest: 2, elder: 3 }, criminal: { criminal: 6, guard: -5 }, acolyte: { priest: 8 }, folk: { common: 6, elder: -2 }, noble: { elder: 6, merchant: 3, common: -3 },
+  hermit: { priest: 3, common: -2 }, sailor: { fisher: 8 }, outlander: { common: -3 }, entertainer: { merchant: 3, common: 3 }, artisan: { merchant: 6 } };
+const BG_ATT_TXT = { soldier: "стража уважает", sage: "старшины и жрецы прислушиваются", criminal: "своих узнают, стража косится", acolyte: "жрецы доверяют", folk: "простой люд любит", noble: "знать и купцы приветливы, простые — холодны",
+  hermit: "жрецы уважают, люди сторонятся", sailor: "рыбаки и моряки за своего", outlander: "чужака встречают настороженно", entertainer: "в тавернах и на рынке рады", artisan: "купцы и мастера ценят" };
+/* ---------- черты характера ---------- */
+const TRAITS = [
+  { k: "sl1", l: "Честный", r: "Хитрый", lo: { skills: { persuasion: 1 }, txt: "Убеждение +1" }, hi: { skills: { deception: 1 }, txt: "Обман +1" } },
+  { k: "sl2", l: "Осторожный", r: "Безрассудный", lo: { skills: { perception: 1 }, txt: "Внимательность +1" }, hi: { init: 2, skills: { stealth: -1 }, txt: "Инициатива +2, Скрытность −1" } },
+  { k: "sl3", l: "Добрый", r: "Жестокий", lo: { att: { common: 4 }, skills: { intimidation: -1 }, txt: "простые люди теплее, Запугивание −1" }, hi: { att: { common: -5, criminal: 3 }, skills: { intimidation: 2 }, txt: "Запугивание +2, простые люди холоднее" } },
+  { k: "sl4", l: "Набожный", r: "Скептик", lo: { att: { priest: 8 }, skills: { religion: 1 }, txt: "Религия +1, жрецы доверяют" }, hi: { att: { priest: -4 }, skills: { investigation: 1 }, txt: "Анализ +1, жрецы косятся" } },
+  { k: "sl5", l: "Общительный", r: "Замкнутый", lo: { att: { merchant: 2, common: 2 }, skills: { performance: 1 }, txt: "Выступление +1, люди охотнее говорят" }, hi: { att: { common: -2 }, skills: { stealth: 1, insight: 1 }, txt: "Скрытность и Проницательность +1, сторонятся" } },
+  { k: "sl6", l: "Щедрый", r: "Скупой", lo: { rep: 5, haggle: -2, txt: "репутация +5, торговаться труднее (−2)" }, hi: { rep: -3, haggle: 2, txt: "торг +2, репутация −3" } },
+  { k: "sl7", l: "Законопослушный", r: "Бунтарь", lo: { att: { guard: 8, elder: 5, criminal: -5 }, txt: "стража и старшины уважают" }, hi: { att: { criminal: 6, guard: -6 }, skills: { sleight: 1 }, txt: "Ловкость рук +1, стража следит" } }
+];
+function traitFx(src) {
+  const fx = { skills: {}, att: {}, init: 0, rep: 0, haggle: 0, notes: [] };
+  TRAITS.forEach(t => { const v = src?.[t.k] ?? 50; const e = v <= 30 ? t.lo : v >= 70 ? t.hi : null; if (!e) return; fx.notes.push({ name: v <= 30 ? t.l : t.r, txt: e.txt });
+    Object.entries(e.skills || {}).forEach(([k, d]) => fx.skills[k] = (fx.skills[k] || 0) + d); Object.entries(e.att || {}).forEach(([k, d]) => fx.att[k] = (fx.att[k] || 0) + d);
+    fx.init += e.init || 0; fx.rep += e.rep || 0; fx.haggle += e.haggle || 0; });
+  return fx;
+}
+function traitWords(src) { const w = TRAITS.map(t => { const v = src?.[t.k] ?? 50; return v <= 30 ? t.l.toLowerCase() : v >= 70 ? t.r.toLowerCase() : null; }).filter(Boolean); return w.length ? w.join(", ") : "уравновешенный, себе на уме"; }
+function npcGroup(n) { const r = (n?.role || "").toLowerCase();
+  if (/страж|сержант|капитан|десятник|дозор/.test(r)) return "guard"; if (/старост|старейш|бургомистр|судья|лорд|граф|барон|голова/.test(r)) return "elder";
+  if (/жри|свящ|монах|сестра|настоятел|послуш|проповед/.test(r)) return "priest"; if (/контрабанд|вор|бандит|наёмник|пират|разбойн|скупщик|главар|культист/.test(r)) return "criminal";
+  if (/рыбак|рыбач|лодочник|моряк|матрос/.test(r)) return "fisher"; if (/купец|торгов|лавоч|кузнец|пекар|мясник|аптекар|старьёвщ|свечник|хозя|трактир|корчмар|мастер/.test(r)) return "merchant"; return "common"; }
+function baseAttitude(id, c) {
+  c = c || (S && S.char); const n = NPCS[id]; if (!c || !n) return 0; const g = npcGroup(n); const fx = traitFx(c.traits || { sl1: c.sl1, sl2: c.sl2 });
+  const bg = BG_ATT[c.bg] || {}; let v = (RACE_ATT[c.race] || 0) * (g === "criminal" ? .5 : 1) + (bg[g] || 0) + (fx.att[g] || 0) + (g === "fisher" ? (bg.common || 0) + (fx.att.common || 0) : 0);
+  return clamp(Math.round(v), -25, 25);
+}
+function ensureNpcState(id) { if (!S || !NPCS[id]) return null; return S.world.npcs[id] || (S.world.npcs[id] = { att: baseAttitude(id), mem: [] }); }
+/* ---------- ресурсы классов ---------- */
+function resMax(c) { const ch = mod(c.scores.cha); return { rage: c.cls === "barbarian" ? (c.level >= 3 ? 3 : 2) : 0, lay: c.cls === "paladin" ? 5 * c.level : 0, insp: c.cls === "bard" ? Math.max(1, ch) : 0, breath: RACES[c.race]?.breath ? 1 : 0, relentless: RACES[c.race]?.relentless ? 1 : 0 }; }
+function resOf(c) { if (!c.res) c.res = resMax(c); return c.res; }
+function restoreRes(c, kind) { const m = resMax(c); const r = resOf(c); if (kind === "long") Object.assign(r, m); r.breath = m.breath; if (kind === "short" && c.cls === "bard" && c.level >= 5) r.insp = m.insp;
+  if (c.cls === "warlock") Object.values(c.slots).forEach(s => s[1] = s[0]); c.rage = false; }
+function useInsp(c) { if (!c.insp) return null; const d = rollDice(c.insp); c.insp = null; return d; }
+/* ---------- оружие: типы, вариации, качество, материалы ---------- */
+const WT = {
+  club: { n: "Дубинка", g: "f", dice: "1d4", dt: "дробящий", props: ["light"], cat: "simple", p: 1, ico: "club" },
+  dagger: { n: "Кинжал", g: "m", dice: "1d4", dt: "колющий", props: ["finesse", "light", "thrown"], cat: "simple", p: 20, ico: "dagger" },
+  greatclub: { n: "Палица", g: "f", dice: "1d8", dt: "дробящий", props: ["two"], cat: "simple", p: 2, ico: "greatclub" },
+  handaxe: { n: "Ручной топор", g: "m", dice: "1d6", dt: "рубящий", props: ["light", "thrown"], cat: "simple", p: 50, ico: "handaxe" },
+  javelin: { n: "Метательное копьё", g: "n", dice: "1d6", dt: "колющий", props: ["thrown"], cat: "simple", p: 5, ico: "javelin" },
+  lhammer: { n: "Лёгкий молот", g: "m", dice: "1d4", dt: "дробящий", props: ["light", "thrown"], cat: "simple", p: 20, ico: "lhammer" },
+  mace: { n: "Булава", g: "f", dice: "1d6", dt: "дробящий", props: [], cat: "simple", p: 50, ico: "mace" },
+  staff: { n: "Боевой посох", g: "m", dice: "1d6", dt: "дробящий", props: ["versatile"], cat: "simple", p: 2, ico: "staff" },
+  sickle: { n: "Серп", g: "m", dice: "1d4", dt: "рубящий", props: ["light"], cat: "simple", p: 10, ico: "sickle" },
+  spear: { n: "Копьё", g: "n", dice: "1d6", dt: "колющий", props: ["thrown", "versatile"], cat: "simple", p: 10, ico: "spear" },
+  lcrossbow: { n: "Лёгкий арбалет", g: "m", dice: "1d8", dt: "колющий", props: ["ranged", "two"], cat: "simple", p: 250, ico: "lcrossbow" },
+  sling: { n: "Праща", g: "f", dice: "1d4", dt: "дробящий", props: ["ranged"], cat: "simple", p: 1, ico: "sling" },
+  shortbow: { n: "Короткий лук", g: "m", dice: "1d6", dt: "колющий", props: ["ranged", "two"], cat: "simple", p: 250, ico: "shortbow" },
+  battleaxe: { n: "Боевой топор", g: "m", dice: "1d8", dt: "рубящий", props: ["versatile"], cat: "martial", p: 100, ico: "battleaxe" },
+  flail: { n: "Цеп", g: "m", dice: "1d8", dt: "дробящий", props: [], cat: "martial", p: 100, ico: "flail" },
+  glaive: { n: "Глефа", g: "f", dice: "1d10", dt: "рубящий", props: ["heavy", "reach", "two"], cat: "martial", p: 200, ico: "glaive" },
+  greataxe: { n: "Секира", g: "f", dice: "1d12", dt: "рубящий", props: ["heavy", "two"], cat: "martial", p: 300, ico: "greataxe" },
+  greatsword: { n: "Двуручный меч", g: "m", dice: "2d6", dt: "рубящий", props: ["heavy", "two"], cat: "martial", p: 500, ico: "greatsword" },
+  halberd: { n: "Алебарда", g: "f", dice: "1d10", dt: "рубящий", props: ["heavy", "reach", "two"], cat: "martial", p: 200, ico: "halberd" },
+  longsword: { n: "Длинный меч", g: "m", dice: "1d8", dt: "рубящий", props: ["versatile"], cat: "martial", p: 150, ico: "longsword" },
+  maul: { n: "Кувалда", g: "f", dice: "2d6", dt: "дробящий", props: ["heavy", "two"], cat: "martial", p: 100, ico: "maul" },
+  morningstar: { n: "Моргенштерн", g: "m", dice: "1d8", dt: "колющий", props: [], cat: "martial", p: 150, ico: "morningstar" },
+  rapier: { n: "Рапира", g: "f", dice: "1d8", dt: "колющий", props: ["finesse"], cat: "martial", p: 250, ico: "rapier" },
+  scimitar: { n: "Скимитар", g: "m", dice: "1d6", dt: "рубящий", props: ["finesse", "light"], cat: "martial", p: 250, ico: "scimitar" },
+  shortsword: { n: "Короткий меч", g: "m", dice: "1d6", dt: "колющий", props: ["finesse", "light"], cat: "martial", p: 100, ico: "shortsword" },
+  trident: { n: "Трезубец", g: "m", dice: "1d6", dt: "колющий", props: ["thrown", "versatile"], cat: "martial", p: 50, ico: "trident" },
+  warpick: { n: "Боевая кирка", g: "f", dice: "1d8", dt: "колющий", props: [], cat: "martial", p: 50, ico: "warpick" },
+  warhammer: { n: "Боевой молот", g: "m", dice: "1d8", dt: "дробящий", props: ["versatile"], cat: "martial", p: 150, ico: "warhammer" },
+  whip: { n: "Кнут", g: "m", dice: "1d4", dt: "рубящий", props: ["finesse", "reach"], cat: "martial", p: 20, ico: "whip" },
+  scythe: { n: "Боевая коса", g: "f", dice: "1d10", dt: "рубящий", props: ["heavy", "two", "reach"], cat: "martial", p: 150, ico: "scythe" },
+  longbow: { n: "Длинный лук", g: "m", dice: "1d8", dt: "колющий", props: ["ranged", "two", "heavy"], cat: "martial", p: 500, ico: "longbow" },
+  hcrossbow: { n: "Тяжёлый арбалет", g: "m", dice: "1d10", dt: "колющий", props: ["ranged", "two", "heavy"], cat: "martial", p: 500, ico: "lcrossbow" }
+};
+const WV = {
+  scythe: [{ n: "Боевая коса", d: "Полотно выправлено и насажено торчком, как у ополченцев" }, { n: "Крестьянская коса", d: "Обычная коса для покоса: тяжёлая и неуклюжая", dice: "1d8", cat: "simple", props: ["two"], pm: .2 },
+    { n: "Коса жнеца", d: "Чёрное изогнутое полотно, от которого веет холодом", crit: 19, pm: 2.6, ico: "reaper" }, { n: "Серповидная коса", d: "Короткое древко и широкий изгиб — бьёт быстро", dice: "1d8", props: ["finesse", "two"], pm: 1.3 }],
+  longsword: [{ n: "Длинный меч", d: "Прямой обоюдоострый клинок" }, { n: "Полуторный меч", d: "Длинная рукоять: держать одной или двумя руками" }, { n: "Рыцарский меч", d: "Крестовина и герб на навершии", pm: 1.4 },
+    { n: "Катана", g: "f", d: "Изогнутый клинок с восточной заточкой", props: ["finesse", "versatile"], ico: "katana", pm: 2 }, { n: "Фальшион", d: "Клинок расширяется к острию, рубит тяжело", dmg: 1, hit: -1, ico: "cleaver" }],
+  greatsword: [{ n: "Двуручный меч", d: "Клинок в рост человека" }, { n: "Фламберг", d: "Волнистый клинок рвёт раны", crit: 19, hit: -1, pm: 2 }, { n: "Клеймор", d: "Северный меч с наклонёнными гардами", pm: 1.2 }],
+  dagger: [{ n: "Кинжал", d: "Обоюдоострый клинок в ладонь" }, { n: "Охотничий нож", d: "Широкое лезвие с кровостоком", dt: "рубящий", props: ["finesse", "light"], ico: "knife" },
+    { n: "Ритуальный кинжал", d: "Кривое лезвие, рукоять в резных знаках", crit: 19, pm: 2, ico: "ritual" }, { n: "Стилет", d: "Тонкий трёхгранный клинок пробивает кольчугу", hit: 1, props: ["finesse", "light"], pm: 1.5 }],
+  shortsword: [{ n: "Короткий меч", d: "Удобен в тесноте" }, { n: "Гладиус", d: "Широкий клинок с острым концом" }, { n: "Тесак", d: "Тяжёлый клинок абордажника", dt: "рубящий", props: ["light"], dmg: 1, ico: "cleaver" }],
+  scimitar: [{ n: "Скимитар", d: "Изогнутый лёгкий клинок" }, { n: "Сабля", g: "f", d: "Кавалерийский изгиб, быстрый удар", ico: "sabre" }, { n: "Ятаган", d: "Клинок с двойным изгибом" }],
+  handaxe: [{ n: "Ручной топор", d: "Лёгкий, можно метнуть" }, { n: "Плотницкий топор", d: "Рабочий инструмент, сгодится и в драке", cat: "simple", pm: .5 }, { n: "Метательный топорик", d: "Сбалансирован для броска", hit: 1, pm: 1.4 }],
+  battleaxe: [{ n: "Боевой топор", d: "Широкое лезвие на крепком топорище" }, { n: "Бородовидный топор", d: "Лезвие с длинной «бородой» цепляет щиты", ico: "bigaxe" }, { n: "Двусторонний топор", d: "Два лезвия — бьёт в обе стороны", dmg: 1, hit: -1, pm: 1.4 }],
+  greataxe: [{ n: "Секира", d: "Огромное лезвие на длинном топорище" }, { n: "Бердыш", g: "m", d: "Полумесяц на длинном древке", props: ["heavy", "two", "reach"], dice: "1d10", ico: "pike" }, { n: "Колун", g: "m", d: "Тяжёлый, как приговор", dmg: 1, hit: -1, pm: .8 }],
+  halberd: [{ n: "Алебарда", d: "Топор, крюк и наконечник на одном древке" }, { n: "Пика", d: "Длинное древко и узкий наконечник", dt: "колющий", ico: "spear" }],
+  glaive: [{ n: "Глефа", d: "Клинок на древке" }, { n: "Совня", d: "Изогнутый нож на длинном древке" }],
+  spear: [{ n: "Копьё", d: "Наконечник на ясеневом древке" }, { n: "Рогатина", g: "f", d: "Широкий наконечник с перекладиной — для медведя", dmg: 1, props: ["versatile"] }, { n: "Острога", g: "f", d: "Рыбацкий наконечник с зубцами", ico: "trident" }],
+  mace: [{ n: "Булава", d: "Тяжёлый оголовок на рукояти" }, { n: "Шестопёр", g: "m", d: "Шесть рёбер-перьев сминают шлемы", hit: 1, pm: 1.5 }, { n: "Пернач", g: "m", d: "Знак власти и оружие" }],
+  morningstar: [{ n: "Моргенштерн", d: "Шипастый шар на рукояти" }, { n: "Шипастая дубина", g: "f", d: "Гвозди в дубовой колоде", cat: "simple", pm: .2, ico: "club" }],
+  warhammer: [{ n: "Боевой молот", d: "Бойком сминает, обухом пробивает" }, { n: "Клевец", d: "Острый клюв пробивает латы", dt: "колющий", ico: "warpick" }],
+  maul: [{ n: "Кувалда", d: "Двуручный молот" }, { n: "Двуручный молот", g: "m", d: "Окованный железом боёк" }],
+  staff: [{ n: "Боевой посох", d: "Окованный железом" }, { n: "Посох странника", d: "Отполирован ладонями за долгие дороги" }, { n: "Посох мага", d: "Навершие с тусклым камнем", ico: "wstaff" }],
+  sickle: [{ n: "Серп", d: "Лёгкий изогнутый клинок" }, { n: "Серп друида", d: "Лунный изгиб, рукоять из омелы", pm: 3, hit: 1 }],
+  club: [{ n: "Дубинка", d: "Крепкая палка" }, { n: "Палка с гвоздями", g: "f", d: "Злое изобретение трактирных драк", dmg: 1, hit: -1 }],
+  shortbow: [{ n: "Короткий лук", d: "Простой лук" }, { n: "Охотничий лук", d: "Лёгкий, для дичи", pm: .8 }, { n: "Степной лук", d: "Составной, клееный из рога", hit: 1, pm: 2 }],
+  longbow: [{ n: "Длинный лук", d: "В рост человека" }, { n: "Тисовый лук", d: "Из цельного тиса, бьёт далеко", dmg: 1, pm: 1.5 }],
+  lcrossbow: [{ n: "Лёгкий арбалет", d: "Взводится рукой" }, { n: "Охотничий арбалет", d: "Короткие тяжёлые болты" }],
+  flail: [{ n: "Цеп", d: "Шар на цепи" }, { n: "Боевой цеп", d: "Два шипастых шара", dmg: 1, hit: -1, pm: 1.3 }],
+  trident: [{ n: "Трезубец", d: "Три зубца на древке" }], warpick: [{ n: "Боевая кирка", d: "Узкий клюв на рукояти" }], whip: [{ n: "Кнут", d: "Длинный, со свинцовым концом" }, { n: "Плеть", g: "f", d: "Узлы на ремнях" }],
+  javelin: [{ n: "Метательное копьё", d: "Лёгкий дротик" }, { n: "Сулица", g: "f", d: "Короткое метательное копьё" }], lhammer: [{ n: "Лёгкий молот", d: "Молоток кузнеца" }], greatclub: [{ n: "Палица", d: "Окованная железом" }],
+  sling: [{ n: "Праща", d: "Ремень и мешочек камней" }], hcrossbow: [{ n: "Тяжёлый арбалет", d: "Взводится воротом, пробивает щит" }]
+};
+const QUAL = [{ k: "rusty", w: 12, a: ["Ржавый", "Ржавая", "Ржавое"], hit: -1, pm: .35, col: "#a68a68", tag: "ржавое" }, { k: "common", w: 58, a: null, pm: 1, col: "#d8ccb0", tag: "обычное" },
+  { k: "fine", w: 21, a: ["Добротный", "Добротная", "Добротное"], hit: 1, pm: 2.2, col: "#7cc79c", tag: "добротное" }, { k: "master", w: 7, a: ["Мастерский", "Мастерская", "Мастерское"], hit: 1, dmg: 1, pm: 5, col: "#72aed0", tag: "мастерское" },
+  { k: "rare", w: 2, a: null, pm: 7, col: "#c59af0", tag: "редкое" }];
+const MATS = [{ k: "silver", a: ["Серебрёный", "Серебрёная", "Серебрёное"], vs: { undead: "1d6" }, d: "посеребрённое лезвие жжёт нежить", col: "#cfdbe3" },
+  { k: "black", sfx: "из чёрной стали", dmg: 1, crit: 19, d: "чёрная сталь не тупится", col: "#c59af0" }, { k: "holy", a: ["Освящённый", "Освящённая", "Освящённое"], vs: { undead: "1d4" }, hit: 1, d: "на клинке молитва, нежить его боится", col: "#e6d08a" },
+  { k: "runic", a: ["Рунический", "Руническая", "Руническое"], hit: 1, dmg: 1, d: "руны светятся в темноте", col: "#9fd8ff" }];
+const GI = { m: 0, f: 1, n: 2 };
+const UNDEAD = new Set(["zombie", "skeleton"]); const BEASTS = new Set(["wolf", "giant_rat", "giant_spider"]); const HUMANOIDS = new Set(["bandit", "cultist", "thug", "goblin"]);
+const lc1 = s => s ? s[0].toLowerCase() + s.slice(1) : s;
+function rollWeighted(R, arr) { const tot = arr.reduce((a, x) => a + x.w, 0); let r = R() * tot; for (const x of arr) { if ((r -= x.w) < 0) return x; } return arr[0]; }
+function makeWeapon(type, R, o = {}) {
+  const T = WT[type]; const vars = WV[type] || [{ n: T.n }]; const v = o.variant != null ? vars[o.variant % vars.length] : vars[Math.floor(R() * vars.length)];
+  const q = o.tier ? QUAL.find(x => x.k === o.tier) : rollWeighted(R, QUAL); const mat = q.k === "rare" || o.mat ? (MATS.find(m => m.k === o.mat) || MATS[Math.floor(R() * MATS.length)]) : null;
+  const g = v.g || T.g; const gi = GI[g] ?? 0; let name = v.n;
+  if (mat?.a) name = mat.a[gi] + " " + lc1(name); if (q.a) name = q.a[gi] + " " + lc1(name); if (mat?.sfx) name += " " + mat.sfx;
+  const def = { k: "w" + (hash(type + name + R()) % 1e9).toString(36), type, name, g, look: [v.d, mat?.d].filter(Boolean).join("; "), dice: v.dice || T.dice, dt: v.dt || T.dt, props: v.props || T.props, cat: v.cat || T.cat,
+    hit: (v.hit || 0) + (q.hit || 0) + (mat?.hit || 0), dmg: (v.dmg || 0) + (q.dmg || 0) + (mat?.dmg || 0), crit: Math.min(v.crit || 20, mat?.crit || 20), vs: mat?.vs || null,
+    p: Math.max(1, Math.round(T.p * (v.pm || 1) * q.pm * (mat ? 1.6 : 1))), ico: v.ico || T.ico, col: mat?.col || q.col, tier: mat ? "rare" : q.k, tag: mat ? "редкое" : q.tag };
+  return def;
+}
+function wDef(wid) { const w = WEAPONS[wid]; if (!w) return null; if (w.type) return w; const t = WT[wid]; return t ? { ...w, type: wid, ico: t.ico, dt: t.dt, props: t.props, cat: t.cat, col: "#d8ccb0", tier: "common", tag: "обычное", hit: 0, dmg: 0, crit: 20, look: "" } : { ...w, type: wid, ico: "longsword", col: "#d8ccb0", props: [], cat: "simple", hit: 0, dmg: 0, crit: 20 }; }
+function registerWeapon(def) { WEAPONS[def.k] = { ...def, abil: def.props.includes("finesse") ? "finesse" : def.props.includes("ranged") ? "dex" : "str", ranged: def.props.includes("ranged") }; return def.k; }
+function registerWeapons(c) { Object.values(c?.wdefs || {}).forEach(registerWeapon); }
+function giveWeapon(c, def) { c.wdefs = c.wdefs || {}; c.wdefs[def.k] = def; registerWeapon(def); if (!c.weapons.includes(def.k)) c.weapons.push(def.k); c.items.push({ name: def.name, wk: def.k, desc: def.look }); }
+const PROP_RU = { finesse: "фехтовальное", light: "лёгкое", heavy: "тяжёлое", two: "двуручное", reach: "длинное", thrown: "метательное", versatile: "универсальное", ranged: "дальнобойное" };
+const WP_MART = { rogue: ["rapier", "longsword", "shortsword", "scimitar"], bard: ["rapier", "longsword", "shortsword", "scimitar"], druid: [], wizard: [], warlock: [], cleric: [] };
+const WP_ONLY = { druid: ["club", "dagger", "javelin", "mace", "staff", "scimitar", "sickle", "sling", "spear"], wizard: ["dagger", "staff", "lcrossbow", "sling"] };
+function weaponProf(c, wid) { const d = typeof wid === "object" ? wid : wDef(wid); if (!d) return true; if (WP_ONLY[c.cls]) return WP_ONLY[c.cls].includes(d.type); if (["fighter", "barbarian", "paladin", "ranger"].includes(c.cls)) return true; return d.cat === "simple" || (WP_MART[c.cls] || []).includes(d.type); }
+function weaponDice(c, d) { if (d.props.includes("versatile") && !gearOf(c).shield && !d.props.includes("two")) { const m = String(d.dice).match(/^(\d+)d(\d+)$/); if (m) { const up = { 4: 6, 6: 8, 8: 10, 10: 12 }[m[2]]; if (up) return `${m[1]}d${up}`; } } return d.dice; }
+function weaponLine(c, wid) { const d = wDef(wid); const a = weaponAtk(wid); return `${fmt(a.bonus)} · ${weaponDice(c, d)}${a.dmgMod ? fmt(a.dmgMod) : ""} ${d.dt || ""}`.trim(); }
+function weaponTile(d, size = 40) { return `<span class="w-tile t-${d.tier || "common"}" style="--wc:${d.col || "#d8ccb0"}">${ico(d.ico || "longsword", Math.round(size * .66))}</span>`; }
+function weaponCardHTML(d, c, extra = "") {
+  const prof = c ? weaponProf(c, d.k || d.type) : true; const chips = [d.dt, ...(d.props || []).map(p => PROP_RU[p])].filter(Boolean);
+  const mods = [d.hit ? `попадание ${fmt(d.hit)}` : "", d.dmg ? `урон ${fmt(d.dmg)}` : "", d.crit && d.crit < 20 ? `крит ${d.crit}–20` : "", d.vs?.undead ? `+${d.vs.undead} по нежити` : ""].filter(Boolean);
+  return `<div class="w-card t-${d.tier || "common"}" style="--wc:${d.col || "#d8ccb0"}">${weaponTile(d, 46)}<div class="w-body"><div class="w-head"><b>${esc(d.name)}</b><span class="w-dice">${esc(d.dice)}</span></div>
+    <small class="w-look">${esc(d.look || "")}</small><div class="w-chips">${d.tag && d.tag !== "обычное" ? `<span class="w-tier">${d.tag}</span>` : ""}${chips.map(x => `<span>${esc(x)}</span>`).join("")}${mods.map(x => `<span class="w-mod">${esc(x)}</span>`).join("")}${!prof ? `<span class="w-warn">нет владения</span>` : ""}</div>${extra}</div></div>`;
+}
+/* ---------- стартовые наборы снаряжения ---------- */
+const KITS = {
+  fighter: [{ n: "Меч и щит", w: ["longsword", "lcrossbow"], armor: "chainmail", shield: true, d: "Надёжная классика: защита и удар" }, { n: "Двуручник", w: ["greatsword", "javelin"], armor: "chainmail", d: "Максимальный урон, без щита" }, { n: "Древковое", w: ["halberd", "handaxe"], armor: "chainmail", d: "Длинное оружие держит врага на расстоянии" }],
+  barbarian: [{ n: "Секира", w: ["greataxe", "javelin"], d: "Самый тяжёлый удар в игре" }, { n: "Топор и топорики", w: ["battleaxe", "handaxe"], d: "Удар и бросок" }, { n: "Боевая коса", w: ["scythe", "javelin"], d: "Длинный размашистый удар" }],
+  paladin: [{ n: "Меч и щит", w: ["longsword", "javelin"], armor: "chainmail", shield: true, d: "Рыцарский канон" }, { n: "Моргенштерн и щит", w: ["morningstar", "javelin"], armor: "chainmail", shield: true, d: "Колющий шар против брони" }, { n: "Двуручный меч", w: ["greatsword"], armor: "chainmail", d: "Кара двумя руками" }],
+  ranger: [{ n: "Длинный лук и меч", w: ["longbow", "shortsword"], armor: "leather", d: "Стреляет издалека, добивает вблизи" }, { n: "Короткий лук и копьё", w: ["shortbow", "spear"], armor: "leather", d: "Лёгкий охотник" }, { n: "Арбалет и сабля", w: ["hcrossbow", "scimitar"], armor: "leather", d: "Тяжёлый болт и быстрый клинок" }],
+  rogue: [{ n: "Рапира и лук", w: ["rapier", "shortbow"], armor: "leather", d: "Укол и выстрел из тени" }, { n: "Клинки", w: ["dagger", "shortsword"], armor: "leather", d: "Два лёгких клинка" }, { n: "Кнут и арбалет", w: ["whip", "lcrossbow"], armor: "leather", d: "Держит дистанцию" }],
+  bard: [{ n: "Рапира", w: ["rapier", "dagger"], armor: "leather", d: "Изящно и смертельно" }, { n: "Длинный меч", w: ["longsword", "dagger"], armor: "leather", d: "Для тех, кто поёт о битвах" }, { n: "Праща и кинжал", w: ["sling", "dagger"], armor: "leather", d: "Песня важнее стали" }],
+  cleric: [{ n: "Булава и щит", w: ["mace", "lcrossbow"], armor: "scale", shield: true, d: "Оружие веры" }, { n: "Копьё и щит", w: ["spear", "sling"], armor: "scale", shield: true, d: "Строй и молитва" }, { n: "Посох паломника", w: ["staff", "sling"], armor: "scale", d: "Двумя руками бьёт сильнее" }],
+  druid: [{ n: "Посох", w: ["staff", "sling"], armor: "leather", shield: true, d: "Дерево, камень и праща" }, { n: "Серп и щит", w: ["sickle", "javelin"], armor: "leather", shield: true, d: "Серп для омелы и для врага" }, { n: "Скимитар", w: ["scimitar", "sling"], armor: "leather", shield: true, d: "Быстрый изогнутый клинок" }],
+  warlock: [{ n: "Кинжал и арбалет", w: ["dagger", "lcrossbow"], armor: "leather", d: "Сила — в заряде, сталь — на всякий случай" }, { n: "Посох", w: ["staff", "dagger"], armor: "leather", d: "Опора и фокус" }, { n: "Серп", w: ["sickle", "dagger"], armor: "leather", d: "Изогнутая сталь договора" }],
+  wizard: [{ n: "Посох мага", w: ["staff"], v: [2], d: "Фокус и опора" }, { n: "Кинжалы", w: ["dagger", "dagger"], d: "Лёгкие, можно метнуть" }, { n: "Арбалет", w: ["lcrossbow", "dagger"], d: "Выстрел, когда кончились ячейки" }]
+};
+function kitWeapons(cls, ki, seed) { const K = KITS[cls][ki]; const R = mulberry(seed >>> 0); return K.w.map((t, i) => makeWeapon(t, R, { tier: R() < .12 ? "fine" : "common", variant: K.v?.[i] ?? Math.floor(R() * (WV[t] || [1]).length) })); }
+
+/* TRADE */
+/* =========================================================================
+   ТОРГОВЛЯ: предметы, торговцы, цены, торг, сделка
+   Деньги: 1 зм = 10 см. Цены в базе — в серебре (см).
+   ========================================================================= */
+Object.assign(WEAPONS, {
+  dagger: { name: "Кинжал", dice: "1d4", abil: "finesse" }, handaxe: { name: "Ручной топор", dice: "1d6", abil: "str" }, spear: { name: "Копьё", dice: "1d6", abil: "str" },
+  shortsword: { name: "Короткий меч", dice: "1d6", abil: "finesse" }, warhammer: { name: "Боевой молот", dice: "1d8", abil: "str" }, battleaxe: { name: "Боевой топор", dice: "1d8", abil: "str" },
+  lcrossbow: { name: "Лёгкий арбалет", dice: "1d8", abil: "dex", ranged: true }
+});
+const SIMPLE_W = new Set(["staff", "mace", "dagger", "handaxe", "spear", "lcrossbow"]);
+const APROF = { fighter: ["light", "medium", "heavy", "shield"], cleric: ["light", "medium", "shield"], rogue: ["light"], wizard: [], barbarian: ["light", "medium", "shield"], paladin: ["light", "medium", "heavy", "shield"], ranger: ["light", "medium", "shield"], bard: ["light"], warlock: ["light"], druid: ["light", "medium", "shield"] };
+const ITEMS = {
+  dagger: { n: "Кинжал", cat: "weapon", p: 20, w: "dagger", d: "1d4 · фехтовальное, простое" }, handaxe: { n: "Ручной топор", cat: "weapon", p: 50, w: "handaxe", d: "1d6 · простое" },
+  spear: { n: "Копьё", cat: "weapon", p: 10, w: "spear", d: "1d6 · простое" }, mace: { n: "Булава", cat: "weapon", p: 50, w: "mace", d: "1d6 · простое" }, staff: { n: "Боевой посох", cat: "weapon", p: 2, w: "staff", d: "1d6 · простое" },
+  lcrossbow: { n: "Лёгкий арбалет", cat: "weapon", p: 250, w: "lcrossbow", d: "1d8 · дальнобойное, простое" }, shortsword: { n: "Короткий меч", cat: "weapon", p: 100, w: "shortsword", d: "1d6 · фехтовальное, воинское" },
+  rapier: { n: "Рапира", cat: "weapon", p: 250, w: "rapier", d: "1d8 · фехтовальное, воинское" }, longsword: { n: "Длинный меч", cat: "weapon", p: 150, w: "longsword", d: "1d8 · воинское" },
+  warhammer: { n: "Боевой молот", cat: "weapon", p: 150, w: "warhammer", d: "1d8 · воинское" }, battleaxe: { n: "Боевой топор", cat: "weapon", p: 100, w: "battleaxe", d: "1d8 · воинское" },
+  shortbow: { n: "Короткий лук", cat: "weapon", p: 250, w: "shortbow", d: "1d6 · дальнобойное, воинское", alias: ["Короткий лук и 20 стрел"] },
+  leather: { n: "Кожаный доспех", cat: "armor", p: 100, a: { base: 11, dex: 99, t: "light" }, d: "КД 11 + ЛОВ · лёгкий" }, studded: { n: "Клёпаная кожа", cat: "armor", p: 300, a: { base: 12, dex: 99, t: "light" }, d: "КД 12 + ЛОВ · лёгкий" },
+  chainshirt: { n: "Кольчужная рубаха", cat: "armor", p: 350, a: { base: 13, dex: 2, t: "medium" }, d: "КД 13 + ЛОВ (макс. 2) · средний" }, scale: { n: "Чешуйчатый доспех", cat: "armor", p: 450, a: { base: 14, dex: 2, t: "medium" }, d: "КД 14 + ЛОВ (макс. 2) · средний" },
+  chainmail: { n: "Кольчуга", cat: "armor", p: 600, a: { base: 16, dex: 0, t: "heavy" }, d: "КД 16 · тяжёлый" }, shield: { n: "Щит", cat: "armor", p: 100, a: { shield: true, t: "shield" }, d: "+2 к КД" },
+  potion: { n: "Зелье лечения", cat: "potion", p: 150, heal: "2d4+2", d: "Восстанавливает 2d4+2 HP" }, potion2: { n: "Сильное зелье лечения", cat: "potion", p: 400, heal: "4d4+4", d: "Восстанавливает 4d4+4 HP" },
+  antidote: { n: "Противоядие", cat: "potion", p: 50, heal: "1d4", d: "Снимает яд и боль, +1d4 HP" }, holywater: { n: "Святая вода", cat: "potion", p: 100, d: "Флакон: обжигает нежить и нечисть" },
+  healkit: { n: "Набор лекаря", cat: "gear", p: 50, heal: "1d6", d: "Перевязка: +1d6 HP, одно применение" }, torch: { n: "Факел", cat: "gear", p: 1, d: "Свет на час" },
+  rope: { n: "Верёвка, 15 м", cat: "gear", p: 10, d: "Пеньковая, крепкая" }, lantern: { n: "Фонарь", cat: "gear", p: 50, d: "Яркий свет, не гаснет на ветру" }, oil: { n: "Фляга масла", cat: "gear", p: 1, d: "Для фонаря или поджога" },
+  thieves: { n: "Воровские инструменты", cat: "gear", p: 120, tag: "lockpick", d: "Преимущество при взломе замков" }, crowbar: { n: "Лом", cat: "gear", p: 20, tag: "crowbar", d: "Преимущество, чтобы выбить дверь" },
+  bedroll: { n: "Спальник", cat: "gear", p: 10, d: "Тёплый, свёрнут в рулон" }, waterskin: { n: "Бурдюк", cat: "gear", p: 2, d: "Вода или что покрепче" }, flint: { n: "Огниво и трут", cat: "gear", p: 5, d: "Пригодится в темноте" },
+  candles: { n: "Свечи, связка", cat: "gear", p: 2, d: "Пять сальных свечей" }, incense: { n: "Ладан", cat: "gear", p: 5, d: "Для обрядов и дурного воздуха" },
+  map: { n: "Карта окрестностей", cat: "gear", p: 30, tag: "map", d: "Открывает места вокруг поселения на карте" }, spyglass: { n: "Подзорная труба", cat: "gear", p: 400, d: "Видно далеко и подробно" },
+  bread: { n: "Хлеб", cat: "food", p: 1, heal: "1", d: "Ещё тёплый" }, pie: { n: "Пирог с рыбой", cat: "food", p: 3, heal: "1d2", d: "Сытный, с луком" }, bun: { n: "Сладкая булка", cat: "food", p: 2, heal: "1", d: "С мёдом" },
+  rations: { n: "Дорожный паёк", cat: "food", p: 5, heal: "1d4", d: "Сухари, сыр, вяленое мясо" }, sausage: { n: "Кровяная колбаса", cat: "food", p: 4, heal: "1d2", d: "Жирная, с чесноком" },
+  smokedfish: { n: "Копчёная рыба", cat: "food", p: 3, heal: "1d2", d: "Пахнет дымом и солью" }, wine: { n: "Бутылка вина", cat: "food", p: 20, d: "Южное, терпкое" },
+  ring: { n: "Серебряное кольцо", cat: "valuable", p: 60, d: "Тонкая работа" }, medallion: { n: "Медальон с портретом", cat: "valuable", p: 40, d: "Внутри — чьё-то лицо" }, amber: { n: "Кусок янтаря", cat: "valuable", p: 50, d: "С мушкой внутри" },
+  pearl: { n: "Жемчужина", cat: "valuable", p: 100, d: "Ровная, с розовым отливом" }, silvercup: { n: "Серебряный кубок", cat: "valuable", p: 150, d: "С гравировкой" }, boneknife: { n: "Нож с костяной рукоятью", cat: "valuable", p: 15, d: "Острый, с вырезанным знаком" },
+  oldmap: { n: "Старая карта с пометкой", cat: "valuable", p: 20, d: "Крестик в неожиданном месте" }, herbsbundle: { n: "Свёрток с травами", cat: "valuable", p: 10, d: "Мята и полынь" }, liquor: { n: "Фляга крепкой настойки", cat: "food", p: 15, d: "Согревает и развязывает языки" },
+  room: { n: "Комната на ночь", cat: "service", p: 5, svc: "rest", d: "Ночлег и полный отдых" }, meal: { n: "Горячий ужин", cat: "service", p: 3, svc: "meal", d: "Похлёбка с хлебом: +1d4 HP" },
+  drink: { n: "Кружка эля на всех", cat: "service", p: 8, svc: "round", d: "Угостить зал: репутация и слухи" }, ale: { n: "Кружка эля", cat: "service", p: 1, svc: "ale", d: "Посидеть и послушать разговоры" },
+  heal: { n: "Исцеление ран", cat: "service", p: 50, svc: "healfull", d: "Молитва и перевязка: все HP" }, bless: { n: "Благословение", cat: "service", p: 20, svc: "bless", d: "Преимущество на следующую проверку" },
+  donate: { n: "Пожертвование", cat: "service", p: 50, svc: "donate", d: "На нужды храма: репутация растёт" }
+};
+const ITEM_BY_NAME = {}; Object.entries(ITEMS).forEach(([id, it]) => { [it.n, ...(it.alias || [])].forEach(n => ITEM_BY_NAME[n.toLowerCase()] = id); });
+Object.assign(ITEM_BY_NAME, { "кольчуга": "chainmail", "чешуйчатый доспех": "scale", "щит": "shield", "кожаный доспех": "leather", "огниво и трут": "flint" });
+const CAT_NAMES = { weapon: "Оружие", armor: "Доспехи", potion: "Зелья", gear: "Снаряжение", food: "Еда", valuable: "Ценности", service: "Услуги", misc: "Прочее" };
+const CAT_COL = { weapon: "#d0814f", armor: "#72aed0", potion: "#e8735a", gear: "#a1b4b1", food: "#e3c06a", valuable: "#c59af0", service: "#7cc79c", misc: "#9a8a70" };
+const CAT_ICON = { weapon: '<path d="M20 4 9.5 14.5M15 4h5v5"/><path d="M7 12.5l4.5 4.5M4 20l3.5-3.5"/>', armor: '<path d="M12 3 5 6v6c0 4.5 3 7.5 7 9 4-1.5 7-4.5 7-9V6z"/>', potion: '<path d="M10 3h4M10.5 3v5L5.4 16.8A3 3 0 0 0 8 21h8a3 3 0 0 0 2.6-4.2L13.5 8V3"/><path d="M7.5 14.5h9"/>',
+  gear: '<rect x="5" y="7" width="14" height="14" rx="3"/><path d="M9 7V5.5a3 3 0 0 1 6 0V7M5 13h14M10 13v3h4v-3"/>', food: '<path d="M4 12a8 5.5 0 0 1 16 0v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M8.5 11v3M12 10v4M15.5 11v3"/>',
+  valuable: '<path d="M6 4h12l3 5-9 11L3 9z"/><path d="M3 9h18M9.5 4 12 20l2.5-16"/>', service: '<path d="M12 3.5l2.5 5.3 5.8.7-4.3 4 1.1 5.7-5.1-2.8-5.1 2.8 1.1-5.7-4.3-4 5.8-.7z"/>', misc: '<path d="M7 4h11v13a3 3 0 0 1-3 3H6a2 2 0 0 1-2-2v-1h11"/><path d="M7 4a2 2 0 0 0-2 2v11"/>' };
+const COIN = '<svg class="coin" viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="#e0b85a" stroke="#8a6420"/><circle cx="8" cy="8" r="4" fill="none" stroke="#a87c2a" stroke-width="1"/></svg>';
+function catIcon(cat, size = 20) { return ico(CAT_ICO[cat] || "i_scroll", size); }
+/* кошелёк */
+function purse(c) { return (c.gold || 0) * 10 + (c.silver || 0); }
+function setPurse(c, sp) { sp = Math.max(0, Math.round(sp)); c.gold = Math.floor(sp / 10); c.silver = sp % 10; }
+function fmtMoney(sp) { sp = Math.round(sp); const g = Math.floor(Math.abs(sp) / 10), s = Math.abs(sp) % 10; return (sp < 0 ? "−" : "") + (g ? `${g} зм` : "") + (g && s ? " " : "") + (s || !g ? `${s} см` : ""); }
+/* предметы героя */
+function itemIdOf(it) { if (it.wk) return null; return it.id || ITEM_BY_NAME[String(it.name || "").toLowerCase()] || null; }
+function itemCat(it) { if (it.wk) return "weapon"; const id = itemIdOf(it); if (id) return ITEMS[id].cat; if (it.potion) return "potion"; return "misc"; }
+const ITEM_ICO = { leather: "i_leather", studded: "i_leather", chainshirt: "i_mail", scale: "i_mail", chainmail: "i_plate", shield: "i_shield", potion: "i_potion", potion2: "i_potion", antidote: "i_flask", holywater: "i_holy", healkit: "i_kit",
+  torch: "i_torch", rope: "i_rope", lantern: "i_lantern", oil: "i_flask", thieves: "i_lockpicks", crowbar: "warpick", bedroll: "i_bed", waterskin: "i_flask", flint: "i_torch", candles: "i_candles", incense: "i_incense", map: "i_scroll", spyglass: "i_spyglass",
+  bread: "i_bread", pie: "i_bread", bun: "i_bread", rations: "i_meat", sausage: "i_meat", smokedfish: "i_fish", wine: "i_ale", liquor: "i_ale", ring: "i_ring", medallion: "i_gem", amber: "i_gem", pearl: "i_gems", silvercup: "i_gems", boneknife: "knife",
+  oldmap: "i_scroll", herbsbundle: "i_incense", room: "i_bed", meal: "i_meat", drink: "i_ale", ale: "i_ale", heal: "i_holy", bless: "i_holy", donate: "i_coins" };
+const CAT_ICO = { weapon: "longsword", armor: "i_shield", potion: "i_potion", gear: "i_backpack", food: "i_bread", valuable: "i_gem", service: "i_bed", misc: "i_scroll" };
+function itemIco(it, size = 18) { if (it.wk) { const d = C().wdefs?.[it.wk] || wDef(it.wk); return ico(d?.ico || "longsword", size); } const id = itemIdOf(it); return ico(ITEM_ICO[id] || (id && ITEMS[id].w && WT[ITEMS[id].w]?.ico) || CAT_ICO[itemCat(it)], size); }
+function itemValue(it) {
+  if (it.wk) { const d = C().wdefs?.[it.wk]; return d ? d.p : 30; }
+  const id = itemIdOf(it); if (id) return ITEMS[id].p; const n = String(it.name || "").toLowerCase();
+  if (/письм|записк|ключ|улик|дневник|печать|приказ|список|книга заклинаний|священный символ|компонент/.test(n)) return 0;
+  if (/жемч|самоцвет|рубин|изумруд|сапфир|алмаз/.test(n)) return 120; if (/золот/.test(n)) return 100; if (/серебр/.test(n)) return 50; if (/кольц|серьг|браслет|медальон|амулет|брошь|подвеск/.test(n)) return 40;
+  if (/меч|топор|молот|арбалет|лук/.test(n)) return 60; if (/кинжал|нож/.test(n)) return 12; if (/свиток|карта/.test(n)) return 20; if (/зелье|эликсир/.test(n)) return 80; return 5;
+}
+function gearOf(c) {
+  if (!c.gear) { const def = { fighter: ["chainmail", true], cleric: ["scale", true], rogue: ["leather", false], wizard: [null, false], barbarian: [null, false], paladin: ["chainmail", true], ranger: ["leather", false], bard: ["leather", false], warlock: ["leather", false], druid: ["leather", true] }[c.cls] || [null, false]; c.gear = { armor: def[0], shield: def[1] }; }
+  return c.gear;
+}
+function acNow(c) { const g = gearOf(c); const dex = mod(c.scores.dex); const A = g.armor && ITEMS[g.armor]?.a; return (A ? A.base + Math.min(dex, A.dex) : 10 + dex + (c.cls === "barbarian" ? mod(c.scores.con) : 0)) + (g.shield ? 2 : 0); }
+function recalcAC(c) { c.ac = acNow(c); return c.ac; }
+function canWear(c, id) { const A = ITEMS[id]?.a; return !!A && (APROF[c.cls] || []).includes(A.t); }
+function hasTag(tag) { return C().items.some(it => { const id = itemIdOf(it); return id && ITEMS[id].tag === tag; }); }
+/* ---------- торговцы ---------- */
+const MERCH = {
+  smith: { title: "Кузница", buys: ["weapon", "armor"], rate: .5, gold: [60, 130], pick: 9, wgen: { n: 9, types: ["dagger", "handaxe", "spear", "mace", "shortsword", "longsword", "warhammer", "battleaxe", "greataxe", "greatsword", "halberd", "glaive", "scythe", "morningstar", "flail", "maul", "warpick", "scimitar", "rapier", "javelin", "sickle", "trident"] },
+    stock: [["shield", 2], ["leather", 1], ["studded", 1], ["chainshirt", 1], ["scale", 1], ["chainmail", 1], ["crowbar", 2]],
+    greet: ["Сталь добрая, без обмана. Что ищешь?", "Клинок, щит или что покрепче на плечи?", "Металл не врёт. Выбирай."] },
+  general: { title: "Лавка", buys: ["gear", "food", "valuable", "weapon"], rate: .4, gold: [30, 70], pick: 11, stock: [["torch", 6], ["rope", 2], ["lantern", 1], ["oil", 4], ["bedroll", 2], ["waterskin", 2], ["flint", 2], ["rations", 5], ["candles", 3], ["map", 1], ["potion", 1], ["healkit", 1], ["crowbar", 1], ["thieves", 1]], wgen: { n: 3, types: ["dagger", "club", "sling", "spear", "shortbow", "lcrossbow", "javelin", "sickle", "staff"] },
+    greet: ["Всё, что нужно в дорогу, — у меня.", "Смотри, трогай, только не ломай.", "Свежий товар, вчера привезли."] },
+  apothecary: { title: "Аптекарская лавка", buys: ["potion"], buyIds: ["herbsbundle"], rate: .45, gold: [40, 90], stock: [["potion", 3], ["potion2", 1], ["antidote", 2], ["healkit", 2], ["herbsbundle", 2], ["incense", 2]],
+    greet: ["От ран, от хвори, от дурного глаза. Чего желаете?", "Только не трогайте синие склянки."] },
+  bakery: { title: "Пекарня", buys: ["food"], rate: .4, gold: [10, 25], stock: [["bread", 8], ["pie", 4], ["bun", 5], ["rations", 2]], greet: ["Только из печи! Берите, пока тёплое.", "Хлеб, пироги, булки — всё сегодняшнее."] },
+  butcher: { title: "Лавка мясника", buys: ["food"], rate: .4, gold: [15, 30], stock: [["sausage", 5], ["smokedfish", 4], ["rations", 3]], greet: ["Мясо свежее, рыба копчёная. Сколько вешать?"] },
+  junk: { title: "Лавка старьёвщика", buys: ["weapon", "armor", "gear", "valuable", "misc", "food", "potion"], rate: .3, gold: [25, 60], pick: 8,
+    wgen: { n: 4, junk: true, types: Object.keys(WT) }, stock: [["leather", 1], ["shield", 1], ["lantern", 1], ["rope", 1], ["spyglass", 1], ["oldmap", 1], ["thieves", 1], ["medallion", 1], ["ring", 1], ["liquor", 1], ["amber", 1], ["map", 1], ["crowbar", 1], ["bedroll", 1]],
+    greet: ["Всё бывшее в деле, но крепкое. Почти всё.", "У меня есть то, чего нет ни у кого. И кое-что, чего лучше бы не было."] },
+  candles: { title: "Свечная лавка", buys: ["gear"], rate: .35, gold: [15, 35], stock: [["candles", 8], ["torch", 6], ["lantern", 2], ["oil", 5], ["incense", 3], ["holywater", 1]], greet: ["Свет нужен всем. Особенно ночью."] },
+  tavern: { title: "Таверна", buys: ["food"], rate: .35, gold: [30, 60], stock: [["ale", 99], ["drink", 99], ["meal", 99], ["room", 99], ["bread", 6], ["pie", 3], ["rations", 3], ["wine", 2]],
+    greet: ["Эль, похлёбка, лавка у огня — что угодно?", "Садись. Сначала монета, потом разговоры.", "Комната наверху свободна, если что."] },
+  merchant: { title: "Купеческий дом", buys: ["valuable", "weapon", "armor"], rate: .6, gold: [120, 220], wgen: { n: 2, fine: true, types: ["rapier", "longsword", "scimitar", "dagger", "shortbow"] }, stock: [["wine", 3], ["spyglass", 1], ["map", 1], ["potion", 1], ["ring", 1], ["amber", 1], ["silvercup", 1], ["pearl", 1]],
+    greet: ["Я покупаю редкое и продаю ценное. Удивите меня.", "Время — деньги. Чем могу быть полезен?"] },
+  temple: { title: "Храм", buys: [], rate: 0, gold: [20, 40], stock: [["heal", 99], ["bless", 99], ["donate", 99], ["holywater", 2], ["candles", 4], ["incense", 3], ["potion", 1]],
+    greet: ["Свет примет каждого, кто пришёл с миром.", "Пожертвование угодно богам, но помощь мы даём не за монету одну."] },
+  stall: { title: "Прилавок", buys: ["food", "gear", "valuable"], rate: .35, gold: [15, 35], pick: 6, stock: [["bread", 4], ["pie", 2], ["smokedfish", 3], ["torch", 4], ["rope", 1], ["candles", 2], ["bun", 3], ["waterskin", 1], ["rations", 2], ["flint", 1]],
+    greet: ["Подходи, не стесняйся!", "Дёшево отдам, только для тебя."] }
+};
+const SHOP_PROP = { oven: "bakery", junk: "junk", herbs: "apothecary", hook: "butcher", goods: "general", candles: "candles" };
+function merchantType(id) {
+  const n = NPCS[id]; if (!n) return null; const r = (n.role || "").toLowerCase();
+  if (n.bld) { const b = POIS[n.bld]; if (b?.bk === "shop") return SHOP_PROP[b.prop] || "general"; if (b?.bk === "smithy") return "smith"; if (b?.bk === "rich" && /купец|купчих/.test(r)) return "merchant"; }
+  if (/кузнец/.test(r)) return "smith"; if (/пекар/.test(r)) return "bakery"; if (/мясник/.test(r)) return "butcher"; if (/аптекар|травни|знахар/.test(r)) return "apothecary"; if (/старьёвщ/.test(r)) return "junk"; if (/свечник/.test(r)) return "candles";
+  if (/купец|купчих/.test(r)) return "merchant"; if (/лавочн|торговец|торговк|продав/.test(r)) return "general"; if (/хозя.{0,4}(таверн|трактир|постоял|корчм)|трактирщ|корчмар|кабатчик|харчевн/.test(r)) return "tavern";
+  if (/жри|свящ|монах|монахин|сестра|настоятел|проповедн/.test(r)) { const p = Object.values(POIS).find(pp => pp.npcs?.includes(id)); if (p && ["chapel", "shrine"].includes(tplOfPlace(p))) return "temple"; }
+  return null;
+}
+function merchantsHere() {
+  const loc = POIS[S.world.loc]; const out = []; const asleep = loc.inner && bldAsleep(S.world.loc);
+  if (!asleep) (loc.npcs || []).forEach(id => { const t = merchantType(id); if (!t) return; const n = NPCS[id]; const atHome = !n.bld || n.bld === S.world.loc || t === "tavern" || t === "temple"; if (atHome || t === "merchant") out.push({ key: n.bld && POIS[n.bld]?.bk !== "house" && POIS[n.bld]?.bk !== "poor" ? n.bld : id, type: t, npc: id, name: n.name, role: n.role }); });
+  const tpl = sceneTpl(S.world.loc); if (["square", "street"].includes(tpl) && worldTime().part < 3) { const hasStall = sceneOf(S.world.loc).objs.some(o => o.k === "stall"); if (hasStall || tpl === "street") out.push({ key: S.world.loc + ":stall", type: "stall", npc: null, name: tpl === "street" ? "Торговка вразнос" : "Торговка у прилавка", role: "уличная торговка" }); }
+  const seen = new Set(); return out.filter(m => !seen.has(m.key) && seen.add(m.key));
+}
+function shopState(m) {
+  S.shops = S.shops || {}; const day = worldTime().day; const cyc = Math.floor((day - 1) / 3); let st = S.shops[m.key];
+  if (!st || st.cyc !== cyc || st.type !== m.type) {
+    const M = MERCH[m.type]; const R = mulberry(hash(WD.id + m.key + ":" + cyc)); let list = M.stock.slice();
+    if (M.pick) { for (let i = list.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [list[i], list[j]] = [list[j], list[i]]; } list = list.slice(0, M.pick); }
+    const stock = list.map(([id, q]) => ({ k: id, id, q: q >= 99 ? 99 : Math.max(1, Math.round(q * (.6 + R() * .8))) }));
+    if (M.wgen) for (let i = 0; i < M.wgen.n; i++) { const t = M.wgen.types[Math.floor(R() * M.wgen.types.length)]; const tier = M.wgen.junk ? (R() < .55 ? "rusty" : R() < .9 ? "common" : "rare") : M.wgen.fine ? (R() < .6 ? "fine" : "master") : undefined; const def = makeWeapon(t, R, { tier }); stock.unshift({ k: def.k, inst: def, q: 1 }); }
+    st = { cyc, type: m.type, stock, gold: Math.round((M.gold[0] + R() * (M.gold[1] - M.gold[0])) * 10), hag: st?.hag || null, ok: st?.ok || null, deals: st?.deals || 0 };
+    S.shops[m.key] = st;
+  }
+  return st;
+}
+function priceFactor(m) { const rep = S.world.rep || 0; const att = m.npc ? (S.world.npcs[m.npc]?.att || 0) : 0; return clamp(1 - clamp(rep, -60, 60) / 250 - clamp(att, -60, 60) / 300, .75, 1.45); }
+function hagMult(st) { return st.hag && st.hag.day === worldTime().day ? st.hag.m : 1; }
+function wareOf(s) { if (s.inst) return { n: s.inst.name, cat: "weapon", p: s.inst.p, d: s.inst.look, inst: s.inst }; const it = ITEMS[s.id]; return { n: it.n, cat: it.cat, p: it.p, d: it.d, it }; }
+function stockByKey(st, k) { return st.stock.find(x => (x.k || x.id) === k); }
+function buyPrice(m, st, k) { const s = typeof k === "object" ? k : stockByKey(st, k); return s ? Math.max(1, Math.round(wareOf(s).p * priceFactor(m) * hagMult(st))) : 0; }
+function merchantBuys(m, it) { const M = MERCH[m.type]; const id = itemIdOf(it); const cat = itemCat(it); return M.rate > 0 && (M.buys.includes(cat) || (M.buyIds || []).includes(id)); }
+function sellPrice(m, st, it) { const v = itemValue(it); if (!v || !merchantBuys(m, it)) return 0; return Math.max(1, Math.round(v * MERCH[m.type].rate / priceFactor(m) * (2 - hagMult(st)))); }
+function refusesTrade(m) { if (!m.npc) return (S.world.rep || 0) <= -40; const att = S.world.npcs[m.npc]?.att || 0; const st = shopState(m); return (att <= -30 || (S.world.rep || 0) <= -40) && st.ok !== worldTime().day; }
+const GREET_HOSTILE = ["Говори быстро, что надо, и уходи.", "Деньги вперёд. И руки держи на виду.", "Тебе здесь не рады, но монета есть монета."];
+const GREET_FRIEND = ["А, это ты! Для тебя найдётся кое-что получше.", "Рад видеть! Для друга — особая цена.", "Заходи, заходи. Что сегодня?"];
+function greetFor(m) { const att = m.npc ? (S.world.npcs[m.npc]?.att || 0) : 0; const rep = S.world.rep || 0; const R = mulberry(hash(m.key + worldTime().day));
+  const list = att + rep / 2 <= -10 ? GREET_HOSTILE : att + rep / 2 >= 12 ? GREET_FRIEND : MERCH[m.type].greet; return list[Math.floor(R() * list.length)]; }
+/* ---------- окно торговли ---------- */
+let SHOP = null;
+function openShop(m) {
+  if (!S || busy) return; if (S.world.combat) { pushFeed({ t: "sys", html: "Во время боя не до торговли." }); return; }
+  shopState(m); SHOP = { m, buy: {}, sell: [], cat: "all", msg: "" }; sfx("open");
+  modal(`<div class="shop" id="shop"></div>`, root => { root.querySelector(".modal").classList.add("wide", "shop-modal"); renderShop(); });
+}
+function shopTotals() {
+  const { m } = SHOP; const st = shopState(m); const c = C();
+  const buy = Object.entries(SHOP.buy).reduce((a, [k, q]) => a + buyPrice(m, st, k) * q, 0); const sell = SHOP.sell.reduce((a, it) => a + sellPrice(m, st, it), 0);
+  return { buy, sell, bal: buy - sell, after: purse(c) - buy + sell, merchAfter: st.gold + buy - sell };
+}
+function renderShop() {
+  const box = document.getElementById("shop"); if (!box || !SHOP) return; const { m } = SHOP; const st = shopState(m); const c = C(); const M = MERCH[m.type]; const T = shopTotals();
+  const att = m.npc ? (S.world.npcs[m.npc]?.att || 0) : 0; const [al, ac] = attLabel(att); const pf = priceFactor(m) * hagMult(st); const pct = Math.round((pf - 1) * 100);
+  const refuse = refusesTrade(m);
+  const cats = ["all", ...new Set(st.stock.filter(s => s.q > 0).map(s => wareOf(s).cat))];
+  const wares = st.stock.filter(s => s.q > 0 && (SHOP.cat === "all" || wareOf(s).cat === SHOP.cat)).map(s => { const W = wareOf(s); const it = W.it || {}; const k = s.k || s.id; const inDeal = SHOP.buy[k] || 0; const left = s.q >= 99 ? 99 : s.q - inDeal; const price = buyPrice(m, st, s);
+    const note = W.inst && !weaponProf(c, W.inst) ? "нет владения" : it.a && !canWear(c, s.id) ? "нет владения" : it.a && !it.a.shield && ITEMS[gearOf(c).armor]?.a && (it.a.base + Math.min(mod(c.scores.dex), it.a.dex)) <= (acNow(c) - (gearOf(c).shield ? 2 : 0)) ? "не лучше вашего" : "";
+    const icon = W.inst ? `<span class="ware-ic w" style="--cc:${W.inst.col}">${ico(W.inst.ico, 26)}</span>` : `<span class="ware-ic">${ico(ITEM_ICO[s.id] || CAT_ICO[W.cat], 24)}</span>`;
+    const sub = W.inst ? `${W.inst.dice} ${W.inst.dt}${W.inst.hit ? " · попад. " + fmt(W.inst.hit) : ""}${W.inst.dmg ? " · урон " + fmt(W.inst.dmg) : ""}${W.inst.crit < 20 ? " · крит " + W.inst.crit + "+" : ""}${W.inst.vs ? " · +" + W.inst.vs.undead + " нежити" : ""}` : (W.d || "");
+    return `<button type="button" class="ware${inDeal ? " in" : ""}${W.inst ? " t-" + W.inst.tier : ""}" data-buy="${esc(k)}" ${left <= 0 || refuse ? "disabled" : ""} style="--cc:${W.inst ? W.inst.col : CAT_COL[W.cat]}" title="${esc(W.inst ? W.inst.look : W.d || "")}">${icon}<span class="ware-t"><b>${esc(W.n)}</b><small>${esc(sub)}</small>${note ? `<em>${note}</em>` : ""}</span><span class="ware-p"><span class="pr">${COIN}${fmtMoney(price)}</span><small>${s.q >= 99 ? "" : left > 1 ? "× " + left : left === 1 ? "" : "нет"}</small></span>${inDeal ? `<i class="ware-n">${inDeal}</i>` : ""}</button>`; }).join("") || `<p class="empty">Ничего из этого сейчас нет.</p>`;
+  const g = gearOf(c);
+  const inv = c.items.map((it, i) => { const sp = sellPrice(m, st, it); const sel = SHOP.sell.includes(it); const id = itemIdOf(it); const cat = itemCat(it);
+    const wkey = it.wk || (id && ITEMS[id].w); const worn = id && ((g.armor === id) || (id === "shield" && g.shield)) ? "надето" : wkey && c.weapons.includes(wkey) ? "оружие" : "";
+    const lastW = wkey && c.weapons.length <= 1 && c.weapons.includes(wkey); const wcol = it.wk ? c.wdefs?.[it.wk]?.col : null;
+    return `<button type="button" class="inv-row${sel ? " in" : ""}" data-sell="${i}" ${!sp || lastW || refuse ? "disabled" : ""} style="--cc:${wcol || CAT_COL[cat]}"><span class="ware-ic s">${itemIco(it, 16)}</span><span class="inv-t">${esc(it.name)}${worn ? `<small>${worn}</small>` : ""}</span><span class="inv-p">${lastW ? "последнее оружие" : sp ? `${COIN}${fmtMoney(sp)}` : "не интересует"}</span></button>`; }).join("") || `<p class="empty">Сумка пуста.</p>`;
+  const dealChips = [...Object.entries(SHOP.buy).map(([k, q]) => { const s = stockByKey(st, k); return s ? `<button type="button" class="dchip buy" data-unbuy="${esc(k)}" title="Убрать">${esc(wareOf(s).n)}${q > 1 ? " ×" + q : ""}<span>${fmtMoney(buyPrice(m, st, s) * q)}</span></button>` : ""; }),
+    ...SHOP.sell.map((it, k) => `<button type="button" class="dchip sell" data-unsell="${k}" title="Убрать">${esc(it.name)}<span>+${fmtMoney(sellPrice(m, st, it))}</span></button>`)].join("");
+  const hagToday = st.hag && st.hag.day === worldTime().day;
+  const problems = T.after < 0 ? "Не хватает денег" : T.merchAfter < 0 ? "У торговца не хватит денег" : "";
+  box.innerHTML = `<header class="shop-head">
+    <div class="shop-who">${m.npc ? npcPh(m.npc) : `<div class="ph stall-ph">${catIcon("food", 30)}</div>`}<div><div class="eyebrow">${esc(M.title)} · ${esc(POIS[S.world.loc].name)}</div><h2>${esc(m.name)}</h2>
+      <div class="shop-tags">${m.npc ? `<span class="tag ${ac}">${al}</span>` : ""}<span class="tag ${(S.world.rep || 0) <= -10 ? "neg" : (S.world.rep || 0) >= 10 ? "pos" : ""}">репутация: ${repLabel(S.world.rep || 0)}</span><span class="tag ${pct > 0 ? "neg" : pct < 0 ? "pos" : ""}">цены ${pct === 0 ? "обычные" : (pct > 0 ? "+" : "−") + Math.abs(pct) + "%"}</span></div></div></div>
+    <q class="shop-greet">${esc(refuse ? "Нечего мне с тобой обсуждать. Ступай." : greetFor(m))}</q>
+    <div class="shop-purses"><div><small>Ваш кошель</small><b>${COIN}${fmtMoney(purse(c))}</b></div><div><small>Касса</small><b>${COIN}${fmtMoney(st.gold)}</b></div></div>
+    <button type="button" class="shop-x" id="shop-x" aria-label="Уйти">×</button></header>
+  ${refuse ? `<div class="shop-refuse"><p>${esc(m.name)} не хочет иметь с вами дела: ${(S.world.rep || 0) <= -40 ? "о вас дурная слава в поселении" : "вы испортили отношения"}.</p><button class="btn primary" type="button" id="shop-plead">Уговорить · Убеждение КС 15</button>${SHOP.msg ? `<p class="shop-msg">${SHOP.msg}</p>` : ""}</div>` : ""}
+  <div class="shop-body">
+    <section class="shop-col"><div class="shop-col-h"><h3>Товар</h3><div class="shop-cats">${cats.map(k => `<button type="button" data-cat="${k}" aria-pressed="${SHOP.cat === k}">${k === "all" ? "Всё" : CAT_NAMES[k]}</button>`).join("")}</div></div><div class="shop-grid">${wares}</div></section>
+    <section class="shop-col inv"><div class="shop-col-h"><h3>Ваши вещи</h3><small>${M.rate > 0 ? "Покупает: " + [...M.buys.map(k => CAT_NAMES[k].toLowerCase()), ...((M.buyIds || []).map(id => ITEMS[id].n.toLowerCase()))].join(", ") : "Здесь ничего не покупают"}</small></div><div class="shop-list">${inv}</div></section>
+  </div>
+  <footer class="shop-deal">
+    <div class="deal-l"><span class="eyebrow">Сделка</span><div class="deal-items">${dealChips || `<span class="home-note">Нажмите на товар, чтобы купить, или на свою вещь, чтобы продать.</span>`}</div></div>
+    <div class="deal-sum"><small>${T.bal > 0 ? "Вы платите" : T.bal < 0 ? "Вы получаете" : "Итог"}</small><b class="${T.bal > 0 ? "neg" : T.bal < 0 ? "pos" : ""}">${COIN}${fmtMoney(Math.abs(T.bal))}</b><small>останется: ${fmtMoney(Math.max(0, T.after))}</small></div>
+    <div class="deal-r">
+      <div class="haggle">${hagToday ? `<span class="hag-res ${st.hag.m < 1 ? "pos" : st.hag.m > 1 ? "neg" : ""}">${esc(st.hag.txt)}</span>` : `<span class="eyebrow">Торг</span><div class="hag-btns"><button type="button" class="btn small" data-hag="persuasion" ${refuse ? "disabled" : ""}>Уговорить</button><button type="button" class="btn small" data-hag="deception" ${refuse ? "disabled" : ""}>Схитрить</button><button type="button" class="btn small" data-hag="intimidation" ${refuse ? "disabled" : ""}>Надавить</button></div>`}</div>
+      <button type="button" class="btn primary deal-go" id="deal-go" ${(!T.buy && !T.sell) || problems || refuse ? "disabled" : ""}>${problems || "Заключить сделку"}</button></div>
+  </footer>${SHOP.msg && !refuse ? `<div class="shop-toast">${SHOP.msg}</div>` : ""}`;
+  box.querySelector("#shop-x").onclick = closeShop;
+  box.querySelectorAll("[data-cat]").forEach(b => b.onclick = () => { SHOP.cat = b.dataset.cat; SHOP.msg = ""; renderShop(); });
+  box.querySelectorAll("[data-buy]").forEach(b => b.onclick = () => { const id = b.dataset.buy; SHOP.buy[id] = (SHOP.buy[id] || 0) + 1; SHOP.msg = ""; sfx("pick"); renderShop(); });
+  box.querySelectorAll("[data-unbuy]").forEach(b => b.onclick = () => { const id = b.dataset.unbuy; if (--SHOP.buy[id] <= 0) delete SHOP.buy[id]; SHOP.msg = ""; renderShop(); });
+  box.querySelectorAll("[data-sell]").forEach(b => b.onclick = () => { const it = c.items[+b.dataset.sell]; const k = SHOP.sell.indexOf(it); if (k >= 0) SHOP.sell.splice(k, 1); else SHOP.sell.push(it); SHOP.msg = ""; sfx("pick"); renderShop(); });
+  box.querySelectorAll("[data-unsell]").forEach(b => b.onclick = () => { SHOP.sell.splice(+b.dataset.unsell, 1); renderShop(); });
+  box.querySelectorAll("[data-hag]").forEach(b => b.onclick = () => haggle(b.dataset.hag));
+  box.querySelector("#deal-go")?.addEventListener("click", closeDeal); box.querySelector("#shop-plead")?.addEventListener("click", plead);
+}
+function shopRoll(skill, dc) { sfx("dice"); const r = d20(C().bless ? 1 : 0); if (C().bless) C().bless = false; const b = skillBonus(skill) + traitFx(C().traits || {}).haggle; const tot = r.nat + b; return { nat: r.nat, b, tot, ok: r.nat === 20 || (r.nat !== 1 && tot >= dc), crit: r.nat === 20, fumble: r.nat === 1, dc, txt: `d20 (${r.nat}) ${fmt(b)} = ${tot} против КС ${dc}` }; }
+function haggle(skill) {
+  const { m } = SHOP; const st = shopState(m); const n = m.npc ? NPCS[m.npc] : null; const greedy = /жадн|торгуется/i.test(n?.persona || "");
+  const att = m.npc ? (S.world.npcs[m.npc]?.att || 0) : 0; const dc = 12 + (greedy ? 3 : 0) + (att <= -8 ? 2 : 0) - (att >= 25 ? 2 : 0) + (m.type === "merchant" ? 2 : 0);
+  const r = shopRoll(skill, dc); let mlt = 1, txt;
+  const bump = dv => { if (m.npc && dv) { const s = S.world.npcs[m.npc] || (S.world.npcs[m.npc] = { att: 0, mem: [] }); s.att = clamp(s.att + dv, -100, 100); } };
+  if (skill === "persuasion") { if (r.ok) { mlt = r.crit ? .8 : .9; txt = `Уговорили: скидка ${r.crit ? 20 : 10}%`; } else { txt = "Не уступает ни монеты"; bump(-1); } }
+  else if (skill === "deception") { if (r.ok) { mlt = r.crit ? .78 : .85; txt = `Провели: скидка ${r.crit ? 22 : 15}%`; } else { mlt = 1.15; txt = "Раскусил уловку: цены +15%"; bump(-4); } }
+  else { if (r.ok) { mlt = .85; txt = "Испугался: скидка 15%"; bump(-5); } else { mlt = 1.1; txt = "Не из пугливых: цены +10%"; bump(-6); } }
+  st.hag = { day: worldTime().day, m: mlt, txt: `${SKILLS[skill][0]}: ${r.txt}. ${txt}` }; setTimeout(() => sfx(r.ok ? "chime" : "thud"), 450);
+  if (m.npc) S.world.npcs[m.npc]?.mem?.push(`Герой торговался (${SKILLS[skill][0].toLowerCase()}): ${r.ok ? "успешно" : "неудачно"}`); save(); renderShop();
+}
+function plead() { const { m } = SHOP; const st = shopState(m); const r = shopRoll("persuasion", 15); if (r.ok) { st.ok = worldTime().day; SHOP.msg = `Убеждение: ${r.txt}. Ладно, но только сегодня.`; setTimeout(() => sfx("chime"), 450); } else SHOP.msg = `Убеждение: ${r.txt}. Дверь перед вами закрыта.`; save(); renderShop(); }
+function applyService(id, m) {
+  const c = C(); const chips = [];
+  switch (ITEMS[id].svc) {
+    case "rest": setTimeout(() => { longRest(); }, 50); chips.push({ c: "heal", x: "Комната на ночь" }); break;
+    case "meal": { const d = rollDice("1d4"); const got = healHero(d.total); chips.push({ c: "heal", x: `Горячий ужин: +${got} HP` }); break; }
+    case "ale": { const unv = outerEntries().map(([pid]) => pid).filter(pid => !S.world.visited.includes(pid) && !(S.world.rumors || []).includes(pid)); const R = mulberry(hash(m.key + tkey())); if (unv.length && R() < .5) { const pid = unv[Math.floor(R() * unv.length)]; S.world.rumors = S.world.rumors || []; S.world.rumors.push(pid); chips.push({ c: "gold", x: `За кружкой эля услышали: ${POIS[pid].name}` }); } else chips.push({ c: "npc", x: "Пиво кислое, разговоры пустые" }); break; }
+    case "round": addRep(3, "угостил зал"); if (m.npc) { const s = S.world.npcs[m.npc]; if (s) s.att = clamp(s.att + 3, -100, 100); } break;
+    case "healfull": c.hp = c.maxHp; S.dying = null; chips.push({ c: "heal", x: "Раны исцелены" }); break;
+    case "bless": c.bless = true; chips.push({ c: "xp", x: "Благословение: преимущество на следующую проверку" }); break;
+    case "donate": addRep(4, "пожертвование храму"); if (m.npc) { const s = S.world.npcs[m.npc]; if (s) s.att = clamp(s.att + 4, -100, 100); } break;
+  }
+  return chips;
+}
+function closeDeal() {
+  const { m } = SHOP; const st = shopState(m); const c = C(); const T = shopTotals(); if (T.after < 0 || T.merchAfter < 0) return;
+  const chips = []; const bought = [], sold = [];
+  for (const [sk, q] of Object.entries(SHOP.buy)) { const s = stockByKey(st, sk); if (!s) continue; if (s.q < 99) s.q -= q; const W = wareOf(s); bought.push(W.n + (q > 1 ? " ×" + q : ""));
+    if (W.inst) { giveWeapon(c, { ...W.inst }); chips.push({ c: "item", x: `+ ${W.inst.name}` }); continue; }
+    const id = s.id; const it = ITEMS[id];
+    for (let k = 0; k < q; k++) {
+      if (it.cat === "service") { chips.push(...applyService(id, m)); continue; }
+      c.items.push({ name: it.n, id, desc: it.d, ...(it.heal ? { heal: it.heal } : {}), ...(id === "potion" ? { potion: true } : {}) });
+      if (it.w && !c.weapons.includes(it.w)) c.weapons.push(it.w);
+      if (it.a && canWear(c, id)) { const g = gearOf(c); const before = acNow(c); if (it.a.shield) { if (!g.shield && APROF[c.cls]?.includes("shield")) g.shield = true; } else { const old = g.armor; g.armor = id; if (acNow(c) < before) g.armor = old; } if (acNow(c) > before) { recalcAC(c); chips.push({ c: "xp", x: `Надето: ${it.n} · КД ${c.ac}` }); } }
+      if (it.tag === "map") { const h = POIS[hereOuter()]; let n = 0; outerEntries().forEach(([, p]) => { if (Math.hypot(p.x - h.x, p.y - h.y) <= 8) { reveal(p.x, p.y, 1); n++; } }); chips.push({ c: "gold", x: `Карта: отмечено мест — ${n}` }); }
+    } }
+  SHOP.sell.forEach(it => { const i = c.items.indexOf(it); if (i < 0) return; c.items.splice(i, 1); sold.push(it.name); const id = itemIdOf(it); const g = gearOf(c);
+    if (it.wk && c.weapons.length > 1) { c.weapons = c.weapons.filter(x => x !== it.wk); if (c.wdefs) delete c.wdefs[it.wk]; }
+    if (id && ITEMS[id].w && !c.items.some(x => itemIdOf(x) === id)) { const w = ITEMS[id].w; if (c.weapons.length > 1) c.weapons = c.weapons.filter(x => x !== w); }
+    if (id && g.armor === id && !c.items.some(x => itemIdOf(x) === id)) g.armor = null; if (id === "shield" && g.shield && !c.items.some(x => itemIdOf(x) === "shield")) g.shield = false; recalcAC(c); });
+  setPurse(c, T.after); st.gold = T.merchAfter; st.deals++;
+  if (T.bal) chips.unshift({ c: "gold", x: `${T.bal > 0 ? "−" : "+"}${fmtMoney(Math.abs(T.bal))}` });
+  const line = `Сделка с ${m.name}${bought.length ? "; куплено: " + bought.join(", ") : ""}${sold.length ? "; продано: " + sold.join(", ") : ""}`;
+  pushFeed({ t: "sys", html: `<b>Сделка.</b> ${esc(line.replace(/^Сделка с [^;]+; ?/, ""))}` }); if (chips.length) pushFeed({ t: "chips", items: chips });
+  S.log.push({ who: "p", text: `(${line})` }); if (m.npc) { const s = S.world.npcs[m.npc] || (S.world.npcs[m.npc] = { att: 0, mem: [] }); s.mem.push(line.slice(0, 140)); if (T.buy + T.sell >= 50 && st.lastBig !== worldTime().day) { s.att = clamp(s.att + 2, -100, 100); st.lastBig = worldTime().day; } }
+  sfx("gold"); SHOP.buy = {}; SHOP.sell = []; SHOP.msg = "Сделка заключена."; lastSnap = null; save(); renderSheet(); renderShop();
+}
+function closeShop() { SHOP = null; closeModal(); after(); }
+const TRADE_RE = /^(хочу\s+|давай\s+|можно\s+)?(купить|прикупить|продать|приценить|поторговать|торговать|сторговать|посмотреть\s+(товар|что\s+прода)|показ\w*\s+товар)|что\s+(у\s+тебя\s+)?(продаёшь|продаете|продаётся|есть\s+на\s+продажу)|сколько\s+стоит/i;
+function tryTradeIntent(text) { if (!S || S.world.combat || !TRADE_RE.test(text.trim())) return false; const ms = merchantsHere(); if (!ms.length) return false;
+  const t = text.toLowerCase(); const m = ms.find(x => x.name && t.includes(x.name.toLowerCase().slice(0, 4))) || ms[0]; openShop(m); return true; }
+/* инвентарь в листе персонажа */
+function renderInventory(tb) {
+  const c = C(); const g = gearOf(c);
+  tb.insertAdjacentHTML("beforeend", `<div class="inv-purse"><span>${COIN}<b>${fmtMoney(purse(c))}</b></span><span class="home-note">КД ${c.ac}${g.armor ? " · " + esc(ITEMS[g.armor].n.toLowerCase()) : " · без доспеха"}${g.shield ? " + щит" : ""}</span></div>`);
+  c.items.forEach((it, i) => {
+    const id = itemIdOf(it); const I = id ? ITEMS[id] : null; const cat = itemCat(it); const heal = it.heal || (it.potion ? "2d4+2" : I?.heal);
+    const row = document.createElement("div"); row.className = "inv-item"; row.style.setProperty("--cc", CAT_COL[cat]);
+    const worn = I?.a ? (I.a.shield ? g.shield : g.armor === id) : false;
+    const wd = it.wk ? c.wdefs?.[it.wk] : null; if (wd) row.style.setProperty("--cc", wd.col);
+    row.innerHTML = `<span class="ware-ic s${wd ? " w" : ""}">${itemIco(it, 17)}</span><span class="inv-t" title="${esc(it.desc || I?.d || "")}">${esc(it.name)}<small>${esc(wd ? `${weaponDice(c, wd)} ${wd.dt}${wd.hit ? " · попад. " + fmt(wd.hit) : ""}${wd.dmg ? " · урон " + fmt(wd.dmg) : ""}${wd.crit < 20 ? " · крит " + wd.crit + "+" : ""}${weaponProf(c, wd) ? "" : " · нет владения"}` : (it.desc || I?.d || "").slice(0, 60))}</small></span>`;
+    const btn = (t, fn, dis) => { const b = document.createElement("button"); b.type = "button"; b.className = "btn small"; b.textContent = t; b.disabled = !!dis; b.onclick = fn; row.append(b); };
+    if (heal && (cat === "potion" || cat === "food" || id === "healkit")) btn(cat === "food" ? "Съесть" : "Применить", () => { const d = rollDice(String(heal).includes("d") ? heal : "1d1+" + (Number(heal) - 1)); const got = healHero(d.total); c.items.splice(i, 1); pushFeed({ t: "chips", items: [{ c: "heal", x: `+${got} HP · ${it.name}` }] }); sfx(cat === "food" ? "pick" : "potion"); after(); }, busy || c.hp >= c.maxHp);
+    if (I?.a) { const ok = canWear(c, id); btn(worn ? "Снять" : "Надеть", () => { if (I.a.shield) g.shield = !worn; else g.armor = worn ? null : id; recalcAC(c); pushFeed({ t: "chips", items: [{ c: "xp", x: `${worn ? "Снято" : "Надето"}: ${it.name} · КД ${c.ac}` }] }); sfx("pick"); after(); }, busy || S.world.combat || (!worn && !ok)); if (!ok && !worn) row.querySelector(".inv-t small").textContent = "нет владения этим доспехом"; }
+    tb.append(row);
+  });
+}
+
+/* CREATION2 */
+/* =========================================================================
+   СОЗДАНИЕ ГЕРОЯ — новые шаги
+   ========================================================================= */
+const ARMOR_RU = { light: "лёгкие", medium: "средние", heavy: "тяжёлые", shield: "щиты" };
+const FAVORED = { undead: ["Нежить", "зомби, скелеты, утопленники", UNDEAD], beasts: ["Звери", "волки, крысы, пауки", BEASTS], humanoids: ["Люди и гоблины", "бандиты, культисты, гоблины", HUMANOIDS] };
+function dots(n, max = 3) { return `<span class="dots">${Array.from({ length: max }, (_, i) => `<i class="${i < n ? "on" : ""}"></i>`).join("")}</span>`; }
+function stepRace(body) {
+  head(body, "Шаг 2", "Кто вы по крови?", "Раса даёт бонусы к характеристикам, врождённые черты — и то, как вас встретят люди. Отношение меняется поступками, но первое впечатление остаётся.");
+  const g = document.createElement("div"); g.className = "pick-grid";
+  Object.entries(RACES).forEach(([id, r]) => {
+    const b = document.createElement("button"); b.type = "button"; b.className = "choice pick-card"; b.setAttribute("aria-pressed", String(D.race === id)); b.style.setProperty("--pc", RACE_COL[id] || "#e9c99a");
+    const att = RACE_ATT[id] || 0;
+    b.innerHTML = `<div class="pc-top"><span class="pc-ico">${ico("r_" + id, 40)}</span><div><div class="ch-name">${r.name}</div><div class="ch-sub">${esc(r.sub)}</div></div></div>
+      <div class="pc-chips">${Object.entries(r.bonus).map(([a, v]) => `<span>${ABIL_RU[a]} +${v}</span>`).join("")}<span class="dim">шаг ${r.speed} фт</span></div>
+      <ul class="pc-list">${r.traits.slice(id === "human" ? 1 : 0, 3).map(t => `<li>${esc(t)}</li>`).join("")}</ul>
+      <div class="pc-social ${att <= -4 ? "neg" : att >= 2 ? "pos" : ""}"><b>Люди:</b> ${esc(RACE_SOCIAL[id] || "")}${att ? ` <span>${att > 0 ? "+" : ""}${att}</span>` : ""}</div>`;
+    b.onclick = () => { D.race = id; renderCreate(); }; g.append(b);
+  });
+  body.append(g);
+}
+function classProfText(cls) {
+  const a = (APROF[cls] || []).map(x => ARMOR_RU[x]); const w = WP_ONLY[cls] ? WP_ONLY[cls].map(t => WT[t].n.toLowerCase()).join(", ") : ["fighter", "barbarian", "paladin", "ranger"].includes(cls) ? "простое и воинское" : "простое" + ((WP_MART[cls] || []).length ? ", а также " + WP_MART[cls].map(t => WT[t].n.toLowerCase()).join(", ") : "");
+  return { armor: a.length ? a.join(", ") : "нет", weapons: w };
+}
+function stepClass(body) {
+  const w = D.world; const rec = {}; (w.recommended || []).forEach(r => rec[r.cls] = r.why);
+  head(body, "Шаг 3", "Чем вы зарабатываете на жизнь?", `Десять путей. Мир «${esc(w.name)}» подсказывает, кому здесь будет интереснее, но справится любой.`);
+  const g = document.createElement("div"); g.className = "pick-grid cls";
+  Object.entries(CLASSES).forEach(([id, c]) => {
+    const meta = CLASS_META[id] || { diff: 2, prim: [] };
+    const b = document.createElement("button"); b.type = "button"; b.className = "choice pick-card cls-card"; b.setAttribute("aria-pressed", String(D.cls === id)); b.style.setProperty("--pc", c.color);
+    b.innerHTML = `<div class="pc-top"><span class="pc-ico">${ico("c_" + id, 38)}</span><div><div class="ch-name">${c.name}</div><div class="ch-sub">${esc(c.role)}</div></div></div>
+      <div class="pc-chips"><span>d${c.hd}</span>${meta.prim.map(a => `<span>${ABIL_RU[a]}</span>`).join("")}${c.spells || c.half ? `<span class="mag">магия</span>` : ""}</div>
+      <p class="pc-blurb">${esc(c.blurb)}</p><div class="pc-foot"><span>Сложность ${dots(meta.diff)}</span>${rec[id] ? `<span class="rec">★ ${esc(rec[id])}</span>` : ""}</div>`;
+    b.onclick = () => { D.cls = id; D.skills = []; D.kit = 0; D.kitW = null; if (D.method !== "pb") autoAssign(); renderCreate(); }; g.append(b);
+  });
+  body.append(g);
+  if (!D.cls) return; const id = D.cls, c = CLASSES[id]; const pr = classProfText(id);
+  const spells = [...(c.spells || []), ...Object.values(LEVEL_SPELLS[id] || {}).flat()];
+  const det = document.createElement("div"); det.className = "cls-detail"; det.style.setProperty("--pc", c.color);
+  det.innerHTML = `<div class="cd-head"><span class="pc-ico big">${ico("c_" + id, 56)}</span><div><div class="eyebrow">Выбранный класс</div><h3>${c.name}</h3><p>${esc(c.blurb)}</p></div></div>
+    <div class="cd-cols"><div><h4>С первого уровня</h4><ul class="cd-feats">${c.features.map(f => `<li>${esc(f)}</li>`).join("")}</ul>
+      <h4>Рост до 5 уровня</h4><ol class="cd-levels">${[2, 3, 4, 5].map(l => `<li><b>${l}</b><span>${esc(LEVEL_FEATS[id]?.[l] || "")}</span></li>`).join("")}</ol></div>
+      <div><h4>Владение</h4><dl class="cd-prof"><dt>Кость хитов</dt><dd>d${c.hd}</dd><dt>Спасброски</dt><dd>${c.saves.map(a => ABIL_FULL[a]).join(", ")}</dd><dt>Доспехи</dt><dd>${pr.armor}</dd><dt>Оружие</dt><dd>${esc(pr.weapons)}</dd><dt>Навыков</dt><dd>${c.skillCount} на выбор</dd></dl>
+      ${spells.length ? `<h4>Заклинания</h4><ul class="cd-spells">${[...new Set(spells)].map(s => SPELLS[s] ? `<li><b>${SPELLS[s].name}</b><small>${SPELLS[s].lvl ? SPELLS[s].lvl + " круг" : "заговор"} · ${esc(SPELLS[s].desc)}</small></li>` : "").join("")}</ul>` : ""}
+      ${id === "ranger" ? `<h4>Избранный враг</h4><div class="fav" id="fav">${Object.entries(FAVORED).map(([k, [n, d]]) => `<button type="button" data-f="${k}" aria-pressed="${(D.favored || "humanoids") === k}"><b>${n}</b><small>${d}</small></button>`).join("")}</div>` : ""}</div></div>`;
+  det.querySelectorAll("#fav [data-f]").forEach(b => b.onclick = () => { D.favored = b.dataset.f; renderCreate(); });
+  body.append(det);
+}
+function stepSkills(body) {
+  head(body, "Шаг 5", "Прошлое и умения", "Предыстория даёт два навыка, стартовые деньги, памятную вещь и связи: одни люди примут вас как своего, другие — насторожатся.");
+  const bgg = document.createElement("div"); bgg.className = "pick-grid bg";
+  Object.entries(BACKGROUNDS).forEach(([id, b]) => { const btn = document.createElement("button"); btn.type = "button"; btn.className = "choice pick-card bg-card"; btn.setAttribute("aria-pressed", String(D.bg === id));
+    btn.innerHTML = `<div class="ch-name">${b.name}</div><div class="pc-chips">${b.skills.map(k => `<span>${SKILLS[k][0]}</span>`).join("")}</div><p class="pc-blurb">Вы ${esc(bgHook(id))}.</p>
+      <div class="pc-foot"><span>${COIN}${b.gold || 10} зм${b.item ? " · " + esc(b.item) : ""}</span></div><div class="pc-social">${esc(BG_ATT_TXT[id] || "")}</div>`;
+    btn.onclick = () => { D.bg = id; const lk = lockedSkills(); D.skills = D.skills.filter(k => !lk.has(k)); renderCreate(); }; bgg.append(btn); });
+  body.append(bgg);
+  const cls = CLASSES[D.cls]; const lk = lockedSkills();
+  body.insertAdjacentHTML("beforeend", `<div class="subhead">Навыки класса · выбрано ${D.skills.length} из ${cls.skillCount}</div>`);
+  const list = document.createElement("div"); list.className = "skill-list"; const sc = draftScores(); const fx = traitFx(D);
+  cls.skillList.forEach(k => { const b = document.createElement("button"); b.type = "button"; const locked = lk.has(k); const on = D.skills.includes(k) || locked;
+    b.className = "skill-opt" + (locked ? " locked" : ""); b.setAttribute("aria-pressed", String(on));
+    b.innerHTML = `<span>${SKILLS[k][0]} <small>${ABIL_RU[SKILLS[k][1]]}</small></span><span class="num">${fmt(mod(sc[SKILLS[k][1]]) + (on ? 2 : 0) + (fx.skills[k] || 0))}</span>`; if (locked) b.title = "Уже есть от расы или предыстории";
+    b.onclick = () => { if (locked) return; if (D.skills.includes(k)) D.skills = D.skills.filter(x => x !== k); else if (D.skills.length < cls.skillCount) D.skills.push(k); renderCreate(); }; list.append(b); });
+  body.append(list);
+}
+function draftKit() { if (!D.cls) return null; D.kit = D.kit || 0; if (!D.kitSeed) D.kitSeed = rnd(1e9); if (!D.kitW || D.kitW.cls !== D.cls || D.kitW.ki !== D.kit || D.kitW.seed !== D.kitSeed) D.kitW = { cls: D.cls, ki: D.kit, seed: D.kitSeed, list: kitWeapons(D.cls, D.kit, D.kitSeed) }; return { kit: KITS[D.cls][D.kit], list: D.kitW.list }; }
+function draftAC() { if (!D.cls) return "—"; const k = draftKit().kit; return acNow({ cls: D.cls, scores: draftScores(), gear: { armor: k.armor || null, shield: !!k.shield } }); }
+function stepGear(body) {
+  head(body, "Шаг 6", "Снаряжение", "Выберите набор. Каждое оружие уникально: вид, качество и история. «Другой вид» подберёт иную вариацию — например, вместо боевой косы достанется коса жнеца или крестьянская.");
+  const dk = draftKit(); const fake = { cls: D.cls }; const sc = draftScores();
+  const wrap = document.createElement("div"); wrap.className = "kits";
+  KITS[D.cls].forEach((K, i) => {
+    const sel = D.kit === i; const card = document.createElement("div"); card.className = "kit" + (sel ? " sel" : "");
+    const armor = [K.armor ? ITEMS[K.armor].n : (D.cls === "barbarian" ? "Без доспеха (10 + ЛОВ + ТЕЛ)" : "Без доспеха"), K.shield ? "щит" : ""].filter(Boolean).join(" + ");
+    const ac = acNow({ cls: D.cls, scores: sc, gear: { armor: K.armor || null, shield: !!K.shield } });
+    card.innerHTML = `<button type="button" class="kit-head" data-k="${i}" aria-pressed="${sel}"><div><b>${esc(K.n)}</b><small>${esc(K.d)}</small></div><div class="kit-meta">${K.w.map(t => `<span class="w-mini" title="${esc(WT[t].n)}">${ico(WT[t].ico, 22)}</span>`).join("")}<span class="kit-ac">КД ${ac}</span></div></button>
+      ${sel ? `<div class="kit-body">${dk.list.map(d => weaponCardHTML(d, fake)).join("")}<div class="kit-armor">${ico(K.armor ? ITEM_ICO[K.armor] : "i_backpack", 20)}<span>${esc(armor)}</span></div>
+        <div class="kit-foot"><button type="button" class="btn small" id="kit-reroll">↻ Другой вид оружия</button><small class="home-note">${dk.list.some(d => d.props.includes("versatile")) && !K.shield ? "Универсальное оружие без щита бьёт сильнее (кость на шаг выше)." : dk.list.some(d => d.props.includes("two")) && K.shield ? "Двуручное оружие со щитом — с помехой." : dk.list.some(d => d.props.includes("heavy")) && RACES[D.race]?.small ? "Тяжёлое оружие для маленького героя — с помехой." : "Оружие можно сменить в любой кузнице."}</small></div></div>` : ""}`;
+    wrap.append(card);
+  });
+  body.append(wrap);
+  wrap.querySelectorAll(".kit-head").forEach(b => b.onclick = () => { D.kit = +b.dataset.k; renderCreate(); });
+  wrap.querySelector("#kit-reroll")?.addEventListener("click", () => { D.kitSeed = rnd(1e9); sfx("pick"); renderCreate(); });
+}
+function stepLook(body) {
+  head(body, "Шаг 7", "Имя, облик и характер", "Рассказчик будет обращаться к вам по имени. По описанию внешности создаётся фото-портрет. Характер влияет на навыки и на то, как к вам отнесутся люди.");
+  const f = document.createElement("div"); f.className = "look-grid";
+  f.innerHTML = `<div><div class="field"><label for="f-name">Имя героя</label><input id="f-name" maxlength="28" placeholder="Например, Эйрин Тёрн" value="${esc(D.name)}"></div>
+  <div class="field"><label>Как к вам обращаться</label><div class="seg" id="f-gender"><button type="button" data-v="m">Он</button><button type="button" data-v="f">Она</button></div></div>
+  <div class="field" style="margin-top:6px"><label for="f-about">Пара фраз о себе</label><textarea id="f-about" maxlength="300" placeholder="Боится глубокой воды. Ищет брата, ушедшего в море.">${esc(D.about)}</textarea></div>
+  <div class="field"><button class="btn" type="button" id="f-story">Сочинить историю героя (ИИ)</button><small id="f-story-st"></small></div></div>
+  <div><div class="field"><label for="f-look">Внешность</label><textarea id="f-look" maxlength="400" placeholder="Высокая, коротко стриженные чёрные волосы, шрам через бровь, серые глаза, потёртый плащ с капюшоном" style="min-height:120px">${esc(D.lookDesc)}</textarea><small>Чем конкретнее, тем точнее портрет: возраст, волосы, лицо, одежда, приметы.</small></div>
+  ${modelPickerHTML("look-model", true)}
+  <div class="field"><button class="btn primary" type="button" id="f-photo">${D.img ? "Другой вариант" : "Создать фото-портрет"}</button><small id="f-photo-st">${esc(imgNote)}</small></div></div>`;
+  body.append(f);
+  const tr = document.createElement("div"); tr.className = "traits";
+  const drawFx = () => { const fx = traitFx(D); tr.querySelector("#tr-fx").innerHTML = fx.notes.length ? fx.notes.map(n => `<li><b>${n.name}</b><span>${esc(n.txt)}</span></li>`).join("") : `<li class="dim">Сдвиньте ползунок к краю, чтобы черта заработала (≤30 или ≥70).</li>`;
+    tr.querySelector("#tr-words").textContent = traitWords(D); };
+  tr.innerHTML = `<div class="tr-head"><h3>Характер</h3><span class="home-note">Вас запомнят как: <b id="tr-words"></b></span></div><div class="tr-grid"><div class="tr-sliders">${TRAITS.map(t => `<div class="slider-row tr"><span>${t.l}</span><input type="range" min="0" max="100" value="${D[t.k] ?? 50}" data-k="${t.k}" aria-label="${t.l} или ${t.r}"><span>${t.r}</span></div>`).join("")}</div>
+    <div class="tr-fx"><div class="eyebrow">Как это скажется</div><ul id="tr-fx"></ul></div></div>`;
+  body.append(tr); drawFx();
+  tr.querySelectorAll("input[type=range]").forEach(inp => inp.oninput = () => { D[inp.dataset.k] = +inp.value; drawFx(); renderHeroCard(); });
+  const nm = f.querySelector("#f-name"); nm.oninput = () => { D.name = nm.value; document.getElementById("btn-next").disabled = !stepValid(6); document.getElementById("step-hint").textContent = stepValid(6) ? "Можно дальше" : STEP_HINTS[6]; renderHeroCard(); };
+  f.querySelectorAll("#f-gender button").forEach(b => { b.setAttribute("aria-pressed", String(D.gender === b.dataset.v)); b.onclick = () => { D.gender = b.dataset.v; renderCreate(); }; });
+  f.querySelector("#f-about").oninput = e => { D.about = e.target.value; }; f.querySelector("#f-look").oninput = e => { D.lookDesc = e.target.value; };
+  f.querySelector("#f-story").onclick = () => writeBackstory(f.querySelector("#f-story"), f.querySelector("#f-story-st"));
+  bindModelPicker(f, "look-model");
+  const pb = f.querySelector("#f-photo"); pb.disabled = !!D.gen; pb.onclick = () => genHeroPortrait(pb, f.querySelector("#f-photo-st"));
+}
+function stepMode(body) {
+  head(body, "Шаг 8", "Каким будет рассказчик?", "Режим меняет и тон ИИ, и правила движка: что происходит при нуле HP и насколько мир прощает ошибки.");
+  choiceGrid(body, Object.entries(MODES).map(([id, m]) => ({ id, name: m.name, sub: m.sub, list: [] })), D.mode, id => { D.mode = id; renderCreate(); });
+  body.insertAdjacentHTML("beforeend", `<p class="lead" style="margin-top:20px"><b>${esc(D.world.name)}.</b> ${esc(D.world.public)}</p>`);
+}
+function renderHeroCard() {
+  const el = document.getElementById("hero-card"); const sc = draftScores(); const cls = D.cls ? CLASSES[D.cls] : null; el.style.setProperty("--cls", cls ? cls.color : "var(--lantern)");
+  const hp = D.cls && D.race ? maxHP(D.cls, D.race, sc) : "—"; const ac = draftAC(); const dk = D.cls && D.step >= 5 ? draftKit() : null; const fx = traitFx(D);
+  el.innerHTML = `<div class="inner"><div class="art">${heroPh({ cls: D.cls, race: D.race, name: D.name, img: D.img, gen: D.gen })}<span class="lvl">Уровень 1</span>
+    <span class="hc-badges">${D.race ? `<span class="hc-b" style="--pc:${RACE_COL[D.race]}" title="${RACES[D.race].name}">${ico("r_" + D.race, 20)}</span>` : ""}${cls ? `<span class="hc-b" style="--pc:${cls.color}" title="${cls.name}">${ico("c_" + D.cls, 20)}</span>` : ""}</span></div>
+  <div class="body"><div><div class="nm">${esc(D.name.trim() || "Безымянный")}</div>${D.epithet ? `<div class="ep">${esc(D.epithet)}</div>` : ""}<div class="sub">${D.race ? RACES[D.race].name : "Раса не выбрана"} · ${cls ? cls.name : "класс не выбран"}${D.bg ? " · " + BACKGROUNDS[D.bg].name : ""}</div></div>
+  <div class="vitals"><div>HP <b>${hp}</b></div><div>КД <b>${ac}</b></div><div>Иниц. <b>${fmt(mod(sc.dex) + fx.init)}</b></div></div>
+  <div class="mini-stats">${ABIL.map(a => `<div><b>${fmt(mod(sc[a]))}</b><small>${ABIL_RU[a]} ${sc[a]}</small></div>`).join("")}</div>
+  ${dk ? `<div class="hc-weapons">${dk.list.map(d => `<div class="hc-w">${weaponTile(d, 34)}<span><b>${esc(d.name)}</b><small>${esc(d.dice)} ${esc(d.dt)}</small></span></div>`).join("")}</div>` : ""}
+  ${fx.notes.length ? `<div class="hc-traits">${fx.notes.map(n => `<span title="${esc(n.txt)}">${n.name}</span>`).join("")}</div>` : ""}
+  ${D.skills.length || D.bg || D.race ? `<div class="sub">Навыки: ${draftSkills().map(k => SKILLS[k][0]).join(", ") || "—"}</div>` : ""}
+  <p class="story">${esc(D.story || (D.race && D.cls ? templateStory() : "Выберите расу и класс — карточка соберётся сама."))}</p></div></div>`;
+}
+
+/* =========================================================================
+   ЗВУК: музыка по настроению, фон, эффекты
+   Музыка и звуки — Battle for Wesnoth (GPL v2+); «Three Sheets» — Scott Buckley (CC BY-SA 4.0)
+   ========================================================================= */
+const AU_KEY = "sh6-audio";
+const MUSIC = {
+  menu: ["legends_of_the_north", "wanderer"], explore: ["wanderer", "knolls", "legends_of_the_north"], forest: ["silvan_sanctuary", "wanderer"], tavern: ["three-sheets", "traveling_minstrels"],
+  sacred: ["nunc_dimittis"], deep: ["underground", "the_deep_path", "into_the_shadows"], night: ["into_the_shadows", "the_deep_path", "silvan_sanctuary"], tension: ["suspense", "into_the_shadows"],
+  battle: ["battle-epic", "frantic", "heroes_rite"], defeat: ["sad"]
+};
+const AMB = { campfire: "a-campfire", ship: "a-ship", birds: "a-birds1", night: "a-night" };
+const SFX = {
+  tap: ["s-button"], pick: ["s-select"], open: ["s-expand"], close: ["s-contract"], step: ["s-checkbox"], arrive: ["s-arrive"], bell: ["s-bell"], start: ["s-gamestart"],
+  sword: ["s-sword-1"], mace: ["s-mace"], staff: ["s-staff"], bow: ["s-bow"], dagger: ["s-dagger-swish"], axe: ["s-axe"], miss: ["s-miss-1", "s-miss-2"],
+  hurt: ["s-human-hit-1", "s-human-hit-2"], die: ["s-human-die-1"], heal: ["s-heal"], potion: ["s-potion"], gold: ["s-gold"], chest: ["s-open-chest"], throw: ["s-throw-1"],
+  fire: ["s-fire"], lightning: ["s-lightning"], holy: ["s-magic-holy-1"], dark: ["s-magic-dark"], missile: ["s-magic-missile-1"], fanfare: ["s-fanfare-short"],
+  horn: ["s-horn-2"], growl: ["s-wolf-growl-1"], rumble: ["s-rumble"], victory: ["m-victory2"], defeat: ["m-sad"]
+};
+const AU = { cfg: Object.assign({ on: true, music: .45, sfx: .7, amb: .4 }, lsGet(AU_KEY) || {}), unlocked: false, mood: null, track: null, a: null, b: null, cur: null, amb: null, ambKey: null, pool: new Map(), ctx: null, fades: new Set(), duck: 1 };
+const auSrc = n => `snd/${n}.mp3`;
+function auSave() { lsSet(AU_KEY, AU.cfg); }
+function auFade(el, to, ms, done) {
+  if (!el) return; const from = el.volume; const t0 = performance.now(); const tok = {}; el._fade = tok;
+  const step = () => { if (el._fade !== tok) return; const k = Math.min(1, (performance.now() - t0) / ms); el.volume = clamp(from + (to - from) * k, 0, 1); if (k < 1) requestAnimationFrame(step); else done?.(); };
+  requestAnimationFrame(step);
+}
+function auMusicVol() { return AU.cfg.on ? AU.cfg.music * AU.duck : 0; }
+function auPlayTrack(name) {
+  const el = new Audio(auSrc("m-" + name)); el.preload = "auto"; el.volume = 0; AU.track = name;
+  el.addEventListener("ended", () => { if (AU.cur === el) auNext(); }); el.addEventListener("error", () => { if (AU.cur === el) AU.cur = null; });
+  const old = AU.cur; AU.cur = el; el.play().then(() => auFade(el, auMusicVol(), 2200)).catch(() => {});
+  if (old) auFade(old, 0, 1800, () => { old.pause(); old.src = ""; });
+}
+function auNext() { const list = MUSIC[AU.mood] || MUSIC.explore; const opts = list.filter(t => t !== AU.track); auPlayTrack((opts.length ? opts : list)[Math.floor(Math.random() * (opts.length || list.length))]); }
+function setMood(m) {
+  if (!m || !MUSIC[m]) return; if (AU.mood === m && AU.cur) return; AU.mood = m;
+  if (!AU.unlocked || !AU.cfg.on || AU.cfg.music <= 0) return; if (AU.cur && MUSIC[m].includes(AU.track)) return; auNext();
+}
+function setAmbience(k) {
+  const key = AMB[k] ? k : null; if (AU.ambKey === key && (AU.amb || !key)) return; AU.ambKey = key;
+  const old = AU.amb; AU.amb = null; if (old) auFade(old, 0, 1500, () => { old.pause(); old.src = ""; });
+  if (!key || !AU.unlocked || !AU.cfg.on || AU.cfg.amb <= 0) return;
+  const el = new Audio(auSrc(AMB[key])); el.loop = true; el.volume = 0; AU.amb = el; el.play().then(() => auFade(el, AU.cfg.amb * .6, 2000)).catch(() => {});
+}
+function sfx(name, vol = 1) {
+  if (!AU.cfg.on || AU.cfg.sfx <= 0 || !AU.unlocked) return; if (name === "dice") return auDice(); if (name === "chime") return auChime(true); if (name === "thud") return auChime(false);
+  const list = SFX[name]; if (!list) return; const f = list[Math.floor(Math.random() * list.length)];
+  let base = AU.pool.get(f); if (!base) { base = new Audio(auSrc(f)); base.preload = "auto"; AU.pool.set(f, base); }
+  const el = base.paused && base.currentTime === 0 ? base : base.cloneNode(); const quiet = { tap: .25, pick: .35, step: .3, open: .35, close: .3 }[name] ?? 1;
+  el.volume = clamp(AU.cfg.sfx * vol * quiet, 0, 1); el.currentTime = 0; el.play().catch(() => {});
+  if (name === "victory" || name === "defeat" || name === "fanfare" || name === "horn") { AU.duck = .35; if (AU.cur) auFade(AU.cur, auMusicVol(), 300); setTimeout(() => { AU.duck = 1; if (AU.cur) auFade(AU.cur, auMusicVol(), 1600); }, name === "victory" ? 6000 : 2600); }
+}
+function auCtx() { if (!AU.ctx) { const C = window.AudioContext || window.webkitAudioContext; if (!C) return null; AU.ctx = new C(); } if (AU.ctx.state === "suspended") AU.ctx.resume(); return AU.ctx; }
+/* кубики: несколько коротких ударов о дерево с затуханием */
+function auDice() {
+  const ctx = auCtx(); if (!ctx) return; const t0 = ctx.currentTime + .02; const out = ctx.createGain(); out.gain.value = AU.cfg.sfx * .9; out.connect(ctx.destination);
+  const buf = ctx.createBuffer(1, ctx.sampleRate * .05, ctx.sampleRate); const d = buf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 3);
+  let t = t0; const hits = 7 + Math.floor(Math.random() * 4);
+  for (let i = 0; i < hits; i++) {
+    const src = ctx.createBufferSource(); src.buffer = buf; src.playbackRate.value = .7 + Math.random() * .8;
+    const bp = ctx.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 1800 + Math.random() * 2600; bp.Q.value = 3 + Math.random() * 4;
+    const g = ctx.createGain(); g.gain.value = (1 - i / hits) * (.6 + Math.random() * .5); src.connect(bp); bp.connect(g); g.connect(out); src.start(t);
+    const body = ctx.createOscillator(); body.type = "triangle"; body.frequency.value = 180 + Math.random() * 120; const bg = ctx.createGain(); bg.gain.setValueAtTime(.18 * (1 - i / hits), t); bg.gain.exponentialRampToValueAtTime(.001, t + .06);
+    body.connect(bg); bg.connect(out); body.start(t); body.stop(t + .07);
+    t += .035 + Math.pow(i / hits, 1.6) * .14 + Math.random() * .03;
+  }
+}
+function auChime(good) {
+  const ctx = auCtx(); if (!ctx) return; const t = ctx.currentTime + .02; const out = ctx.createGain(); out.gain.value = AU.cfg.sfx * .5; out.connect(ctx.destination);
+  const notes = good ? [659.3, 987.8] : [196, 146.8];
+  notes.forEach((f, i) => { const o = ctx.createOscillator(); o.type = good ? "sine" : "triangle"; o.frequency.value = f; const g = ctx.createGain(); const s = t + i * (good ? .09 : .12);
+    g.gain.setValueAtTime(0, s); g.gain.linearRampToValueAtTime(good ? .5 : .55, s + .01); g.gain.exponentialRampToValueAtTime(.001, s + (good ? .9 : .5)); o.connect(g); g.connect(out); o.start(s); o.stop(s + 1); });
+}
+function auUnlock() {
+  if (AU.unlocked) return; AU.unlocked = true; auCtx(); const m = AU.mood; AU.mood = null; setMood(m || "menu"); const a = AU.ambKey; AU.ambKey = undefined; setAmbience(a);
+  ["s-button", "s-select", "s-sword-1", "s-miss-1"].forEach(f => { if (!AU.pool.has(f)) { const e = new Audio(auSrc(f)); e.preload = "auto"; AU.pool.set(f, e); } });
+}
+function auApply() {
+  auSave(); if (!AU.cfg.on) { [AU.cur, AU.amb].forEach(el => el && auFade(el, 0, 600, () => el.pause())); return; }
+  if (AU.cur) { if (AU.cur.paused) AU.cur.play().catch(() => {}); auFade(AU.cur, auMusicVol(), 400); } else if (AU.unlocked && AU.cfg.music > 0) { const m = AU.mood; AU.mood = null; setMood(m || "menu"); }
+  if (AU.amb) { if (AU.amb.paused) AU.amb.play().catch(() => {}); auFade(AU.amb, AU.cfg.amb * .6, 400); } else { const a = AU.ambKey; AU.ambKey = undefined; setAmbience(a); }
+  AU.wxSig = undefined; try { auWeather(); } catch (e) {}
+  renderSoundBtn();
+}
+function renderSoundBtn() { const b = document.getElementById("btn-sound"); if (!b) return; b.setAttribute("aria-pressed", String(AU.cfg.on)); b.title = AU.cfg.on ? "Выключить звук" : "Включить звук"; b.querySelector(".snd-on").style.display = AU.cfg.on ? "" : "none"; b.querySelector(".snd-off").style.display = AU.cfg.on ? "none" : ""; }
+/* настроение сцены по месту, времени, бою и угрозе */
+function moodNow() {
+  if (!S) return "menu"; if (S.dead) return "defeat"; if (S.world.combat) return "battle";
+  const tpl = sceneTpl(S.world.loc); const part = worldTime().part;
+  if (tpl === "inn") return "tavern"; if (tpl === "chapel" || tpl === "shrine") return "sacred"; if (tpl === "cave" || tpl === "mine") return "deep";
+  if ((S.world.threat || 0) >= 4) return "tension"; if (part === 3) return "night"; if (tpl === "forest" || tpl === "camp") return "forest"; return "explore";
+}
+function ambNow() { if (!S) return null; const tpl = sceneTpl(S.world.loc); const k = SC_AMB[tpl]; if (k === "birds" && worldTime().part >= 2) return "night"; if (!k && !["inn", "house", "hut", "chapel", "cave", "mine", "tower"].includes(tpl) && worldTime().part === 3) return "night"; return k || null; }
+function syncAudio() { setMood(moodNow()); setAmbience(ambNow()); try { auWeather(); } catch (e) {} }
+/* звук результата броска */
+const WEAPON_SFX = { longsword: "sword", rapier: "dagger", shortbow: "bow", staff: "staff", mace: "mace" };
+function spellSfx(sp) { const t = sp?.type || ""; if (sp?.kind === "heal") return "heal"; if (/огн/.test(t)) return "fire"; if (/звук|молни|гром/.test(t)) return "lightning"; if (/излуч/.test(t)) return "holy"; if (/некро|яд/.test(t)) return "dark"; return "missile"; }
+function rollSfx(r) {
+  if (!r) return;
+  if (r.kind === "attack") { if (r.ok) { sfx(WEAPON_SFX[r.weapon] || "sword"); if (r.crit) setTimeout(() => sfx("fanfare", .6), 250); } else sfx("miss"); return; }
+  if (r.kind === "spell") { const sp = SPELLS[r.spell]; if (r.noslot) return sfx("thud"); sfx(spellSfx(sp)); return; }
+  if (r.kind === "enemy") { if (r.skip) return; if (r.ok) { sfx(ENEMIES[r.by]?.type === "wolf" ? "growl" : "hurt"); } else sfx("miss", .7); return; }
+  if (r.kind === "skill" || r.kind === "save") { if (r.crit) sfx("fanfare", .7); else sfx(r.ok ? "chime" : "thud"); return; }
+}
+document.addEventListener("pointerdown", auUnlock, { capture: true }); document.addEventListener("keydown", auUnlock, { capture: true });
+document.addEventListener("click", e => { const b = e.target.closest("button"); if (!b || b.disabled || b.closest(".scene-view") || b.id === "btn-roll") return; sfx(b.matches(".choice, .skill-opt, .world-pick, [aria-pressed]") ? "pick" : "tap"); }, { capture: true });
+document.addEventListener("visibilitychange", () => { const hid = document.hidden; [AU.cur, AU.amb].forEach(el => { if (!el) return; if (hid) el.pause(); else if (AU.cfg.on) el.play().catch(() => {}); }); });
+function soundSettingsHTML() {
+  const row = (k, l) => `<label class="au-row"><span>${l}</span><input type="range" min="0" max="100" step="5" value="${Math.round(AU.cfg[k] * 100)}" data-au="${k}" aria-label="${l}"><b class="num">${Math.round(AU.cfg[k] * 100)}</b></label>`;
+  return `<div class="opt-group"><span>Звук</span><div class="opts"><button type="button" data-auon="1" aria-pressed="${AU.cfg.on}">Включён</button><button type="button" data-auon="0" aria-pressed="${!AU.cfg.on}">Выключен</button></div>
+  <div class="au-rows">${row("music", "Музыка")}${row("amb", "Фон")}${row("sfx", "Эффекты")}</div>
+  <small class="home-note">Музыка меняется сама: таверна, бой, ночь, святилище, подземелье. Музыка и звуки — из открытой игры <a href="https://github.com/wesnoth/wesnoth" target="_blank" rel="noopener">Battle for Wesnoth</a> (GPL v2+), «Three Sheets» — Scott Buckley (CC BY-SA 4.0).</small></div>`;
+}
+function bindSoundSettings(root) {
+  root.querySelectorAll("[data-au]").forEach(inp => inp.oninput = () => { AU.cfg[inp.dataset.au] = inp.value / 100; inp.nextElementSibling.textContent = inp.value; auApply(); });
+  root.querySelectorAll("[data-au]").forEach(inp => inp.onchange = () => { if (inp.dataset.au === "sfx") sfx("chime"); });
+  root.querySelectorAll("[data-auon]").forEach(b => b.onclick = () => { AU.cfg.on = b.dataset.auon === "1"; root.querySelectorAll("[data-auon]").forEach(x => x.setAttribute("aria-pressed", String(x === b))); auApply(); });
+}
+
+function renderWorld() {
+  refreshBuildings(); const el = document.getElementById("world"); const loc = POIS[S.world.loc]; const sel = mapSel && mapSel !== S.world.loc ? POIS[mapSel] : null;
+  const si = sel ? placeInfoHTML(mapSel) : null;
+  if (!el.querySelector("#w-scene")) el.innerHTML = `<div id="w-top" class="w-part"></div><div id="w-scene" class="w-part"></div><div id="w-rest" class="w-part"></div>`;
+  el.querySelector("#w-top").innerHTML = `<div class="mapwrap">${mapMarkup("mapbox", "small")}<button class="map-expand" type="button" id="map-big" aria-label="Развернуть карту" title="Развернуть карту"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M2 6V2h4M14 6V2h-4M2 10v4h4M14 10v4h-4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button>${sel ? `<div class="map-tip" style="right:52px"><div class="t"><b>${esc(si.name)}</b><small>${esc(si.text)}</small></div><button class="btn small primary" type="button" id="go-sel" ${busy || S.world.combat ? "disabled" : ""}>Идти</button></div>` : ""}</div>
+`;
+  updateScenePanel(el.querySelector("#w-scene"));
+  el.querySelector("#w-rest").innerHTML = `<div class="card"><div class="eyebrow">Вы здесь</div><h3>${esc(loc.name)}</h3><p>${esc(loc.desc)}</p></div>
+  ${S.world.combat ? `<div><div class="section-t"><span class="eyebrow" style="color:var(--ember)">Бой</span></div><div style="display:flex;flex-direction:column;gap:6px">${Object.keys(ENEMIES).filter(id => ENEMIES[id].loc === S.world.loc).map(id => { const e = S.world.enemies[id]; const E = ENEMIES[id]; return `<div class="foe ${e.alive ? "" : "dead"}"><div class="row"><b>${esc(E.name)}</b><span>КД ${E.ac} · ${enemyStatus(id)}</span></div><div class="bar" style="height:5px"><i style="width:${e.hp / E.hp * 100}%;background:var(--ember)"></i></div></div>`; }).join("")}</div></div>` : ""}
+  <div><div class="section-t"><span class="eyebrow">Здесь</span></div><div id="npc-list"></div></div>
+  <div class="card" style="background:transparent"><div class="eyebrow">Задание</div><p style="color:var(--foam);margin-top:4px">${esc(S.world.quest)}</p></div>
+  <div><div class="section-t"><span class="eyebrow">Летопись · память рассказчика</span><span class="num" style="color:var(--dim);font-size:11px">${S.world.facts.length} фактов</span></div>
+  ${retryBtnHTML()}${S.summary ? `<p class="summary-box">${esc(S.summary)}</p>` : ""}${archiving ? `<p class="archiving">Архивариус сжимает старые записи…</p>` : ""}
+  ${S.world.facts.length ? `<ol class="chron" style="margin-top:8px">${S.world.facts.slice(-8).map(f => `<li>${esc(f)}</li>`).join("")}</ol>` : (S.summary ? "" : `<p class="empty">Здесь появятся важные факты, которые рассказчик запомнит.</p>`)}</div>`;
+  const list = el.querySelector("#npc-list");
+  if (!loc.npcs.length) list.innerHTML = `<p class="empty">Ни души. Только ветер.</p>`;
+  loc.npcs.forEach(id => { const n = NPCS[id]; if (!n) return; const [lab, cl] = attLabel(S.world.npcs[id]?.att || 0);
+    const b = document.createElement("button"); b.type = "button"; b.className = "npc-row";
+    b.innerHTML = `${npcPh(id)}<span class="t"><b>${esc(n.name)}</b><small>${esc(n.role)}</small></span><span class="att ${cl}">${lab}</span>`;
+    b.onclick = () => { const inp = document.getElementById("act-input"); inp.value = `${n.name}, `; inp.focus(); showTab("story"); };
+    list.append(b); });
+  const ms = merchantsHere(); if (ms.length && !S.world.combat) { const tw = document.createElement("div"); tw.className = "trade-row"; ms.forEach(m => { const b = document.createElement("button"); b.type = "button"; b.className = "trade-chip"; b.innerHTML = `${COIN}<span>Торговать · ${esc(m.name)}</span>`; b.disabled = busy; b.onclick = () => openShop(m); tw.append(b); }); list.append(tw); }
+  el.querySelector("#map-big").onclick = openBigMap; syncAudio();
+  const go = el.querySelector("#go-sel"); if (go) go.onclick = () => { const p = mapSel; mapSel = null; takeTurn(`Иду: ${POIS[p].name}`, { checks: [], move_to: p }); };
+  requestAnimationFrame(drawMap);
+}
+function renderSugg() {
+  const s = document.getElementById("sugg"); s.innerHTML = "";
+  if (!S.dead && !S.dying) { const cb = document.createElement("button"); cb.type = "button"; cb.className = "cont"; cb.textContent = "Продолжить ▸"; cb.title = "Пусть рассказчик продвинет сцену"; cb.disabled = busy; cb.onclick = () => { if (!busy) takeTurn(CONTINUE); }; s.append(cb); }
+  (S.suggestions || []).slice(0, 3).forEach(t => { const b = document.createElement("button"); b.type = "button"; b.textContent = t; b.disabled = busy; b.onclick = () => { if (!busy) takeTurn(t); }; s.append(b); });
+  if (lastSnap && S.mode !== "chronicle" && !busy) { const u = document.createElement("button"); u.type = "button"; u.className = "undo"; u.textContent = "↶ Отменить ход"; u.title = "Вернуть всё как было до последнего действия"; u.onclick = undoTurn; s.append(u); }
+}
+function undoTurn() {
+  if (!lastSnap || busy) return; try { speechSynthesis?.cancel(); } catch (e) {}
+  const snap = JSON.parse(lastSnap); lastSnap = null; S = snap; setWorld(S.wd); renderFeed(); renderAll(); save(); scrollFeed(); pushFeed({ t: "sys", html: "Ход отменён." }); S.feed.pop();
+}
+
+/* ---------- feed ---------- */
+function pushFeed(e) { S.feed.push(e); if (S.feed.length > 160) S.feed.splice(0, S.feed.length - 160); renderEntry(e, true); scrollFeed(); return e; }
+function scrollFeed() { const f = document.getElementById("feed"); requestAnimationFrame(() => { f.scrollTop = f.scrollHeight; }); }
+function renderFeed() { document.getElementById("feed-inner").innerHTML = ""; S.feed.forEach(e => renderEntry(e, false)); }
+function narrHTML(text) { const t = esc(text).replace(/«([^»]{1,400})»/g, "<q>$1</q>").replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>").replace(/\*([^*]+)\*/g, "<i>$1</i>"); return t.split(/\n+/).filter(p => p.trim()).map(p => `<p>${p}</p>`).join(""); }
+function speakerHTML(id) { const n = NPCS[id]; return n ? `<div class="speaker">${npcPh(id)}<span><b>${esc(n.name)}</b><small>${esc(n.role)}</small></span></div>` : ""; }
+function renderEntry(e, fresh) {
+  const fi = document.getElementById("feed-inner"); const d = document.createElement("div"); Object.defineProperty(e, "_el", { value: d, writable: true, configurable: true, enumerable: false });
+  if (e.t === "narr") { d.className = "e-narr"; d.innerHTML = (e.speaker ? speakerHTML(e.speaker) : "") + `<div class="tx ${e.first ? "e-first" : ""}">${narrHTML(e.text)}${e.streaming ? '<span class="caret"></span>' : ""}</div>` + (HAS_TTS ? `<button class="narr-voice" type="button" title="Озвучить" aria-label="Озвучить фрагмент">▶ Озвучить</button>` : ""); }
+  else if (e.t === "recap") { d.className = "e-recap"; d.innerHTML = `<div class="eyebrow">Ранее в «${esc(WD.name)}»</div>${narrHTML(e.text)}`; }
+  else if (e.t === "player") { d.className = "e-player"; d.innerHTML = `<div class="who-s">${esc(C().name)}</div>${esc(e.text)}`; }
+  else if (e.t === "sys") { d.className = "e-sys"; d.innerHTML = e.html; }
+  else if (e.t === "roll") {
+    const r = e.r; const cls = r.enemyRoll ? "enemy " + (r.ok ? "fail" : "ok") : r.crit ? "crit" : r.ok ? "ok" : "fail";
+    const v = r.skip ? "—" : r.enemyRoll ? (r.kind === "enemy" ? (r.crit ? "Крит по вам" : r.ok ? "Попадание" : "Промах") : (r.ok ? "Провал цели" : "Цель устояла")) : r.noslot ? "Нет ячеек" : r.crit ? "Критический успех" : r.fumble ? "Провал (1)" : r.ok ? (r.kind === "attack" || r.kind === "spell" ? "Попадание" : "Успех") : (r.kind === "attack" || r.kind === "spell" ? "Промах" : "Провал");
+    d.className = "e-roll " + cls;
+    if (fresh && r.nat && !matchMedia("(prefers-reduced-motion: reduce)").matches) setTimeout(() => { const sp = d.querySelector(".d20 span"); if (!sp) return; let k = 0; const iv = setInterval(() => { sp.textContent = k++ < 8 ? 1 + Math.floor(Math.random() * 20) : r.nat; if (k > 8) clearInterval(iv); }, 70); }, 0);
+    d.innerHTML = `<div class="d20 ${fresh ? "spin" : ""}" style="color:${r.crit ? "var(--lantern)" : r.enemyRoll ? "var(--ember)" : "var(--mist)"}">${D20SVG}<span>${r.nat || "✦"}</span></div><div class="info"><div class="ttl">${esc(r.title)}</div>${r.reason ? `<div class="why">${esc(r.reason)}</div>` : ""}<div class="formula">${esc(r.formula || "")}</div></div><div class="verdict">${v}</div>`;
+  } else if (e.t === "chips") { d.className = "chips"; d.innerHTML = e.items.map(i => `<span class="chip ${i.c}">${esc(i.x)}</span>`).join(""); }
+  fi.append(d);
+}
+function updateNarr(e) {
+  if (!e._el) return; const tx = e._el.querySelector(".tx");
+  if (e.speaker && NPCS[e.speaker] && !e._el.querySelector(".speaker")) e._el.insertAdjacentHTML("afterbegin", speakerHTML(e.speaker));
+  tx.innerHTML = narrHTML(e.text) + (e.streaming ? '<span class="caret"></span>' : "");
+  const f = document.getElementById("feed"); if (f.scrollHeight - f.scrollTop - f.clientHeight < 220) f.scrollTop = f.scrollHeight;
+}
+
+/* =========================================================================
+   NARRATOR
+   ========================================================================= */
+let samplePromise = null, aiOff = false, busy = false, ctl = null, archiving = false;
+function getSample() {
+  if (aiOff) return Promise.resolve(null);
+  if (!samplePromise) samplePromise = window.claude && typeof window.claude.use === "function" ? window.claude.use("sample").catch(() => null) : Promise.resolve(null);
+  return samplePromise;
+}
+async function initSample() { const s = await getSample(); setAIPill(!!s && !aiOff); }
+function setAIPill(on) { const p = document.getElementById("pill-ai"); p.classList.toggle("on", on); p.classList.toggle("off", !on); document.getElementById("pill-ai-t").textContent = on ? "Рассказчик: ИИ" : "Рассказчик: офлайн"; }
+function aiFail(e) {
+  const hard = ["not_granted", "sampling_disabled", "not_declared", "capability_disabled", "capability_removed"];
+  if (hard.includes(e?.code)) { aiOff = true; setAIPill(false); return "ИИ-рассказчик недоступен в этом просмотре, дальше работает простой офлайн-рассказчик."; }
+  if (e?.code === "rate_limited") return "ИИ временно перегружен. Этот ход рассказан офлайн, попробуйте следующий чуть позже.";
+  return "Связь с ИИ прервалась. Этот ход рассказан офлайн.";
+}
+function charBrief() {
+  const c = C(); return `${c.name} (${c.gender === "f" ? "она" : "он"}), ${RACES[c.race].name} (как к таким относятся: ${(RACE_SOCIAL[c.race] || "").toLowerCase()}), оружие: ${c.weapons.map(w => WEAPONS[w]?.name).filter(Boolean).join(", ")}${c.rage ? ", СЕЙЧАС В ЯРОСТИ" : ""}, ${CLASSES[c.cls].name} ${c.level} ур. (бонус мастерства ${fmt(prof(c.level))}), предыстория: ${BACKGROUNDS[c.bg].name} — вы ${c.hook || bgHook(c.bg)}. Характер: ${c.persona}. ${c.about ? "О себе: " + c.about : ""} ${c.look ? "Внешность: " + c.look + "." : ""} HP ${c.hp}/${c.maxHp}, КД ${c.ac}. Навыки: ${c.skills.map(k => SKILLS[k][0]).join(", ")}. Предметы: ${c.items.map(i => i.name).join(", ")}, ${fmtMoney(purse(c))}.${c.spells.length ? " Заклинания: " + c.spells.map(s => SPELLS[s].name).join(", ") + ". Свободные ячейки: " + (Object.entries(c.slots).map(([l, [, cur]]) => `${l} круг — ${cur}`).join(", ") || "нет") + "." : ""}`;
+}
+function sceneBrief() {
+  const loc = POIS[S.world.loc]; const L = S.world.loc;
+  const npcs = loc.npcs.filter(id => NPCS[id]).map(id => { const n = NPCS[id]; const st = S.world.npcs[id] || { att: 0, mem: [] }; return `- [${id}] ${n.name}, ${n.role}; внешность: ${n.look}; характер: ${n.persona}; тайна (не выдавать сразу): ${n.secret}; отношение к герою: ${st.att} (${attLabel(st.att)[0]}); помнит: ${st.mem.slice(-4).join("; ") || "ничего"}`; }).join("\n");
+  const foes = Object.keys(ENEMIES).filter(id => ENEMIES[id].loc === L).map(id => `- [${id}] ${ENEMIES[id].name}: ${enemyStatus(id)}`).join("\n");
+  const pois = outerEntries().map(([id, p]) => `${id} = ${p.name}`).join("; ");
+  return `ЛОКАЦИЯ: ${loc.name} [${L}] — ${loc.desc}
+Улика здесь (выдать при успешном поиске): ${loc.clue || "—"}
+НПС здесь:
+${npcs || "- никого"}
+${foes ? "ВРАГИ в этой локации (нападают, когда герой их обнаружил или пришёл в логово):\n" + foes : ""}
+БОЙ: ${S.world.combat ? "идёт" : "нет"}
+ТОЧКИ НА КАРТЕ: ${pois}
+ВРЕМЯ: день ${worldTime().day}, ${DAY_PARTS[worldTime().part]}. ПОГОДА: ${weatherNow().name}, ${(SEASONS[WD.season] || "осень").toLowerCase()}. РЕПУТАЦИЯ ГЕРОЯ В ПОСЕЛЕНИИ: ${S.world.rep || 0} (${repLabel(S.world.rep || 0)}).
+ГДЕ СЕЙЧАС ЛЮДИ: ${peopleWhereBrief()}. ЧАСЫ УГРОЗЫ: ${S.world.threat || 0} из 6 (чем выше, тем ближе злодей к цели).
+${sceneBriefLine()}
+${bldBrief()}
+ПОМЕТКИ НА КАРТЕ ГЕРОЯ: ${Object.entries(S.world.notes || {}).map(([id, n]) => `${id}: ${n}`).join("; ") || "нет"}`;
+}
+function recentLog(n) { return S.log.slice(-n).map(l => l.who === "p" ? `Игрок: ${l.text}` : `Рассказчик: ${l.text.slice(0, 500)}`).join("\n"); }
+async function adjudicate(text) {
+  const sample = await getSample(); if (!sample) return offlineAdjudicate(text);
+  const prompt = `Ты — арбитр правил 5e в текстовой ролевой игре. Ты НЕ пишешь историю, только решаешь, какие броски нужны для действия игрока. Броски сделает программа.
+${sceneBrief()}
+ГЕРОЙ: ${charBrief()}
+Недавнее:
+${recentLog(6)}
+
+ДЕЙСТВИЕ ИГРОКА: «${text}»
+
+Правила:
+- Простые и безопасные действия (поговорить, войти, оглядеться без спешки, купить) — без бросков.
+- Проверка нужна, если исход неочевиден и у провала есть последствия. КС: 10 легко, 13 средне, 15 трудно, 18 очень трудно.
+- Не больше 2 проверок. Ключи навыков: ${Object.keys(SKILLS).join(", ")}. Характеристики: str, dex, con, int, wis, cha.
+- Атака оружием только по врагу из списка ВРАГИ: {"kind":"attack","target":"id","weapon":"${C().weapons[0]}"}. Оружие героя (id — название): ${C().weapons.map(w => w + " — " + (WEAPONS[w]?.name || w)).join(", ")}.
+- Заклинание: {"kind":"spell","spell":"id","target":"id врага или null"}. Заклинания героя: ${C().spells.join(", ") || "нет"}.
+- adv: 1 если есть явное преимущество (враг спит, засада, отличная подготовка), -1 если помеха, иначе 0.
+- move_to: id точки на карте, если герой явно идёт в другое место, иначе null. talk_to: id НПС, к которому обращаются, иначе null.
+Ответь только JSON: {"checks":[{"kind":"skill","skill":"perception","dc":13,"adv":0,"reason":"коротко зачем"}],"move_to":null,"talk_to":null}`;
+  try { return await sample.json(prompt, { modelTier: "quick", cache: false }); }
+  catch (e) { pushFeed({ t: "sys", html: esc(aiFail(e)) }); return offlineAdjudicate(text); }
+}
+function validatePlan(plan) {
+  const out = { checks: [], move_to: null, talk_to: null, notes: [] }; if (!plan || typeof plan !== "object") return out;
+  if (plan.move_to && POIS[plan.move_to] && plan.move_to !== S.world.loc) { const t = POIS[plan.move_to];
+    if (!t.inner) out.move_to = plan.move_to; else if (t.parent !== hereOuter()) out.notes.push("Это здание в другом месте."); else if (bldLocked(plan.move_to)) { bstate(plan.move_to).known = tkey(); out.notes.push(`Дверь заперта: ${t.name}.`); } else { out.move_to = plan.move_to; const st = bstate(plan.move_to); st.how = st.how || "вошёл"; } }
+  if (plan.talk_to && NPCS[plan.talk_to]) out.talk_to = plan.talk_to;
+  (Array.isArray(plan.checks) ? plan.checks : []).slice(0, 2).forEach(ch => {
+    const adv = clamp(Number(ch.adv) || 0, -1, 1); const reason = str(ch.reason, 120);
+    if (ch.kind === "skill" && SKILLS[ch.skill]) out.checks.push({ kind: "skill", skill: ch.skill, dc: clamp(Math.round(Number(ch.dc) || 12), 5, 30), adv, reason });
+    else if (ch.kind === "save" && ABIL.includes(ch.ability)) out.checks.push({ kind: "save", ability: ch.ability, dc: clamp(Math.round(Number(ch.dc) || 12), 5, 30), adv, reason });
+    else if (ch.kind === "attack" && enemyHere(ch.target)) { const a = { kind: "attack", target: ch.target, weapon: C().weapons.includes(ch.weapon) ? ch.weapon : C().weapons[0], adv, reason }; out.checks.push(a); if (EXTRA_ATK.has(C().cls) && C().level >= 5) out.checks.push({ ...a, extra: true, reason: "Дополнительная атака" }); }
+    else if (ch.kind === "spell" && C().spells.includes(ch.spell)) {
+      const sp = SPELLS[ch.spell]; const needT = !["heal", "sleep", "buff", "smite"].includes(sp.kind);
+      if (needT && !enemyHere(ch.target)) { out.notes.push(`Для «${sp.name}» нет подходящей цели.`); return; }
+      if (sp.kind === "sleep" && !aliveEnemiesHere().length) { out.notes.push("Усыплять некого."); return; }
+      out.checks.push({ kind: "spell", spell: ch.spell, target: needT ? ch.target : null, reason });
+    } else if (ch.kind === "breath" && RACES[C().race]?.breath && resOf(C()).breath > 0 && aliveEnemiesHere().length) out.checks.push({ kind: "breath", reason: "Оружие дыхания" });
+    else if (ch.kind) out.notes.push("Движок отклонил проверку, которой нет в правилах.");
+  });
+  return out;
+}
+function offlineAdjudicate(text) {
+  const t = text.toLowerCase(); const plan = { checks: [], move_to: null, talk_to: null };
+  if (/(ид[уё]|пойти|отправ|направля|бегу|возвращ)/.test(t)) {
+    for (const [id, p] of outerEntries()) { const words = p.name.toLowerCase().replace(/[«»"]/g, "").split(/\s+/).filter(w => w.length > 3); if (words.some(w => t.includes(w.slice(0, Math.max(4, w.length - 2))))) { plan.move_to = id; break; } }
+  }
+  const foe = aliveEnemiesHere()[0];
+  if (/(атаку|бью|удар|руб|стрел|напада)/.test(t) && foe) plan.checks.push({ kind: "attack", target: foe, weapon: C().weapons[0], reason: "Атака" });
+  else if (/(осматр|ищу|обыск|исслед|изуча|улик)/.test(t)) plan.checks.push({ kind: "skill", skill: "investigation", dc: 12, reason: "Поиск улик" });
+  else if (/(прислуш|огляд|высматр|замеча)/.test(t)) plan.checks.push({ kind: "skill", skill: "perception", dc: 12, reason: "Внимательность" });
+  else if (/(крад|тихо|скрыт|прячу|незамет)/.test(t)) plan.checks.push({ kind: "skill", skill: "stealth", dc: 13, reason: "Скрытность" });
+  else if (/(убежд|уговар|прошу|договор)/.test(t)) plan.checks.push({ kind: "skill", skill: "persuasion", dc: 13, reason: "Убеждение" });
+  else if (/(вру|обман|лгу)/.test(t)) plan.checks.push({ kind: "skill", skill: "deception", dc: 13, reason: "Обман" });
+  else if (/(угрож|запуг)/.test(t)) plan.checks.push({ kind: "skill", skill: "intimidation", dc: 13, reason: "Запугивание" });
+  for (const id of POIS[S.world.loc].npcs) if (NPCS[id] && t.includes(NPCS[id].name.toLowerCase().split(" ").pop().slice(0, 4))) plan.talk_to = id;
+  return plan;
+}
+function waitRoll(ch) {
+  return new Promise(res => {
+    const slot = document.getElementById("roll-slot");
+    const label = ch.kind === "skill" ? `${SKILLS[ch.skill][0]} · КС ${ch.dc}` : ch.kind === "save" ? `Спасбросок ${ABIL_FULL[ch.ability]} · КС ${ch.dc}` : ch.kind === "attack" ? `Атака: ${WEAPONS[ch.weapon].name} → ${ENEMIES[ch.target].name}` : `Заклинание: ${SPELLS[ch.spell].name}`;
+    const bonus = ch.kind === "skill" ? skillBonus(ch.skill) : ch.kind === "save" ? saveBonus(ch.ability) : ch.kind === "attack" ? weaponAtk(ch.weapon).bonus : spellAtk();
+    slot.innerHTML = `<div class="roll-cta"><div class="d20" style="color:var(--lantern)">${D20SVG}<span>20</span></div><div class="txt"><b>${esc(label)}</b><small>${esc(ch.reason || "Нужна проверка")} · ваш бонус ${fmt(bonus)}${ch.adv > 0 ? " · с преимуществом" : ch.adv < 0 ? " · с помехой" : ""}</small></div><button class="btn primary" type="button" id="btn-roll">Бросить <span class="kbd">R</span></button></div>`;
+    const go = () => { document.removeEventListener("keydown", key); slot.innerHTML = ""; sfx("dice"); res(); };
+    const key = ev => { if (["r", "R", "к", "К"].includes(ev.key) && document.activeElement?.id !== "act-input") { ev.preventDefault(); go(); } };
+    document.addEventListener("keydown", key); slot.querySelector("#btn-roll").onclick = go; slot.querySelector("#btn-roll").focus();
+  });
+}
+const CONTINUE = "[ПРОДОЛЖАЙ]"; let lastSnap = null;
+async function takeTurn(text, preset) {
+  if (busy || S.dead) return; if (S.dying) { pushFeed({ t: "sys", html: "Сначала спасброски от смерти." }); return; }
+  if (!preset && text !== CONTINUE && tryTradeIntent(text)) return;
+  const intro = preset && preset.intro; if (!intro) { try { lastSnap = JSON.stringify(S); } catch (e) { lastSnap = null; } }
+  busy = true; setBusy(true); S.turnSneak = false; S.turnColossus = false; S.pendingXP = 0; refreshBuildings();
+  if (text === CONTINUE) { pushFeed({ t: "sys", html: "Вы ждёте и наблюдаете…" }); S.log.push({ who: "p", text: "(ждёт и наблюдает)" }); preset = { checks: [] }; }
+  else if (!intro) { pushFeed({ t: "player", text }); S.log.push({ who: "p", text }); }
+  let thinking = null;
+  try {
+    let plan;
+    if (preset) plan = validatePlan(preset);
+    else { thinking = showThinking("Рассказчик обдумывает последствия"); plan = validatePlan(await adjudicate(text)); thinking.remove(); thinking = null; }
+    plan.notes.forEach(n => pushFeed({ t: "sys", html: esc(n) }));
+    const results = [];
+    if (plan.move_to) {
+      if (S.world.combat) { pushFeed({ t: "sys", html: "В бою не уйти просто так: сначала разберитесь с врагами." }); plan.move_to = null; }
+      else { moveTo(plan.move_to); results.push({ kind: "move", title: `Перемещение: ${POIS[plan.move_to].name}` }); }
+    }
+    for (const ch of plan.checks) {
+        if (ch.extra && !enemyHere(ch.target)) { const nxt = aliveEnemiesHere()[0]; if (!nxt) continue; ch.target = nxt; }
+      if (ch.kind === "skill" || ch.kind === "save" || ch.kind === "attack" || (ch.kind === "spell" && SPELLS[ch.spell].kind === "attack")) await waitRoll(ch);
+      const r = resolveCheck(ch); if (!r) continue; results.push(r); pushFeed({ t: "roll", r }); setTimeout(() => rollSfx(r), ch.kind === "spell" && SPELLS[ch.spell].kind !== "attack" ? 0 : 520);
+      if (r.heal) pushFeed({ t: "chips", items: [{ c: "heal", x: `+${r.heal} HP` }] });
+      if (r.dmg) pushFeed({ t: "chips", items: [{ c: "dmg", x: `−${r.dmg} HP · ${ENEMIES[r.target]?.name || "цель"} (${r.enemyAfter})` }] });
+      await pause(250);
+    }
+    if (S.world.combat && !intro) { for (const r of enemyTurn()) { results.push(r); pushFeed({ t: "roll", r }); if (!r.skip) { sfx("dice"); setTimeout(() => rollSfx(r), 480); await pause(300); } if (r.dmg) pushFeed({ t: "chips", items: [{ c: "dmg", x: `−${r.dmg} HP вам` }] }); await pause(200); } }
+    bldAfterChecks(results); searchAfterChecks(results);
+    let combatEnded = false;
+    if (S.world.combat && !aliveEnemiesHere().length) { S.world.combat = false; combatEnded = true; C().rage = false; C().mark = null; results.push({ kind: "combat_end", title: "Все враги повержены" }); }
+    renderSheet(); renderWorld(); renderTop();
+    const eff = await narrate(text, plan, results, intro);
+    applyEffects(eff, combatEnded);
+    if (results.some(r => r.kind === "skill" && r.ok) && (Array.isArray(eff.facts) && eff.facts.length || S.world.flags["clue_" + S.world.loc])) S.world.flags["clue_" + S.world.loc] = true;
+  } catch (err) { thinking?.remove(); pushFeed({ t: "sys", html: "Что-то пошло не так в этом ходе. Попробуйте сформулировать действие иначе." }); console.error(err); }
+  S.pendingBld = null; S.pendingSearch = null; S.turn++; busy = false; setBusy(false); checkDeath(); after(); maybeArchive();
+}
+function after() { renderAll(); save(); }
+function pause(ms) { return new Promise(r => setTimeout(r, ms)); }
+function setBusy(b) { document.getElementById("btn-send").disabled = b; document.getElementById("btn-home").disabled = b; document.getElementById("btn-stop").hidden = !b || !ctl; renderSheet(); renderSugg(); const go = document.getElementById("go-sel"); if (go) go.disabled = b || S.world.combat; }
+function showThinking(t) { const fi = document.getElementById("feed-inner"); const d = document.createElement("div"); d.className = "thinking"; d.innerHTML = `<span class="dots"><i></i><i></i><i></i></span><span>${esc(t)}…</span>`; fi.append(d); scrollFeed(); return d; }
+const DAY_PARTS = ["утро", "день", "вечер", "ночь"];
+function worldTime() { return S.world.time || (S.world.time = { day: 1, part: 0 }); }
+function advanceTime(n) { const t = worldTime(); t.part += n; while (t.part > 3) { t.part -= 4; t.day++; } }
+function moveTo(id) { mapSel = null; const from = POIS[S.world.loc], p = POIS[id]; const near = (p.inner && p.parent === (from?.inner ? from.parent : S.world.loc)) || (from?.inner && from.parent === id);
+  if (S.world.loc !== id && !near) advanceTime(1); if (from?.inner && !near) { const dpS = bldSlot(S.world.loc); if (dpS) scState(from.parent).player = doorPt(dpS); }
+  S.world.loc = id; if (!S.world.visited.includes(id)) S.world.visited.push(id); if (!p.inner) reveal(p.x, p.y, (p.enemies || []).length ? 2 : 3); refreshBuildings(); pushFeed({ t: "sys", html: `${p.inner ? "Вы входите" : "Вы приходите"}: <b>${esc(p.name)}</b>` }); renderWorld(); renderTop(); }
+function resultsBrief(results) {
+  if (!results.length) return "Бросков не было.";
+  return results.map(r => {
+    if (r.kind === "move" || r.kind === "note") return `• ${r.title}.`; if (r.kind === "combat_end") return "• Все враги в локации повержены, бой окончен.";
+    if (r.kind === "enemy") return `• ${r.title}: ${r.skip ? "спит" : r.ok ? (r.crit ? "критическое попадание" : "попадание") + ", герой ранен" : "промах"}.`;
+    const what = r.ok ? (r.crit ? "КРИТИЧЕСКИЙ УСПЕХ" : "УСПЕХ") : (r.fumble ? "ПРОВАЛ (выпала 1)" : "ПРОВАЛ");
+    return `• ${r.title}${r.reason ? " (" + r.reason + ")" : ""}: ${r.noslot ? "не хватило ячеек" : what}${r.enemyAfter ? `; цель теперь: ${r.enemyAfter}` : ""}${r.heal ? "; герой исцелён" : ""}.`;
+  }).join("\n");
+}
+async function narrate(text, plan, results, intro) {
+  const e = pushFeed({ t: "narr", text: "", streaming: true, speaker: plan.talk_to && POIS[S.world.loc].npcs.includes(plan.talk_to) ? plan.talk_to : null, first: intro });
+  const sample = await getSample();
+  if (!sample) { const r = offlineNarrate(text, plan, results, intro); e.text = r.text; e.streaming = false; if (r.eff.speaker) e.speaker = r.eff.speaker; updateNarr(e); S.log.push({ who: "n", text: r.text }); return r.eff; }
+  const th = showThinking(intro ? "Рассказчик открывает книгу" : "Рассказчик пишет"); e._el.hidden = true;
+  const prompt = `Ты — мастер (рассказчик) настольной ролевой игры по правилам 5e. Пиши по-русски, живо и конкретно, от второго лица («ты»), обращаясь к герою. ${MODES[S.mode].prompt}
+
+МИР «${WD.name}» (${GENRES[WD.genre] || "Расследование"}; опасность: ${(DANGERS[WD.danger] || "Опасный").toLowerCase()}): ${WD.public}
+ТАЙНА (знает только мастер, раскрывать постепенно через заслуженные улики): ${WD.secret}
+Опорные точки: ${(WD.beats || []).join(" | ")}. Хорошие концовки: ${(WD.endings || []).join(" | ")}.
+ГЕРОЙ: ${charBrief()}
+${sceneBrief()}
+ЗАДАНИЕ: ${S.world.quest}
+КРАТКО О ПРОШЛОМ (летопись архивариуса): ${S.summary || "кампания только началась"}
+УСТАНОВЛЕННЫЕ ФАКТЫ (не противоречь): ${S.world.facts.slice(-14).join(" | ") || "пока ничего"}
+НЕДАВНИЕ СОБЫТИЯ:
+${recentLog(10) || "—"}
+
+${S.world.villainMove ? "ПРОТИВНИК ДЕЛАЕТ ХОД: в этой сцене опиши заметное последствие его действий (новая жертва, улика уничтожена, союзник напуган, слух о беде) — так, чтобы герой это увидел или услышал.\n" : ""}${intro ? `НАЧАЛО КАМПАНИИ. Герой в стартовом месте «${POIS[S.world.loc].name}». Опиши атмосферу, дай местному НПС заговорить с героем, свяжи завязку с предысторией героя и дай 2–3 зацепки. Не раскрывай тайну. Можно опереться на набросок: ${WD.intro || "—"}` : text === CONTINUE ? `ИГРОК ЖДЁТ И НАБЛЮДАЕТ. Продвинь сцену сам: пусть НПС проявят инициативу, что-то случится или мир напомнит о себе. Не действуй за героя.` : `ДЕЙСТВИЕ ИГРОКА: «${text}»
+РЕЗУЛЬТАТЫ ДВИЖКА (это истина, опиши именно их):
+${resultsBrief(results)}`}
+
+Правила письма:
+- ${({ short: "50–90 слов, 1–2 абзаца", normal: "90–170 слов, 2–3 абзаца", long: "170–260 слов, 3–4 абзаца" })[S.settings?.len || "normal"]}. Реплики НПС в «ёлочках», у каждого свой голос и манера речи.
+- НПС живые: у каждого свои цели и страхи, они могут отказать, солгать, торговаться, требовать плату, первыми заводить разговор. Не будь услужливым: герой получает только то, что заслужил словами, броском или ценой.
+- Мир не ждёт героя: учитывай время суток и часы угрозы. Если герой медлит или шумно проваливается, угроза растёт.
+- Покупки и продажи проходят через окно торговли движка: не выдавай купленное через items_add и не списывай gold за покупки; если герой хочет купить или продать, предложи ему поторговать. Последние сделки видны в недавних событиях.
+- Не называй числа урона, HP и результаты кубиков — их покажет интерфейс. Не придумывай новых бросков.
+- Провалы имеют последствия, успехи дают продвижение и улики. Раскрывай тайну только через заслуженные улики.
+- Если герой пришёл в место, где есть ВРАГИ, они нападают или готовы напасть — начни бой через start_combat (если герой не прокрался незаметно).
+- Не решай за героя, что он делает дальше. Закончи на моменте выбора.
+
+После текста поставь строку @@@ и затем ОДНУ строку JSON с последствиями (только то, что реально произошло в тексте):
+{"speaker": "id НПС, который говорит больше всех, или null", "damage": [{"dice":"1d4","reason":"почему"}], "heal": null, "items_add": [{"name":"…","desc":"…"}], "items_remove": [], "gold": 0, "xp": 0, "attitude": {"id_нпс": 0}, "facts": ["1–2 важных новых факта для памяти, коротко"], "quest": null, "map_notes": [{"place":"id места","note":"что герой узнал об этом месте, до 8 слов"}], "rumors": ["id места, о котором герой услышал, но ещё не был"], "building": null, "npc_moves": [], "rep": 0, "scene": {"add": [{"label":"предмет, 1–3 слова","acc":"он же в винительном падеже","kind":"chest|crate|barrel|table|bed|altar|statue|body|item|fire|lantern|boat|rock|bell|cart|cauldron|sack"}], "remove": ["label исчезнувшего предмета"], "crowd": null}, "new_npcs": [{"id":"latin_snake_case","name":"…","role":"…","look":"внешность 6–10 слов","persona":"характер, 1 предложение","gender":"m|f","age":"young|adult|old","important":false}], "threat": 0, "start_combat": [], "suggestions": ["3 коротких варианта следующего действия, до 6 слов"]}
+damage — только если герой получил вред от окружения или ловушки (не от врагов, их урон уже посчитан). xp — 25–75 за важное открытие или решённую проблему, иначе 0. attitude — изменения от −15 до +15. quest — новая формулировка задания, если оно изменилось. npc_moves — если по сюжету НПС ушёл, сбежал, его увели или он пришёл в другое место: [{"id":"id НПС","to":"id места из списка или null — вернуться домой"}]. rep — изменение репутации героя в поселении от −10 до +10, если поступок стал известен местным (помощь, щедрость, драка, кража, хамство), иначе 0. scene — только если в сцене появился заметный предмет, с которым герой может взаимодействовать (тело, сундук, записка, следы), или предмет исчез/унесён; crowd — сколько безымянных людей сейчас фоном в локации (0–8), только если это заметно изменилось, иначе null. new_npcs — только если в сцене впервые появился новый человек с именем, которого нет в списке НПС (important: true — если он важен для тайны). threat: +1, если противник получил преимущество или герой потратил время впустую, −1 при серьёзном успехе против противника, иначе 0.`;
+  ctl = new AbortController(); document.getElementById("btn-stop").hidden = false;
+  let full = "";
+  try {
+    const r = await sample(prompt, { modelTier: "default", effort: "low", cache: false, signal: ctl.signal, onText: ({ text: t }) => { if (th.isConnected) { th.remove(); e._el.hidden = false; } full = t; e.text = t.split("@@@")[0].trim(); updateNarr(e); } });
+    full = r.text;
+  } catch (err) {
+    th.remove(); e._el.hidden = false;
+    if (err.code === "cancelled") full = err.text || "…"; else if (err.text) full = err.text;
+    else { pushFeed({ t: "sys", html: esc(aiFail(err)) }); const o = offlineNarrate(text, plan, results, intro); e.text = o.text; e.streaming = false; if (o.eff.speaker) e.speaker = o.eff.speaker; updateNarr(e); S.log.push({ who: "n", text: o.text }); ctl = null; return o.eff; }
+  }
+  th.remove(); e._el.hidden = false; ctl = null; document.getElementById("btn-stop").hidden = true;
+  const [body, tail] = full.split("@@@"); e.text = (body || "").trim() || "…"; e.streaming = false;
+  let eff = {}; if (tail) { const m = tail.match(/\{[\s\S]*\}/); if (m) { try { eff = JSON.parse(m[0]); } catch (x) { eff = {}; } } }
+  addNewNpcs(eff); S.world.villainMove = false;
+  if (eff.speaker && NPCS[eff.speaker] && (POIS[S.world.loc].npcs.includes(eff.speaker) || (S.pendingBld && POIS[S.pendingBld.bid]?.npcs.includes(eff.speaker)))) { e.speaker = eff.speaker; S.world.met = S.world.met || []; if (!S.world.met.includes(eff.speaker)) S.world.met.push(eff.speaker); }
+  updateNarr(e); S.log.push({ who: "n", text: e.text }); if (e.speaker) { popNPC(e.speaker); wantPortrait(WD, e.speaker, 0); }
+  if (S.settings?.voice) speak(e.text);
+  return eff;
+}
+function applyEffects(eff, combatEnded) {
+  const c = C(); const chips = []; sceneEffects(eff.scene); bldEffects(eff.building); npcMoves(eff.npc_moves); { const dr = clamp(Math.round(Number(eff.rep) || 0), -10, 10); if (dr) addRep(dr); }
+  (Array.isArray(eff.damage) ? eff.damage : []).slice(0, 2).forEach(d => { const p = parseDice(d.dice); if (!p) return; p.n = Math.min(p.n, 3); const r = rollDice(p); if (RACES[c.race]?.fireRes && /огн|плам|ожог|пожар|жар/i.test(d.reason || "")) { r.total = Math.ceil(r.total / 2); r.text += " ÷2 сопротивление"; } hurtHero(r.total); chips.push({ c: "dmg", x: `−${r.total} HP · ${str(d.reason || "урон", 40)} (${r.text})` }); });
+  if (eff.heal) { const p = parseDice(eff.heal.dice || eff.heal); if (p) { const r = rollDice(p); const got = healHero(r.total); chips.push({ c: "heal", x: `+${got} HP` }); } }
+  (Array.isArray(eff.items_add) ? eff.items_add : []).slice(0, 3).forEach(it => { const name = str(typeof it === "string" ? it : it?.name, 40); if (!name) return; c.items.push({ name, desc: str(it.desc, 120), potion: /зелье лечения/i.test(name) }); chips.push({ c: "item", x: `+ ${name}` }); });
+  (Array.isArray(eff.items_remove) ? eff.items_remove : []).slice(0, 3).forEach(n => { const i = c.items.findIndex(x => x.name.toLowerCase() === String(n).toLowerCase()); if (i >= 0) { chips.push({ c: "item", x: `− ${c.items[i].name}` }); c.items.splice(i, 1); } });
+  const gold = clamp(Math.round(Number(eff.gold) || 0), -50, 100); if (gold && c.gold + gold >= 0) { c.gold += gold; chips.push({ c: "gold", x: `${gold > 0 ? "+" : ""}${gold} зм` }); }
+  const xp = clamp(Math.round(Number(eff.xp) || 0), 0, 100 + 50 * C().level) + (S.pendingXP || 0); if (xp) { c.xp += xp; chips.push({ c: "xp", x: `+${xp} опыта` }); }
+  if (eff.attitude && typeof eff.attitude === "object") Object.entries(eff.attitude).forEach(([id, v]) => { if (!NPCS[id]) return; const dv = clamp(Math.round(Number(v) || 0), -15, 15); if (!dv) return; const st = S.world.npcs[id] || (S.world.npcs[id] = { att: 0, mem: [] }); st.att = clamp(st.att + dv, -100, 100); chips.push({ c: "npc", x: `${NPCS[id].name}: ${dv > 0 ? "+" : ""}${dv} к отношению` }); });
+  const loc = POIS[S.world.loc];
+  (Array.isArray(eff.facts) ? eff.facts : []).slice(0, 3).forEach(f => { const s = str(f, 160); if (s && !S.world.facts.includes(s)) { S.world.facts.push(s); loc.npcs.forEach(id => S.world.npcs[id]?.mem.push(s)); } });
+  if (S.world.facts.length > 40) S.world.facts.splice(0, S.world.facts.length - 40);
+  loc.npcs.forEach(id => { const m = S.world.npcs[id]?.mem; if (m && m.length > 8) m.splice(0, m.length - 8); });
+  S.world.notes = S.world.notes || {}; S.world.rumors = S.world.rumors || [];
+  const dt = clamp(Math.round(Number(eff.threat) || 0), -1, 2);
+  if (dt) { const before = S.world.threat || 0; S.world.threat = clamp(before + dt, 0, 6); const now = S.world.threat;
+    chips.push({ c: dt > 0 ? "dmg" : "heal", x: dt > 0 ? `Угроза растёт: ${now}/6` : `Угроза отступает: ${now}/6` });
+    if ((before < 3 && now >= 3) || (before < 6 && now >= 6)) { S.world.villainMove = true; pushFeed({ t: "sys", html: now >= 6 ? "<b>Часы угрозы пробили.</b> Противник добился своего, и мир меняется." : "<b>Угроза нарастает.</b> Противник делает свой ход." }); } }
+  (Array.isArray(eff.map_notes) ? eff.map_notes : []).slice(0, 2).forEach(m => { const id = m?.place; const n = str(m?.note, 80); if (POIS[id] && n) { const isNew = !S.world.notes[id]; S.world.notes[id] = n; if (isNew) chips.push({ c: "gold", x: `На карте: ${POIS[id].name}` }); } });
+  (Array.isArray(eff.rumors) ? eff.rumors : []).slice(0, 2).forEach(id => { if (POIS[id] && !S.world.visited.includes(id) && !S.world.rumors.includes(id)) { S.world.rumors.push(id); chips.push({ c: "gold", x: `Слух: ${POIS[id].name}` }); } });
+  if (eff.quest && typeof eff.quest === "string") { S.world.quest = str(eff.quest, 200); chips.push({ c: "xp", x: "Задание обновлено" }); }
+  const sc = (Array.isArray(eff.start_combat) ? eff.start_combat : []).filter(id => enemyHere(id));
+  if (sc.length && !S.world.combat) { S.world.combat = true; const ini = rnd(20); const tot = ini + mod(c.scores.dex) + traitFx(c.traits || {}).init;
+    sfx("dice"); pushFeed({ t: "roll", r: { kind: "init", title: "Инициатива", nat: ini, total: tot, ok: true, formula: `d20 (${ini}) ${fmt(mod(c.scores.dex))} = ${tot}`, reason: "Бой начался" } });
+    pushFeed({ t: "sys", html: "<b>Бой!</b> Ваш ход: атакуйте из листа персонажа или опишите действие." }); }
+  if (combatEnded) pushFeed({ t: "sys", html: "<b>Бой окончен.</b>" });
+  if (chips.length) pushFeed({ t: "chips", items: chips });
+  { const has = c2 => chips.some(x => x.c === c2); let d = 0; const q = n => { setTimeout(() => sfx(n), d); d += 380; };
+    if (sc.length && S.world.combat) q("horn"); if (combatEnded) q("victory"); if (has("dmg") && chips.some(x => x.c === "dmg" && /HP/.test(x.x))) q("hurt"); if (has("heal")) q("heal");
+    if (has("item")) q("chest"); if (gold > 0) q("gold"); if (dt > 0) q("rumble"); if (eff.quest) q("bell"); }
+  S.suggestions = (Array.isArray(eff.suggestions) ? eff.suggestions : []).map(s => str(s, 48)).filter(Boolean).slice(0, 3);
+  if (!S.suggestions.length) S.suggestions = defaultSuggestions();
+}
+function defaultSuggestions() {
+  if (S.world.combat) return ["Атакую ближайшего врага", "Отступаю и ищу укрытие", "Осматриваю поле боя"];
+  const loc = POIS[S.world.loc]; const s = ["Осматриваюсь внимательно"]; const n = loc.npcs.find(id => NPCS[id]); if (n) s.push(`${NPCS[n].name}, что здесь происходит?`);
+  if (loc.inner) s.push("Выхожу на улицу"); const unvisited = outerEntries().map(([id]) => id).find(id => !S.world.visited.includes(id)); if (unvisited) s.push(`Иду: ${POIS[unvisited].name}`);
+  return s;
+}
+function addNewNpcs(eff) {
+  const list = Array.isArray(eff.new_npcs) ? eff.new_npcs : []; if (!list.length) return; const loc = POIS[S.world.loc]; S.world.met = S.world.met || [];
+  list.slice(0, 2).forEach((n, i) => {
+    if (!n || typeof n !== "object" || Object.values(NPCS).filter(x => !x.bld).length >= 48) return; const name = str(n.name, 32); if (!name) return;
+    const dup = Object.entries(NPCS).find(([, x]) => x.name.toLowerCase() === name.toLowerCase()); if (dup) { if (!loc.npcs.includes(dup[0])) { S.world.npcLoc = S.world.npcLoc || {}; S.world.npcLoc[dup[0]] = S.world.loc; refreshPeople(); } return; }
+    let id = slug(n.id, "n" + S.turn + i); while (NPCS[id]) id += "_" + i; const h = hash(WD.id + id);
+    NPCS[id] = { name, role: str(n.role, 40), look: str(n.look, 90), persona: str(n.persona, 200), secret: str(n.secret, 200), greet: "", minor: !n.important, gender: n.gender === "f" ? "f" : "m", age: ["young", "adult", "old"].includes(n.age) ? n.age : "adult",
+      feature: FEATURES[h % FEATURES.length], hair: Object.keys(HAIRS)[(h >>> 4) % 6], photo_prompt: "" };
+    if (!loc.npcs.includes(id)) loc.npcs.push(id); if (loc.inner) (loc.extra = loc.extra || []).push(id); else { loc.base = loc.base || []; if (!loc.base.includes(id)) loc.base.push(id); } S.world.npcs[id] = { att: baseAttitude(id), mem: [] }; if (!S.world.met.includes(id)) S.world.met.push(id);
+    sfx("arrive"); pushFeed({ t: "chips", items: [{ c: "npc", x: `Новое знакомство: ${name}${n.role ? ", " + str(n.role, 30) : ""}` }] });
+    wantPortrait(WD, id, n.important ? 0 : 2);
+  });
+}
+/* офлайн-рассказчик: собирает ответ из данных мира, чтобы игра шла без ИИ */
+function offlineNarrate(text, plan, results, intro) {
+  const loc = POIS[S.world.loc]; const eff = { facts: [], suggestions: [] }; const out = [];
+  if (intro) {
+    out.push(WD.intro || `${loc.desc}`); const sp = WD.intro_speaker && loc.npcs.includes(WD.intro_speaker) ? WD.intro_speaker : null;
+    if (sp) eff.speaker = sp; out.push(`Ты ${C().hook || bgHook(C().bg)}, и эта история цепляет тебя сильнее, чем хотелось бы.`);
+    eff.facts = [str(WD.public, 150)]; return { text: out.join("\n\n"), eff };
+  }
+  const mv = results.find(r => r.kind === "move"); if (mv) out.push(loc.desc);
+  results.filter(r => r.kind === "skill" || r.kind === "save").forEach(r => {
+    if (r.ok) { if (loc.clue && !S.world.flags["clue_" + S.world.loc]) { out.push(loc.clue); eff.facts.push(str(loc.clue, 150)); S.world.flags["clue_" + S.world.loc] = true; eff.map_notes = [{ place: S.world.loc, note: str(loc.clue, 80) }]; eff.xp = 25; } else out.push("Тебе удаётся задуманное, хотя ничего нового здесь не найти."); }
+    else out.push("Ничего не выходит: детали ускользают, а время уходит.");
+  });
+  results.filter(r => r.kind === "attack" || r.kind === "spell").forEach(r => out.push(r.ok ? `Удар достигает цели. Враг ${r.enemyAfter || "шатается"}.` : "Удар уходит в пустоту."));
+  results.filter(r => r.kind === "enemy" && !r.skip).forEach(r => { const nm = r.title.replace(" атакует", ""); out.push(r.ok ? `${nm} достаёт тебя.` : `${nm} промахивается.`); });
+  if (results.some(r => r.kind === "combat_end")) out.push("Последний враг падает. Становится тихо.");
+  if (!out.length && plan.talk_to && NPCS[plan.talk_to]) { const n = NPCS[plan.talk_to]; out.push(`${n.name} (${n.look}) смотрит на тебя. ${n.greet}`); eff.speaker = plan.talk_to; eff.attitude = { [plan.talk_to]: 3 }; }
+  if (!out.length) out.push(`Ты делаешь задуманное. ${loc.short}. Вокруг тихо, но в этой тишине что-то ждёт.`);
+  if (mv && aliveEnemiesHere().length) { out.push(`Тебя замечают: ${aliveEnemiesHere().map(id => ENEMIES[id].name).join(", ")}. Оружие уже в их руках.`); eff.start_combat = aliveEnemiesHere(); }
+  return { text: out.join("\n\n"), eff };
+}
+
+/* ---------- архивариус: сжимает старые записи в летопись ---------- */
+async function maybeArchive() {
+  if (archiving || !S || S.log.length <= 18) return;
+  const chunk = S.log.slice(0, 10); const sample = await getSample();
+  if (!sample) { S.log.splice(0, 10); save(); return; }
+  archiving = true; renderWorld(); const camp = S;
+  try {
+    const { text } = await sample(`Ты — архивариус настольной ролевой кампании. Обнови краткую летопись: объедини прежнюю летопись и новые события в один связный пересказ по-русски, не длиннее 150 слов. Сохрани имена, обещания, долги, найденные улики, кто к герою враждебен или дружен. Без воды и без оценок. Ответь только текстом летописи.
+ПРЕЖНЯЯ ЛЕТОПИСЬ: ${camp.summary || "пусто"}
+НОВЫЕ СОБЫТИЯ:
+${chunk.map(l => (l.who === "p" ? "Игрок: " : "Рассказчик: ") + l.text.slice(0, 600)).join("\n")}`, { modelTier: "quick", cache: false });
+    if (S === camp) { camp.summary = str(text, 1200); camp.log.splice(0, chunk.length); save(); }
+  } catch (e) { if (S === camp && S.log.length > 40) S.log.splice(0, 10); }
+  archiving = false; if (S === camp) renderWorld();
+}
+
+/* ---------- озвучка ---------- */
+const HAS_TTS = typeof window.speechSynthesis !== "undefined" && typeof window.SpeechSynthesisUtterance !== "undefined";
+function speak(text) {
+  if (!HAS_TTS) return; try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(String(text).replace(/[«»*]/g, "").slice(0, 1800)); u.lang = "ru-RU"; u.rate = 1;
+    const v = speechSynthesis.getVoices().find(x => /^ru/i.test(x.lang)); if (v) u.voice = v; speechSynthesis.speak(u); } catch (e) {}
+}
+document.addEventListener("click", e => { const b = e.target.closest?.(".narr-voice"); if (!b) return; const t = b.parentElement.querySelector(".tx")?.innerText || ""; if (speechSynthesis.speaking) { speechSynthesis.cancel(); return; } speak(t); });
+/* ---------- «Ранее в…» при возвращении ---------- */
+async function addRecap() {
+  if (!S || (S.turn || 0) < 3 || Date.now() - (S.updated || 0) < 20 * 60 * 1000) return;
+  const camp = S; let text = "";
+  const sample = await getSample();
+  if (sample) { try { const r = await sample(`Напиши по-русски короткое вступление «Ранее в…» для продолжения настольной ролевой кампании: 3–4 предложения, второе лицо («ты»), как в начале серии сериала. Напомни, где герой, что он узнал, кто ему помог или навредил и какой вопрос висит в воздухе. Без новых фактов.
+Герой: ${camp.char.name}. Где: ${camp.wd.places[camp.world.loc]?.name}. Задание: ${camp.world.quest}.
+Летопись: ${camp.summary || "—"}
+Последние факты: ${camp.world.facts.slice(-6).join(" | ") || "—"}
+Последние события: ${camp.log.slice(-4).map(l => (l.who === "p" ? "Игрок: " : "Рассказчик: ") + l.text.slice(0, 300)).join("\n")}`, { modelTier: "quick", cache: false }); text = str(String(r.text).split("@@@")[0], 900); } catch (e) {} }
+  if (!text) text = [camp.summary, camp.world.facts.slice(-3).join(". ")].filter(Boolean).join(" ") || `Ты всё ещё здесь: ${camp.wd.places[camp.world.loc]?.name}. Задание: ${camp.world.quest}`;
+  if (S === camp) { pushFeed({ t: "recap", text }); save(); }
+}
+/* ---------- журнал ---------- */
+let journalTab = "quest";
+function openJournal() {
+  if (!S) return; const met = (S.world.met || []).filter(id => NPCS[id]);
+  const tabs = [["quest", "Задание"], ["people", `Люди · ${met.length}`], ["places", `Места · ${S.world.visited.length}`], ["chron", "Летопись"]];
+  const body = () => {
+    if (journalTab === "quest") { const th = S.world.threat || 0; const tm = worldTime();
+      return `<div class="j-quest"><div class="eyebrow">Текущее задание</div><p class="j-big">${esc(S.world.quest)}</p>
+        <div class="j-row"><div><div class="eyebrow">Время</div><b>День ${tm.day} · ${DAY_PARTS[tm.part]}</b></div><div><div class="eyebrow">Часы угрозы</div><span class="threat big ${th >= 5 ? "hot" : ""}">${Array.from({ length: 6 }, (_, i) => `<i class="${i < th ? "on" : ""}"></i>`).join("")}</span></div><div><div class="eyebrow">Найдено улик</div><b>${Object.keys(S.world.flags || {}).filter(k => k.startsWith("clue_")).length}</b></div></div>
+        <p class="home-note">Часы угрозы растут, когда противник получает преимущество. На 3 и 6 он делает заметный ход.</p></div>`; }
+    if (journalTab === "people") return met.length ? `<div class="j-people">${met.map(id => { const n = NPCS[id]; const st = S.world.npcs[id] || { att: 0, mem: [] }; const [lab, cl] = attLabel(st.att);
+      const where = Object.values(POIS).find(p => p.npcs.includes(id)); return `<article class="j-person">${npcPh(id)}<div><b>${esc(n.name)}</b><small>${esc(n.role)}${where ? " · " + esc(where.name) : ""}</small><span class="att ${cl}">${lab}</span>${st.mem.length ? `<ul>${st.mem.slice(-3).map(m => `<li>${esc(m)}</li>`).join("")}</ul>` : `<p class="empty">Пока ничего особенного.</p>`}</div></article>`; }).join("")}</div>` : `<p class="empty">Вы ещё ни с кем не познакомились.</p>`;
+    if (journalTab === "places") return `<div class="j-places">${outerEntries().filter(([id]) => S.world.visited.includes(id) || S.world.rumors?.includes(id)).map(([id, p]) => { const st = placeState(id); return `<article class="j-place"><span class="mk-pin sm">${mkIcon(p.kind)}</span><div><b>${esc(p.name)}</b><small>${st.visited ? "посещено" : "по слухам"}${st.danger ? " · опасно" : ""}${st.cleared ? " · зачищено" : ""}${st.clue ? " · найдены улики" : ""}</small><p>${esc(st.note || p.short)}</p></div></article>`; }).join("")}</div>`;
+    return `${S.summary ? `<p class="summary-box j-sum">${esc(S.summary)}</p>` : ""}${S.world.facts.length ? `<ol class="chron">${S.world.facts.map(f => `<li>${esc(f)}</li>`).join("")}</ol>` : `<p class="empty">Летопись пока пуста.</p>`}`;
+  };
+  modal(`<div class="journal"><div class="bigmap-head"><div><div class="eyebrow">Журнал героя</div><h2>${esc(C().name)}</h2></div><button class="btn small" type="button" id="j-close">Закрыть</button></div>
+    <div class="tabs j-tabs" role="tablist">${tabs.map(([k, t]) => `<button type="button" role="tab" data-j="${k}" aria-selected="${journalTab === k}">${t}</button>`).join("")}</div><div class="j-body" id="j-body">${body()}</div></div>`, root => {
+    root.querySelector(".modal").classList.add("wide");
+    root.querySelector("#j-close").onclick = closeModal;
+    root.querySelectorAll("[data-j]").forEach(b => b.onclick = () => { journalTab = b.dataset.j; root.querySelectorAll("[data-j]").forEach(x => x.setAttribute("aria-selected", String(x === b))); root.querySelector("#j-body").innerHTML = body(); });
+  });
+}
+/* ---------- выбор модели портретов ---------- */
+function modelPickerHTML(id, compact) { const m = imgModel(); return `<div class="opt-group model-pick${compact ? " compact" : ""}" id="${id}"><span>Модель портретов</span><div class="model-list">${Object.entries(IMG_MODELS).map(([k, v]) => `<button type="button" data-m="${k}" aria-pressed="${m === k}"><b>${v.name}</b><small>${v.sub}</small></button>`).join("")}</div></div>`; }
+function bindModelPicker(root, id, onChange) { root.querySelectorAll(`#${id} [data-m]`).forEach(b => b.onclick = () => { setImgModel(b.dataset.m); root.querySelectorAll(`#${id} [data-m]`).forEach(x => x.setAttribute("aria-pressed", String(x === b))); onChange?.(); }); }
+function redrawWorldPortraits(wd) {
+  if (!wd) return; Object.keys(imgCache).forEach(k => { if (k.startsWith(wd.id + ":")) delete imgCache[k]; }); lsSet(IMG_KEY, imgCache);
+  Object.values(wd.npcs).forEach(n => { delete n.img; }); portraitJobs.length = 0; jobKeys.clear(); portraitPaused = false; imgNote = "";
+  if (S && S.wd === wd) { (S.world.met || []).forEach(id => wantPortrait(wd, id, 2)); (POIS[S.world.loc]?.npcs || []).forEach(id => wantPortrait(wd, id, 1)); save(); } else queueWorldPortraits(wd);
+  refreshPortraitViews();
+}
+/* ---------- настройки ---------- */
+function openSettings() {
+  if (!S) return; S.settings = S.settings || { len: "normal", voice: false };
+  const st = S.settings;
+  modal(`<div class="eyebrow">Настройки кампании</div><h2>Рассказчик</h2>
+    <div class="opt-group"><span>Длина описаний</span><div class="opts" id="set-len">${[["short", "Коротко"], ["normal", "Обычно"], ["long", "Подробно"]].map(([k, t]) => `<button type="button" data-v="${k}" aria-pressed="${st.len === k}">${t}</button>`).join("")}</div></div>
+    ${HAS_TTS ? `<div class="opt-group"><span>Озвучка</span><div class="opts" id="set-voice"><button type="button" data-v="0" aria-pressed="${!st.voice}">Только по кнопке</button><button type="button" data-v="1" aria-pressed="${!!st.voice}">Читать вслух сразу</button></div><small class="home-note">Используется голос вашего браузера.</small></div>` : ""}
+    ${soundSettingsHTML()}
+    ${modelPickerHTML("set-model")}
+    <div class="opt-group"><span>Портреты этого мира</span><div><button class="btn small" type="button" id="set-redraw">Перерисовать выбранной моделью</button></div><small class="home-note">Пригодится, когда у FLUX Krea восстановится квота. Перерисуются встреченные люди и типажи.</small></div>
+    <div class="opt-group"><span>Отмена хода</span><small class="home-note">${S.mode === "chronicle" ? "В режиме «Хроника» ходы не отменяются." : "Последний ход можно отменить кнопкой «↶ Отменить ход» под строкой ввода."}</small></div>
+    <div class="row"><button class="btn primary" type="button" id="set-ok">Готово</button></div>`, root => {
+    root.querySelectorAll("#set-len button").forEach(b => b.onclick = () => { st.len = b.dataset.v; root.querySelectorAll("#set-len button").forEach(x => x.setAttribute("aria-pressed", String(x === b))); save(); });
+    root.querySelectorAll("#set-voice button").forEach(b => b.onclick = () => { st.voice = b.dataset.v === "1"; root.querySelectorAll("#set-voice button").forEach(x => x.setAttribute("aria-pressed", String(x === b))); if (!st.voice) try { speechSynthesis.cancel(); } catch (e) {} save(); });
+    bindModelPicker(root, "set-model"); bindSoundSettings(root);
+    root.querySelector("#set-redraw").onclick = e => { redrawWorldPortraits(S.wd); e.target.textContent = "Портреты поставлены в очередь"; e.target.disabled = true; };
+    root.querySelector("#set-ok").onclick = closeModal;
+  });
+}
+/* ---------- портрет НПС ---------- */
+let popT = null;
+function popNPC(id) { const p = document.getElementById("npc-pop"); const n = NPCS[id]; if (!n) return; p.innerHTML = `${npcPh(id)}<div class="cap"><b>${esc(n.name)}</b><small>${esc(n.role)} · ${attLabel(S.world.npcs[id]?.att || 0)[0]}</small></div>`; p.classList.add("show"); clearTimeout(popT); popT = setTimeout(() => p.classList.remove("show"), 4200); }
+function shortRest() { advanceTime(1); const c = C(); const r = rollDice({ n: 1, d: CLASSES[c.cls].hd, mod: mod(c.scores.con) }); c.hitDice--; const got = healHero(Math.max(1, r.total)); if (c.cls === "fighter") c.secondWind = true; restoreRes(c, "short"); pushFeed({ t: "sys", html: "Короткий отдых: час тишины, перевязка, глоток воды." }); pushFeed({ t: "chips", items: [{ c: "heal", x: `+${got} HP (${r.text})` }] }); after(); }
+function longRest() { const c = C(); const t = worldTime(); t.day++; t.part = 0; c.hp = c.maxHp; c.hitDice = c.level; c.secondWind = c.cls === "fighter"; Object.values(c.slots).forEach(s => s[1] = s[0]); restoreRes(c, "long"); pushFeed({ t: "sys", html: "<b>Долгий отдых.</b> Ночь проходит. Хиты, ячейки и силы восстановлены." }); pushFeed({ t: "chips", items: [{ c: "heal", x: "HP полностью" }] }); after(); }
+function nextXP(c) { return c.level >= MAX_LEVEL ? null : XP_LEVELS[c.level]; }
+function levelUp() {
+  sfx("start");
+  const c = C(); if (c.level >= MAX_LEVEL || c.xp < XP_LEVELS[c.level]) return; const nl = c.level + 1;
+  const hd = CLASSES[c.cls].hd; const avg = Math.floor(hd / 2) + 1; const cm = mod(c.scores.con) + (RACES[c.race].hpBonus || 0);
+  const feat = LEVEL_FEATS[c.cls][nl]; const newSpells = [].concat(LEVEL_SPELLS[c.cls]?.[nl] || []); const newSpell = newSpells[0]; const ns0 = slotsFor(c.cls, nl);
+  modal(`<div class="eyebrow">Новый уровень</div><h2>${esc(c.name)} · уровень ${nl}</h2><p>Хиты: бросьте кость d${hd} или возьмите среднее (${avg}), плюс ${fmt(cm)}.</p>
+    <ul class="lv-list"><li>${esc(feat)}</li>${nl === 5 ? "<li>Бонус мастерства растёт до +3</li>" : ""}${Object.keys(ns0).length ? `<li>Ячейки: ${Object.entries(ns0).map(([l, n]) => `${l} круг ×${n}`).join(", ")}</li>` : ""}${newSpells.length ? `<li>Новые заклинания: ${newSpells.map(x => SPELLS[x].name).join(", ")}</li>` : ""}</ul>
+    <div class="row"><button class="btn" type="button" id="lv-avg">Среднее: ${avg}</button><button class="btn primary" type="button" id="lv-roll">Бросить d${hd}</button></div>`, root => {
+    const apply = v => {
+      const add = Math.max(1, v + cm); c.level = nl; c.maxHp += add; c.hp += add; c.hitDice++;
+      { const ns = slotsFor(c.cls, nl); if (CLASSES[c.cls].pact) c.slots = {}; Object.entries(ns).forEach(([l, n]) => { const old = c.slots[l] || [0, 0]; c.slots[l] = [n, Math.max(0, old[1] + (n - old[0]))]; }); }
+      newSpells.forEach(x => { if (!c.spells.includes(x)) c.spells.push(x); }); const rm = resMax(c); const rs = resOf(c); rs.lay = Math.min(rm.lay, (rs.lay || 0) + 5); rs.rage = Math.max(rs.rage || 0, rm.rage > (resMax({ ...c, level: c.level - 1 }).rage) ? (rs.rage || 0) + 1 : rs.rage || 0);
+      closeModal(); pushFeed({ t: "sys", html: `<b>Уровень ${nl}!</b> Максимум хитов +${add}. ${esc(feat)}.` });
+      if (nl === 4) chooseASI(); else after();
+    };
+    root.querySelector("#lv-avg").onclick = () => apply(avg); root.querySelector("#lv-roll").onclick = () => apply(rnd(hd));
+  });
+}
+function chooseASI() {
+  const c = C();
+  modal(`<div class="eyebrow">Увеличение характеристик</div><h2>+2 к одной характеристике</h2><p>Максимум 20. Модификатор растёт на каждые два очка.</p><div class="asi-grid">${ABIL.map(a => `<button class="btn" type="button" data-a="${a}" ${c.scores[a] >= 20 ? "disabled" : ""}>${ABIL_FULL[a]} ${c.scores[a]} → ${Math.min(20, c.scores[a] + 2)}</button>`).join("")}</div>`, root => {
+    root.querySelectorAll("[data-a]").forEach(b => b.onclick = () => { const a = b.dataset.a; const oldCon = mod(c.scores.con); c.scores[a] = Math.min(20, c.scores[a] + 2);
+      if (a === "con") { const d = (mod(c.scores.con) - oldCon) * c.level; c.maxHp += d; c.hp += d; } recalcAC(c);
+      closeModal(); pushFeed({ t: "sys", html: `${ABIL_FULL[a]} теперь ${c.scores[a]}.` }); after(); });
+  });
+}
+function checkDeath() {
+  const c = C(); if (c.hp > 0 || S.dead) return;
+  if (S.mode === "novice") { c.hp = 1; S.world.combat = false; pushFeed({ t: "sys", html: "<b>Вы теряете сознание…</b> и приходите в себя в безопасном месте. Враги ушли. 1 HP." }); after(); return; }
+  if (!S.dying) S.dying = { s: 0, f: 0 }; renderDeath();
+}
+function renderDeath() {
+  const st = S.dying; document.getElementById("death-box")?.remove();
+  const d = document.createElement("div"); d.className = "death"; d.id = "death-box"; const m = n => Array.from({ length: 3 }, (_, i) => `<i class="${i < n ? "f" : ""}"></i>`).join("");
+  d.innerHTML = `<b>Вы при смерти.</b><span style="color:var(--mist);font-size:13px">Спасбросок от смерти: d20, 10 и выше — успех. Три успеха — вы стабилизируетесь, три провала — смерть.</span><div class="marks"><span class="s">Успехи ${m(st.s)}</span><span class="x">Провалы ${m(st.f)}</span></div><div><button class="btn primary" type="button" id="btn-ds">Спасбросок от смерти</button></div>`;
+  document.getElementById("feed-inner").append(d); scrollFeed();
+  d.querySelector("#btn-ds").onclick = () => {
+    const n = rnd(20); let txt;
+    if (n === 20) { S.dying = null; C().hp = 1; txt = "20! Вы приходите в сознание с 1 HP."; S.world.combat = false; }
+    else { if (n >= 10) st.s++; else st.f += n === 1 ? 2 : 1; txt = `d20 = ${n}: ${n >= 10 ? "успех" : n === 1 ? "два провала" : "провал"}`; }
+    d.remove(); pushFeed({ t: "roll", r: { kind: "death", title: "Спасбросок от смерти", nat: n, ok: n >= 10, crit: n === 20, fumble: n === 1, formula: txt } });
+    if (S.dying && st.s >= 3) { S.dying = null; C().hp = 1; S.world.combat = false; pushFeed({ t: "sys", html: "<b>Вы стабилизировались.</b> Враги, сочтя вас мёртвым, ушли. 1 HP." }); }
+    else if (S.dying && st.f >= 3) { die(); return; }
+    if (S.dying) renderDeath(); after();
+  };
+}
+function die() {
+  sfx("die"); setTimeout(() => syncAudio(), 50);
+  S.dying = null;
+  if (S.mode === "sandbox" && S.secondChance) { S.secondChance = false; C().hp = Math.ceil(C().maxHp / 2); S.world.combat = false; const safe = Object.keys(POIS).find(id => POIS[id].rest) || WD.start; moveTo(safe); pushFeed({ t: "sys", html: "<b>Второй шанс.</b> Вас нашли и выходили. Больше такое не повторится." }); after(); return; }
+  S.dead = true; save();
+  modal(`<h2>Конец пути</h2><p>${esc(C().name)} погибает в мире «${esc(WD.name)}». В режиме «${MODES[S.mode].name}» смерть окончательна.</p><p>Летопись: ${S.world.facts.length} фактов, ${C().xp} опыта.</p><div class="row"><button class="btn primary" type="button" id="dead-home">К кампаниям</button></div>`,
+    root => { root.querySelector("#dead-home").onclick = () => { closeModal(); S = null; renderHome(); }; });
+}
+function modal(html, bind) { sfx("open"); const r = document.getElementById("modal-root"); r.innerHTML = `<div class="modal-back"><div class="modal" role="dialog" aria-modal="true">${html}</div></div>`; bind(r); r.querySelector("button")?.focus(); }
+function closeModal() { document.getElementById("modal-root").innerHTML = ""; }
+
+/* =========================================================================
+   BOOT
+   ========================================================================= */
+function showTab(t) { document.querySelectorAll("#mtabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.t === t))); ["sheet", "story", "world"].forEach(id => document.getElementById(id).classList.toggle("active", id === t)); if (t === "world") requestAnimationFrame(drawMap); }
+document.getElementById("mtabs").addEventListener("click", e => { const b = e.target.closest("button"); if (b) showTab(b.dataset.t); });
+document.getElementById("btn-back").onclick = () => { if (D.step > 0) { D.step--; renderCreate(); document.getElementById("create-scroll").scrollTop = 0; } else renderHome(); };
+document.getElementById("btn-next").onclick = () => { if (!stepValid(D.step)) return; if (D.step < 7) { D.step++; renderCreate(); document.getElementById("create-scroll").scrollTop = 0; } else finishCreation(); };
+document.getElementById("btn-home").onclick = () => { if (busy) return; try { speechSynthesis?.cancel(); } catch (e) {} lastSnap = null; if (S) save(); S = null; renderHome(); };
+document.getElementById("btn-stop").onclick = () => ctl?.abort();
+document.getElementById("btn-journal").onclick = openJournal;
+document.getElementById("btn-settings").onclick = openSettings;
+document.getElementById("btn-sound").onclick = () => { AU.cfg.on = !AU.cfg.on; auUnlock(); auApply(); };
+const inp = document.getElementById("act-input");
+inp.addEventListener("input", () => { inp.style.height = "auto"; inp.style.height = Math.min(160, inp.scrollHeight) + "px"; });
+inp.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); document.getElementById("act-form").requestSubmit(); } });
+document.getElementById("act-form").addEventListener("submit", e => { e.preventDefault(); const t = inp.value.trim(); if (!t || busy || !S) return; inp.value = ""; inp.style.height = "auto"; takeTurn(t.slice(0, 500)); });
+window.addEventListener("resize", () => { if (S) drawMap(); });
+document.querySelectorAll(".nav-links [data-go]").forEach(b => b.onclick = () => { const g = b.dataset.go; if (g === "new") newCampaign(); else { renderHome(); if (g === "how") requestAnimationFrame(() => document.getElementById(g === "how" ? "how" : "camps-band")?.scrollIntoView({ behavior: "smooth" })); } });
+document.getElementById("logo").onclick = () => { if (busy) return; if (S) save(); S = null; renderHome(); };
+window.addEventListener("resize", () => { if (!document.getElementById("screen-create").hidden && D) document.querySelector(".c-grid").style.gridTemplateColumns = D.step === 0 && innerWidth > 980 ? (innerWidth > 1240 ? "220px minmax(0, 1fr)" : "200px minmax(0, 1fr)") : ""; });
+(function boot() { migrateV1(); D = newDraft(); renderHome(); initSample(); renderSoundBtn(); })();

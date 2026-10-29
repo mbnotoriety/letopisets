@@ -1,0 +1,36 @@
+/* ДИАЛОГИ */
+.dlg { --dc: var(--lantern); border: 1px solid rgba(242, 180, 92, .32); border-radius: 16px; background: linear-gradient(180deg, rgba(31, 54, 62, .55), rgba(11, 20, 23, .7)); padding: 10px 10px 8px; display: flex; flex-direction: column; gap: 8px; animation: dlgIn .32s cubic-bezier(.2, .8, .3, 1); box-shadow: 0 8px 28px rgba(0, 0, 0, .25); }
+@keyframes dlgIn { from { opacity: 0; transform: translateY(12px); } }
+.dlg-head { display: flex; align-items: center; gap: 10px; padding: 0 4px; }
+.dlg-head .ph.dlg-ph { width: 38px; height: 38px; flex: none; border-radius: 50%; overflow: hidden; border: 2px solid rgba(242, 180, 92, .5); position: relative; }
+.dlg-head .ph.dlg-ph svg, .dlg-head .ph.dlg-ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.dlg-head .ph.dlg-ph .gen { display: none; }
+.dlg-who { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.2; }
+.dlg-who b { font-family: var(--serif, Georgia, serif); font-size: 16px; color: var(--foam); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dlg-who small { font-size: 12px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dlg-who .att.pos { color: var(--kelp, #7fbf8f); } .dlg-who .att.neg { color: var(--ember, #e8735a); }
+.dlg-x { width: 32px; height: 32px; flex: none; border-radius: 50%; border: 1px solid var(--line); background: transparent; color: var(--mist); font-size: 13px; }
+.dlg-x:hover { color: var(--foam); border-color: var(--mist); }
+.dlg-opts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: min(42vh, 360px); overflow-y: auto; overscroll-behavior: contain; }
+.dlg-o { --tc: var(--mist); width: 100%; display: flex; align-items: center; gap: 10px; text-align: left; padding: 8px 10px; border-radius: 10px; border: 1px solid transparent; background: rgba(22, 39, 45, .6); color: var(--foam); font-size: 14.5px; line-height: 1.35; transition: background .15s, border-color .15s, transform .15s; }
+.dlg-o:hover:not(:disabled), .dlg-o:focus-visible { background: rgba(31, 54, 62, .95); border-color: color-mix(in srgb, var(--tc) 55%, transparent); transform: translateX(3px); outline: none; }
+.dlg-o:disabled { opacity: .55; }
+.dlg-n { flex: none; width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; font-size: 12px; font-weight: 700; color: var(--tc); border: 1px solid color-mix(in srgb, var(--tc) 45%, transparent); }
+.dlg-tx { flex: 1; min-width: 0; }
+.dlg-act { font-style: italic; color: var(--mist); }
+.dlg-tag { font-style: normal; font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--tc); margin-right: 6px; padding: 1px 6px; border-radius: 99px; background: color-mix(in srgb, var(--tc) 14%, transparent); white-space: nowrap; }
+.dlg-ck { flex: none; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--dim); white-space: nowrap; padding: 3px 8px; border-radius: 99px; border: 1px solid color-mix(in srgb, var(--tc) 40%, transparent); background: color-mix(in srgb, var(--tc) 10%, transparent); }
+.dlg-ck i { font-style: normal; font-weight: 700; color: var(--tc); }
+.dlg-ck b { font-variant-numeric: tabular-nums; } .dlg-ck b.hi { color: #8fd19e; } .dlg-ck b.mid { color: var(--lantern); } .dlg-ck b.lo { color: #e8735a; }
+.dlg-o.t-soc { --tc: #f2b45c; } .dlg-o.t-trick { --tc: #c59cf0; } .dlg-o.t-threat { --tc: #e8735a; } .dlg-o.t-mind { --tc: #6fc7c0; } .dlg-o.t-lore { --tc: #7fa8e8; } .dlg-o.t-plain { --tc: var(--mist); }
+.dlg-o.own, .dlg-o.end { background: transparent; color: var(--mist); font-size: 13.5px; padding-block: 6px; }
+.dlg-o.end { --tc: var(--dim); }
+.sugg.dlg-on button:not(.cont):not(.undo) { display: none; }
+@media (max-width: 600px) {
+  .dlg { padding: 8px 6px 6px; border-radius: 14px; gap: 6px; }
+  .dlg-opts { max-height: 38vh; }
+  .dlg-o { flex-wrap: wrap; gap: 4px 8px; padding: 7px 8px; font-size: 14px; }
+  .dlg-tx { flex: 1 1 calc(100% - 34px); }
+  .dlg-ck { margin-left: 30px; }
+}
+@media (prefers-reduced-motion: reduce) { .dlg { animation: none; } .dlg-o { transition: none; } }
