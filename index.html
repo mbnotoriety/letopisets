@@ -1270,6 +1270,9 @@ button.pill { background: transparent; font: inherit; cursor: pointer; } button.
 .ai-set > .row { position: sticky; bottom: -24px; margin: 4px -4px -24px; padding: 10px 4px 24px; background: var(--deep); z-index: 2; } @media (max-width: 600px) { .ai-set > .row { bottom: -18px; margin-bottom: -18px; padding-bottom: 18px; } }
 .ai-hint { flex: 1 1 100%; font-size: 12px; line-height: 1.45; } .ai-hint a { color: var(--lantern); }
 .ai-best { font-style: normal; font-size: 10.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #1d1406; background: var(--lantern); border-radius: 99px; padding: 2px 8px; margin-left: 6px; vertical-align: 2px; } .ai-card:has(.ai-best) { border-color: rgba(242, 180, 92, .55); }
+/* ГОЛОСА */
+.vox-speak { animation: voxSpeak .9s ease-out; } @keyframes voxSpeak { 0% { box-shadow: 0 0 0 0 rgba(242, 180, 92, .7); } 60% { box-shadow: 0 0 0 7px rgba(242, 180, 92, 0); } 100% { box-shadow: 0 0 0 0 rgba(242, 180, 92, 0); } }
+@media (prefers-reduced-motion: reduce) { .vox-speak { animation: none; } }
 /* MOBILE */
 /* МОБИЛЬНАЯ ВЁРСТКА — финальные правки (идут последними) */
 #app { overflow-x: clip; }
@@ -6580,6 +6583,69 @@ function openAISettings(first) {
 setTimeout(() => { try { const c = aiCfg(); if (!IS_ARTIFACT && !c.seen && !window.claude?.use && !document.getElementById("modal-root").innerHTML.trim()) openAISettings(true); } catch (e) {} }, 1400);
 document.addEventListener("click", e => { if (e.target.closest?.("#pill-ai")) openAISettings(); });
 
+/* VOX */
+/* =========================================================================
+   ГОЛОСА ПЕРСОНАЖЕЙ: короткие эмоции без слов (вздох, «хм», смешок, ах…)
+   как в BG3/Zelda/Pillars — реакция на начало разговора, исход проверки и тон сцены
+   ========================================================================= */
+const VOX = {"f": {"sigh": ["v-f-sigh-1", "v-f-sigh-2", "v-f-sigh-3"], "laugh": ["v-f-laugh-1", "v-f-laugh-2", "v-f-laugh-3", "v-f-laugh-4"], "gasp": ["v-f-gasp-1", "v-f-gasp-2", "v-f-gasp-3", "v-f-gasp-4"], "pleased": ["v-f-pleased-1", "v-f-pleased-2"], "hmm": ["v-f-hmm-1"], "huh": ["v-f-huh-1"], "angry": ["v-f-angry-1"], "fear": ["v-f-fear-1", "v-f-fear-2", "v-f-fear-3"]}, "m": {"sigh": ["v-m-sigh-1", "v-m-sigh-2"], "hmm": ["v-m-hmm-1", "v-m-hmm-2", "v-m-hmm-3"], "huh": ["v-m-huh-1", "v-m-huh-2", "v-m-huh-3"], "laugh": ["v-m-laugh-1", "v-m-laugh-2", "v-m-laugh-3"], "gasp": ["v-m-gasp-1", "v-m-gasp-2"], "pleased": ["v-m-pleased-1"], "fear": ["v-m-fear-1"], "angry": ["v-m-angry-1", "v-m-angry-2", "v-m-angry-3"]}};
+const VOX_FALLBACK = { huh: ["hmm", "pleased"], hmm: ["huh", "sigh"], pleased: ["laugh", "huh"], laugh: ["pleased"], fear: ["gasp", "sigh"], gasp: ["fear", "huh"], angry: ["sigh", "hmm"], sigh: ["hmm"] };
+const VOX_RU = { hmm: "задумчиво хмыкает", huh: "отзывается", sigh: "вздыхает", laugh: "смеётся", pleased: "оживляется", gasp: "ахает", angry: "раздражённо фыркает", fear: "испуганно вздрагивает" };
+let voxLast = 0; const voxNpcLast = {};
+function voxOf(id) {
+  const n = NPCS?.[id]; if (!n) return null; const g = isFem(n) ? "f" : "m"; const h = hash(id + "#vox");
+  let rate = 1 + ((h % 9) - 4) * .012; if (n.age === "old") rate -= .07; else if (n.age === "young") rate += .05;
+  if (/дитя|ребён|мальчиш|девочк|юнг|подмастер/i.test(n.role || "")) rate += .1;
+  return { g, rate: clamp(rate, .84, 1.18), h };
+}
+function voxFile(g, emo, h) {
+  const tried = [emo, ...(VOX_FALLBACK[emo] || [])];
+  for (const e of tried) { const list = VOX[g]?.[e]; if (list?.length) return list[(h + e.length) % list.length]; }
+  return null;
+}
+function voxOn() { return AU.cfg.on && (AU.cfg.vox ?? .8) > 0 && AU.unlocked; }
+function vox(id, emo, opts = {}) {
+  if (!S || !voxOn() || !emo) return false; const v = voxOf(id); if (!v) return false; const now = Date.now();
+  if (!opts.force && (now - voxLast < 1600 || now - (voxNpcLast[id] || 0) < 3500)) return false;
+  const f = voxFile(v.g, emo, v.h + (opts.alt ? 1 : 0)); if (!f) return false; voxLast = now; voxNpcLast[id] = now;
+  const play = () => { try { let base = AU.pool.get(f); if (!base) { base = new Audio(auSrc(f)); base.preload = "auto"; AU.pool.set(f, base); }
+    const el = base.paused && base.currentTime === 0 ? base : base.cloneNode(); el.preservesPitch = false; el.mozPreservesPitch = false; el.webkitPreservesPitch = false; el.playbackRate = v.rate;
+    el.volume = clamp((AU.cfg.vox ?? .8) * (opts.vol || 1), 0, 1); el.currentTime = 0; el.play().catch(() => {}); voxPulse(id); } catch (e) {} };
+  opts.delay ? setTimeout(play, opts.delay) : play(); return true;
+}
+function voxPulse(id) { document.querySelectorAll(`#dlg .dlg-ph, .e-narr[data-speaker="${id}"] .speaker .ph`).forEach(el => { el.classList.remove("vox-speak"); void el.offsetWidth; el.classList.add("vox-speak"); setTimeout(() => el.classList.remove("vox-speak"), 900); }); }
+/* эмоция при начале разговора — по отношению к герою */
+function voxGreet(id) { const a = S.world.npcs[id]?.att || 0; const st = S.world.npcs[id] || {}; if (S.world.hostile?.[id]) return "angry"; if (st.scared || (S.world.ko && S.world.ko[id])) return "fear";
+  return a <= -25 ? "angry" : a <= -8 ? "hmm" : a < 8 ? "huh" : a < 25 ? "pleased" : "laugh"; }
+/* эмоция из текста рассказчика: первая по порядку описанная реакция */
+const VOX_CUES = [
+  ["laugh", /(смеётся|смеется|рассмеял|засмеял|хохоч|хохот|хихик|прыснул|смешок|усмехается|усмехнул|хмыкает весело)/i],
+  ["sigh", /(вздыха|вздохнул|вздох|устало|тяжело опуска|сокрушённо|печально|грустно|с горечью)/i],
+  ["gasp", /(ахает|ахнул|охает|охнул|вскрикивает|вскрикнул|изумлённо|удивлённо|ошеломл|округлил глаза|отшатнул)/i],
+  ["fear", /(дрожит|дрожащим|задрожал|побледнел|испуган|в страхе|боязливо|запинаясь|заикаясь|съёжил|сжался)/i],
+  ["angry", /(фыркает|фыркнул|рявкает|рявкнул|злобно|зло |сердито|раздражённо|раздраженно|нахмурил|хмурится|сплёвывает|сплевывает|скрипит зубами|сжимает кулак|гневно|огрызается|огрызнул|цедит)/i],
+  ["hmm", /(задумчиво|задумывается|задумался|прищурил|щурится|почёсывает|почесал|колеблется|сомневается|недоверчиво|медлит с ответом|хм[,.…!?\s])/i],
+  ["pleased", /(просиял|оживляется|оживился|улыбается|улыбнул|тепло|радостно|довольно|с облегчением|кивает)/i]
+];
+function voxFromText(t) { const s = String(t || ""); let best = null, pos = 1e9; for (const [emo, re] of VOX_CUES) { const m = s.match(re); if (m && m.index < pos) { pos = m.index; best = emo; } } return best; }
+function voxFromResults(results, npc) {
+  const ck = (results || []).find(r => r.kind === "skill" && ["persuasion", "deception", "intimidation", "performance", "insight"].includes(r.skill)); if (!ck) return null;
+  if (ck.skill === "intimidation") return ck.ok ? "fear" : "laugh"; if (ck.skill === "deception") return ck.ok ? "huh" : "angry"; if (ck.skill === "performance") return ck.ok ? "laugh" : "sigh";
+  if (ck.skill === "insight") return null; return ck.ok ? "pleased" : (ck.fumble ? "angry" : "sigh");
+}
+let voxTurn = null;
+/* ---------- обёртки ---------- */
+{ const _ds = dlgStart; dlgStart = function (id) { try { if (NPCS[id] && !busy && S?.dialogue?.npc !== id) vox(id, voxGreet(id), { delay: 120 }); } catch (e) {} return _ds.apply(this, arguments); }; }
+{ const _na = npcAfterTurn; npcAfterTurn = function (results) { try { voxTurn = results || null; } catch (e) {} return _na.apply(this, arguments); }; }
+{ const _ae = applyEffects; applyEffects = function (eff) { const r = _ae.apply(this, arguments); try { const sp = eff?.speaker; if (sp && NPCS[sp] && (POIS[S.world.loc]?.npcs || []).includes(sp)) {
+  const last = S.feed.filter(e => e.t === "narr").slice(-1)[0]; const att = Number(eff.attitude?.[sp]) || 0;
+  const emo = voxFromText(last?.text) || voxFromResults(voxTurn, sp) || (att >= 5 ? "pleased" : att <= -5 ? "angry" : null);
+  if (emo) vox(sp, emo, { delay: 250 }); } voxTurn = null; } catch (e) { console.error(e); } return r; }; }
+{ const _ca = compApprove; compApprove = function (id, d) { const r = _ca.apply(this, arguments); try { if (d) vox(id, d >= 4 ? "laugh" : d > 0 ? "pleased" : d <= -4 ? "angry" : "sigh", { delay: 200 }); } catch (e) {} return r; }; }
+{ const _ha = heroAssault; heroAssault = function (nid) { try { vox(nid, "gasp", { force: true }); } catch (e) {} return _ha.apply(this, arguments); }; }
+{ const _cj = compJoin; compJoin = function (id) { try { vox(id, "pleased", { force: true, delay: 300 }); } catch (e) {} return _cj.apply(this, arguments); }; }
+function voxPreview() { const all = [...(VOX.f?.laugh || []), ...(VOX.m?.huh || []), ...(VOX.f?.pleased || [])]; if (!all.length || !AU.cfg.on) return; const f = all[Math.floor(Math.random() * all.length)]; const el = new Audio(auSrc(f)); el.volume = clamp(AU.cfg.vox ?? .8, 0, 1); el.play().catch(() => {}); }
+
 /* =========================================================================
    ЗВУК: музыка по настроению, фон, эффекты
    Музыка и звуки — Battle for Wesnoth (GPL v2+); «Three Sheets» — Scott Buckley (CC BY-SA 4.0)
@@ -6606,7 +6672,7 @@ const SFX = {
   fire: ["s-fire"], lightning: ["s-lightning"], holy: ["s-magic-holy-1"], dark: ["s-magic-dark"], missile: ["s-magic-missile-1"], fanfare: ["s-fanfare-short"],
   horn: ["s-horn-2"], growl: ["s-wolf-growl-1"], rumble: ["s-rumble"], victory: ["m-victory2"], defeat: ["m-sad"]
 };
-const AU = { cfg: Object.assign({ on: true, music: .45, sfx: .7, amb: .4 }, lsGet(AU_KEY) || {}), unlocked: false, mood: null, track: null, a: null, b: null, cur: null, amb: null, ambKey: null, pool: new Map(), ctx: null, fades: new Set(), duck: 1 };
+const AU = { cfg: Object.assign({ on: true, music: .45, sfx: .7, amb: .4, vox: .8 }, lsGet(AU_KEY) || {}), unlocked: false, mood: null, track: null, a: null, b: null, cur: null, amb: null, ambKey: null, pool: new Map(), ctx: null, fades: new Set(), duck: 1 };
 const auSrc = n => `snd/${n}.mp3`;
 function auSave() { lsSet(AU_KEY, AU.cfg); }
 function auFade(el, to, ms, done) {
@@ -6699,12 +6765,12 @@ document.addEventListener("visibilitychange", () => { const hid = document.hidde
 function soundSettingsHTML() {
   const row = (k, l) => `<label class="au-row"><span>${l}</span><input type="range" min="0" max="100" step="5" value="${Math.round(AU.cfg[k] * 100)}" data-au="${k}" aria-label="${l}"><b class="num">${Math.round(AU.cfg[k] * 100)}</b></label>`;
   return `<div class="opt-group"><span>Звук</span><div class="opts"><button type="button" data-auon="1" aria-pressed="${AU.cfg.on}">Включён</button><button type="button" data-auon="0" aria-pressed="${!AU.cfg.on}">Выключен</button></div>
-  <div class="au-rows">${row("music", "Музыка")}${row("amb", "Фон")}${row("sfx", "Эффекты")}</div>
-  <small class="home-note">Музыка меняется сама: таверна, бой, ночь, святилище, подземелье. Музыка и звуки — из открытой игры <a href="https://github.com/wesnoth/wesnoth" target="_blank" rel="noopener">Battle for Wesnoth</a> (GPL v2+), «Three Sheets» — Scott Buckley (CC BY-SA 4.0). Иконки оружия, рас и классов — <a href="https://game-icons.net" target="_blank" rel="noopener">game-icons.net</a> (CC BY 3.0: Lorc, Delapouite, Carl Olsen, DarkZaitzev, Cathelineau).</small></div>`;
+  <div class="au-rows">${row("music", "Музыка")}${row("amb", "Фон")}${row("sfx", "Эффекты")}${row("vox", "Голоса")}</div>
+  <small class="home-note">Музыка меняется сама: таверна, бой, ночь, святилище, подземелье. Музыка и звуки — из открытой игры <a href="https://github.com/wesnoth/wesnoth" target="_blank" rel="noopener">Battle for Wesnoth</a> (GPL v2+), «Three Sheets» — Scott Buckley (CC BY-SA 4.0). Голоса персонажей — записи с <a href="https://freesound.org" target="_blank" rel="noopener">Freesound</a> (CC0: Reitanna, dodrio, morganveilleux, daalvinz, Sadiquecat, moxobna и другие); мужские усилия — VoiceBosch / SoundBiter, OpenGameArt (CC BY-SA 4.0). Иконки оружия, рас и классов — <a href="https://game-icons.net" target="_blank" rel="noopener">game-icons.net</a> (CC BY 3.0: Lorc, Delapouite, Carl Olsen, DarkZaitzev, Cathelineau).</small></div>`;
 }
 function bindSoundSettings(root) {
   root.querySelectorAll("[data-au]").forEach(inp => inp.oninput = () => { AU.cfg[inp.dataset.au] = inp.value / 100; inp.nextElementSibling.textContent = inp.value; auApply(); });
-  root.querySelectorAll("[data-au]").forEach(inp => inp.onchange = () => { if (inp.dataset.au === "sfx") sfx("chime"); });
+  root.querySelectorAll("[data-au]").forEach(inp => inp.onchange = () => { if (inp.dataset.au === "sfx") sfx("chime"); if (inp.dataset.au === "vox") voxPreview(); });
   root.querySelectorAll("[data-auon]").forEach(b => b.onclick = () => { AU.cfg.on = b.dataset.auon === "1"; root.querySelectorAll("[data-auon]").forEach(x => x.setAttribute("aria-pressed", String(x === b))); auApply(); });
 }
 
