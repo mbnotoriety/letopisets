@@ -17,7 +17,7 @@
 .dlg-foot .dlg-n { width: auto; height: auto; border: 0; font-size: 11px; color: inherit; }
 .dlg-foot .dlg-o.end { margin-left: auto; }
 .dlg-foot .dlg-o.recruit { border-color: rgba(124, 199, 156, .45); color: #9fdcb8; }
-body.dlg-open #act-form, body.dlg-open #sugg { display: none; }
+body.dlg-open #act-form { display: none; } body.dlg-open #sugg:not(:has(button.cont, button.undo)) { display: none; }
 body.dlg-open.dlg-typing #act-form { display: flex; }
 body.dlg-open .npc-pop { display: none !important; }
 .e-narr.v2 { padding: 14px 18px 13px; font-size: 16.5px; line-height: 1.66; }
