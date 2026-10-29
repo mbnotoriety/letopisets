@@ -1,4 +1,5 @@
 <title>Летописец</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1127,6 +1128,94 @@ body.fs-l .e-player, body.fs-l .e-sys { font-size: 1.08em; } body.fs-xl .e-playe
 .e-levelup { margin: 14px 0; } .lu-in { --cls: var(--lantern); display: flex; gap: 14px; align-items: center; padding: 14px 16px; border-radius: 16px; border: 1px solid color-mix(in srgb, var(--cls) 55%, transparent); background: radial-gradient(circle at 0 50%, color-mix(in srgb, var(--cls) 25%, transparent), transparent 60%), #141d1f; animation: vicIn .6s cubic-bezier(.2, .9, .3, 1.2); }
 .lu-ico { width: 52px; height: 52px; border-radius: 15px; display: grid; place-items: center; color: var(--cls); border: 1px solid color-mix(in srgb, var(--cls) 50%, transparent); flex: none; } .lu-in small { color: var(--lantern); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; } .lu-in b { display: block; font: 700 26px/1.1 var(--display); color: #ffe6b0; } .lu-in span { color: var(--mist); font-size: 13px; }
 @media (max-width: 760px) { .lb-core b { font-size: 96px; } .lv-feats { grid-template-columns: 1fr; } .lv-die-wrap { gap: 16px; } .lv-dots { display: none; } }
+/* ДИАЛОГИ */
+.dlg { --dc: var(--lantern); border: 1px solid rgba(242, 180, 92, .32); border-radius: 16px; background: linear-gradient(180deg, rgba(31, 54, 62, .55), rgba(11, 20, 23, .7)); padding: 10px 10px 8px; display: flex; flex-direction: column; gap: 8px; animation: dlgIn .32s cubic-bezier(.2, .8, .3, 1); box-shadow: 0 8px 28px rgba(0, 0, 0, .25); }
+@keyframes dlgIn { from { opacity: 0; transform: translateY(12px); } }
+.dlg-head { display: flex; align-items: center; gap: 10px; padding: 0 4px; }
+.dlg-head .ph.dlg-ph { width: 38px; height: 38px; flex: none; border-radius: 50%; overflow: hidden; border: 2px solid rgba(242, 180, 92, .5); position: relative; }
+.dlg-head .ph.dlg-ph svg, .dlg-head .ph.dlg-ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.dlg-head .ph.dlg-ph .gen { display: none; }
+.dlg-who { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.2; }
+.dlg-who b { font-family: var(--serif, Georgia, serif); font-size: 16px; color: var(--foam); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dlg-who small { font-size: 12px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dlg-who .att.pos { color: var(--kelp, #7fbf8f); } .dlg-who .att.neg { color: var(--ember, #e8735a); }
+.dlg-x { width: 32px; height: 32px; flex: none; border-radius: 50%; border: 1px solid var(--line); background: transparent; color: var(--mist); font-size: 13px; }
+.dlg-x:hover { color: var(--foam); border-color: var(--mist); }
+.dlg-opts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: min(42vh, 360px); overflow-y: auto; overscroll-behavior: contain; }
+.dlg-o { --tc: var(--mist); width: 100%; display: flex; align-items: center; gap: 10px; text-align: left; padding: 8px 10px; border-radius: 10px; border: 1px solid transparent; background: rgba(22, 39, 45, .6); color: var(--foam); font-size: 14.5px; line-height: 1.35; transition: background .15s, border-color .15s, transform .15s; }
+.dlg-o:hover:not(:disabled), .dlg-o:focus-visible { background: rgba(31, 54, 62, .95); border-color: color-mix(in srgb, var(--tc) 55%, transparent); transform: translateX(3px); outline: none; }
+.dlg-o:disabled { opacity: .55; }
+.dlg-n { flex: none; width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; font-size: 12px; font-weight: 700; color: var(--tc); border: 1px solid color-mix(in srgb, var(--tc) 45%, transparent); }
+.dlg-tx { flex: 1; min-width: 0; }
+.dlg-act { font-style: italic; color: var(--mist); }
+.dlg-tag { font-style: normal; font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--tc); margin-right: 6px; padding: 1px 6px; border-radius: 99px; background: color-mix(in srgb, var(--tc) 14%, transparent); white-space: nowrap; }
+.dlg-ck { flex: none; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--dim); white-space: nowrap; padding: 3px 8px; border-radius: 99px; border: 1px solid color-mix(in srgb, var(--tc) 40%, transparent); background: color-mix(in srgb, var(--tc) 10%, transparent); }
+.dlg-ck i { font-style: normal; font-weight: 700; color: var(--tc); }
+.dlg-ck b { font-variant-numeric: tabular-nums; } .dlg-ck b.hi { color: #8fd19e; } .dlg-ck b.mid { color: var(--lantern); } .dlg-ck b.lo { color: #e8735a; }
+.dlg-o.t-soc { --tc: #f2b45c; } .dlg-o.t-trick { --tc: #c59cf0; } .dlg-o.t-threat { --tc: #e8735a; } .dlg-o.t-mind { --tc: #6fc7c0; } .dlg-o.t-lore { --tc: #7fa8e8; } .dlg-o.t-plain { --tc: var(--mist); }
+.dlg-o.own, .dlg-o.end { background: transparent; color: var(--mist); font-size: 13.5px; padding-block: 6px; }
+.dlg-o.end { --tc: var(--dim); }
+.sugg.dlg-on button:not(.cont):not(.undo) { display: none; }
+@media (max-width: 600px) {
+  .dlg { padding: 8px 6px 6px; border-radius: 14px; gap: 6px; }
+  .dlg-opts { max-height: 38vh; }
+  .dlg-o { flex-wrap: wrap; gap: 4px 8px; padding: 7px 8px; font-size: 14px; }
+  .dlg-tx { flex: 1 1 calc(100% - 34px); }
+  .dlg-ck { margin-left: 30px; }
+}
+@media (prefers-reduced-motion: reduce) { .dlg { animation: none; } .dlg-o { transition: none; } }
+/* MOBILE */
+/* МОБИЛЬНАЯ ВЁРСТКА — финальные правки (идут последними) */
+#app { overflow-x: clip; }
+.cb-banner, .lvl-burst { overflow: hidden; }
+.nav .wrap > * { flex-shrink: 0; } .nav .wrap > .logo { flex-shrink: 1; min-width: 0; } .nav .wrap > .spacer { flex-shrink: 1; min-width: 0; }
+.logo b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 760px) {
+  .bg-wrap { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 600px) {
+  .nav .wrap { gap: 6px; }
+  .nav .btn.small { padding: 7px 8px; min-width: 34px; min-height: 34px; justify-content: center; }
+  .nav .pill { padding: 6px 8px; }
+  .rnd-hero { float: none; margin: 0 0 12px; }
+  .scene h2 { font-size: clamp(26px, 8vw, 32px); }
+}
+@media (max-width: 400px) { .logo b { font-size: 20px; } .logo { gap: 7px; } .logo svg { width: 24px; height: 24px; } }
+@supports (height: 100dvh) {
+  .modal, .modal.wide, .modal.shop-modal, .shop { max-height: calc(100dvh - 32px); }
+}
+@media (max-width: 860px) {
+  .shop-body, .shop-col { flex: none; min-height: auto; }
+  .shop-deal { position: sticky; bottom: 0; z-index: 3; }
+}
+@media (max-width: 760px) {
+  body.dlg-on #sugg { display: none; }
+  body.dlg-on:not(.dlg-typing) #act-form { display: none; }
+  body.dlg-on .composer { padding-top: 10px; padding-bottom: 10px; }
+  .lv-modal .lv > .row { position: sticky; bottom: -24px; margin-bottom: -24px; padding: 10px 0 24px; background: var(--deep); z-index: 2; }
+}
+@media (max-width: 600px) {
+  .bigmap-head { flex-wrap: wrap; align-items: flex-start; } .bigmap-head > div:first-child { flex: 1 1 100%; min-width: 0; } .bigmap-head h2 { font-size: 28px; }
+  .j-tabs { overflow-x: auto; scrollbar-width: none; } .j-tabs::-webkit-scrollbar { display: none; } .j-tabs button { flex: none; white-space: nowrap; padding-inline: 10px; }
+  .modal { padding: 18px 16px; }
+  .lv-modal .lv > .row { bottom: -18px; margin-bottom: -18px; padding-bottom: 18px; }
+}
+@media (max-width: 600px) {
+  .shop-deal { grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 10px 14px 12px; box-shadow: 0 -10px 24px rgba(0, 0, 0, .35); }
+  .deal-l .eyebrow { display: none; } .deal-l:has(.home-note) { display: none; } .deal-items { margin-top: 0; max-height: 58px; }
+  .deal-sum { flex-direction: row; align-items: baseline; gap: 8px; flex-wrap: wrap; min-width: 0; } .deal-sum b { font-size: 19px; }
+  .haggle > .eyebrow { display: none; } .hag-btns { margin-top: 0; } .hag-btns .btn { padding: 6px 4px; font-size: 12.5px; }
+  .shop-head { padding: 16px 56px 12px 16px; gap: 10px; } .shop-who .ph { width: 56px; height: 56px; border-radius: 14px; } .shop-who h2 { font-size: 26px; }
+  .shop-col { padding: 14px 14px 16px; } .shop-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 600px) {
+  .modal .row > .btn { flex: 1 1 auto; justify-content: center; }
+  .scene { padding-block: 18px 16px; }
+  .scene-inner { gap: 12px; align-items: center; }
+  .scene-inner > div:first-child { flex: 1 1 100%; }
+  .scene p { font-size: 13.5px; }
+}
+@media (max-width: 380px) { body:has(#screen-game:not([hidden])) #pill-ai { display: none; } }
 </style>
 
 <div id="app">
@@ -1165,6 +1254,7 @@ body.fs-l .e-player, body.fs-l .e-sys { font-size: 1.08em; } body.fs-xl .e-playe
         <div class="composer">
           <div class="composer-inner">
             <div id="roll-slot"></div>
+            <div id="dlg" class="dlg" hidden aria-label="Варианты реплик"></div>
             <div class="sugg" id="sugg"></div>
             <form class="inrow" id="act-form">
               <textarea id="act-input" rows="1" aria-label="Ваше действие" placeholder="Что вы делаете? Можно всё: действие, реплику, план…"></textarea>
@@ -2261,7 +2351,7 @@ function renderHome() {
       <h1>Мир, который <em>помнит</em> каждое ваше решение</h1>
       <p class="lead">Рассказчик создаёт новую местность, тайну и людей для каждой кампании. Вы пишете что угодно, а броски, хиты и ячейки заклинаний честно считает движок правил.</p>
       <div class="ctas"><button class="btn primary big" type="button" id="h-new">Начать кампанию</button>${idx.length ? `<button class="btn big" type="button" id="h-cont">Продолжить: ${esc(idx[0].hero)}</button>` : `<button class="btn ghost big" type="button" id="h-how">Как это устроено</button>`}</div>
-      <div class="meta"><span><b>4</b>класса</span><span><b>4</b>биома</span><span><b>d20</b>на сервере, не у ИИ</span></div></div>
+      <div class="meta"><span><b>10</b>классов</span><span><b>4</b>биома</span><span><b>d20</b>на сервере, не у ИИ</span></div></div>
     <div class="stage" aria-hidden="true"><div class="stage-map">${mapMarkup("hero-map", "")}</div>${card("marta", "f1")}${card("ilva", "f2")}${card("ost", "f3")}
       <div class="roll-badge"><div class="d20">${D20SVG}<span>17</span></div><div><b>Проницательность: успех</b><small>d20 (14) +3 = 17 против КС 13</small></div></div></div>
   </div></section>
@@ -3510,7 +3600,7 @@ function bindScene(root, big) {
       open(el, o.label[0].toUpperCase() + o.label.slice(1), S.world.taken?.[id + ":" + o.id] ? "уже обыскано" : "", acts); return; }
     if (kind === "npc") { const n = NPCS[ref]; const p = ppl.find(q => q.id === ref); const zz = p?.asleep; const mer = !zz && merchantsHere().find(mm => mm.npc === ref); open(el, n.name, `${n.role} · ${zz ? "спит" : attLabel(S.world.npcs[ref]?.att || 0)[0]}`, [
       ...(zz ? [] : questNpcActs(ref)), ...(mer ? [{ t: "Торговать", fn: () => openShop(mer), dis: busy }] : []),
-      { t: zz ? "Разбудить" : "Заговорить", fn: () => { if (zz) { bstate(id).alarm = tkey(); turn(`Бужу: ${n.name}`); return; } walkTo(p.x, p.y + .9); showTab("story"); const inp = document.getElementById("act-input"); inp.value = `${n.name}, `; inp.focus(); }, closes: true },
+      { t: zz ? "Разбудить" : "Заговорить", fn: () => { if (zz) { bstate(id).alarm = tkey(); turn(`Бужу: ${n.name}`); return; } walkTo(p.x, p.y + .9); showTab("story"); dlgStart(id); }, closes: true },
       { t: "Присмотреться", fn: () => turn(`Незаметно присматриваюсь: ${n.name} (${n.role})`), dis: busy }, { t: "Подойти", fn: approach(p.x, p.y), closes: false }, { t: "Напасть…", fn: () => confirmAttack(ref), dis: busy || S.world.combat, danger: true }]); return; }
     if (kind === "crowd") { const p = ppl.find(q => q.type === "crowd" && q.label === ref) || {}; const stall = /торгов/.test(ref) && merchantsHere().find(x => x.type === "stall");
       open(el, ref[0].toUpperCase() + ref.slice(1), "безымянный местный житель", [...(stall ? [{ t: "Торговать", fn: () => openShop(stall), dis: busy }] : []),{ t: "Заговорить", fn: () => turn(`Подхожу к человеку (${ref}) и заговариваю с ним`), dis: busy }, { t: "Подслушать", fn: () => turn(`Прислушиваюсь, о чём говорит ${ref}`), dis: busy }, { t: "Подойти", fn: approach(p.x || 9, p.y || 6), closes: false }, { t: "Напасть…", fn: () => confirmAttackCrowd(ref), dis: busy || S.world.combat, danger: true }]); return; }
@@ -5669,6 +5759,104 @@ function aoeHit(sp, main) { const others = aliveEnemiesHere().filter(id => id !=
   return ` · задеты: ${parts.join(", ")}`; }
 ["fireball", "shatter", "thunderwave", "spirit_guardians"].forEach(k => { if (SPELLS[k]) SPELLS[k].aoe = true; });
 
+/* DIALOGUE */
+/* =========================================================================
+   ДИАЛОГИ: варианты реплик с проверками навыков (в духе BG3)
+   ========================================================================= */
+const DLG_SKILLS = ["persuasion", "deception", "intimidation", "insight", "performance", "investigation", "history", "arcana", "religion", "medicine", "nature", "survival", "perception", "sleight", "athletics"];
+const DLG_TONE = { persuasion: "soc", performance: "soc", deception: "trick", sleight: "trick", intimidation: "threat", athletics: "threat", insight: "mind", perception: "mind", investigation: "lore", history: "lore", arcana: "lore", religion: "lore", nature: "lore", medicine: "lore", survival: "lore" };
+const DLG_SOCIAL = new Set(["persuasion", "deception", "performance"]);
+function dlgNpcOk(id) { return !!(id && NPCS[id] && S?.world && POIS[S.world.loc]?.npcs.includes(id) && !npcGone(id)); }
+function dlgDC(o, npc) {
+  let dc = o.dc; const notes = [];
+  if (DLG_SOCIAL.has(o.skill)) { const a = S.world.npcs[npc]?.att || 0; const d = a >= 25 ? -3 : a >= 8 ? -2 : a <= -25 ? 4 : a <= -8 ? 2 : 0; if (d) { dc += d; notes.push(`${d > 0 ? "+" : "−"}${Math.abs(d)} к КС: ${attLabel(a)[0]}`); } }
+  const f = S.world.npcs[npc]?.dlgFail?.[o.skill] || 0; if (f) { dc += 2 * f; notes.push(`+${2 * f} к КС: уже не вышло`); }
+  return { dc: clamp(dc, 5, 25), notes };
+}
+function dlgChance(skill, dc) { const b = skillBonus(skill); const adv = skillAdv(skill); const p = clamp((21 - (dc - b)) / 20, .05, 1); return adv > 0 ? 1 - (1 - p) ** 2 : p; }
+const DLG_CLASS = {
+  wizard: ["arcana", "Здесь пахнет чарами. Что ты об этом знаешь?", 13], sorcerer: ["arcana", "Магия во мне чует неладное. Кто здесь колдует?", 13],
+  warlock: ["intimidation", "Мой покровитель не любит, когда ему лгут.", 14], cleric: ["religion", "Боги видят всё. Облегчи душу — скажи правду.", 13],
+  paladin: ["persuasion", "Клянусь честью: твоя тайна не обернётся против тебя.", 13], rogue: ["deception", "Меня прислали проверить, всё ли тут в порядке.", 14],
+  bard: ["performance", "Давай так: я спою тебе, а ты расскажешь мне.", 12], barbarian: ["intimidation", "Говори. Второй раз спрашивать не буду.", 13],
+  fighter: ["intimidation", "Я видел(а) войну. Не заставляй меня злиться.", 13], ranger: ["survival", "Я видел(а) следы у дороги. Чьи они?", 12],
+  druid: ["nature", "Звери здесь притихли. Ты знаешь почему?", 12], monk: ["insight", "Твои руки дрожат. Чего ты боишься?", 13]
+};
+const DLG_SOC_LINE = { persuasion: ["Мне можно доверять. Помоги — и я помогу тебе.", 13], deception: ["Я здесь по поручению властей. Отвечай.", 14], intimidation: ["Лучше скажи сразу, пока я прошу по-хорошему.", 13], performance: ["Расскажу тебе историю — а ты мне свою.", 12] };
+function dlgFallback(npc) {
+  const c = C(); const n = NPCS[npc]; const out = []; const used = new Set();
+  out.push({ text: n?.secret && (S.world.npcs[npc]?.att || 0) >= 8 ? "Ты ведь что-то знаешь. Поделишься?" : "Что здесь происходит? Расскажи.", skill: null, dc: 0, tag: null });
+  const soc = ["persuasion", "deception", "intimidation", "performance"].sort((a, b) => skillBonus(b) - skillBonus(a))[0];
+  const cl = DLG_CLASS[c.cls]; const fem = c.gender === "f"; const fx = t => t.replace(/\(а\)/g, fem ? "а" : "");
+  if (cl && SKILLS[cl[0]]) { out.push({ text: fx(cl[1]), skill: cl[0], dc: cl[2], tag: CLASSES[c.cls].name }); used.add(cl[0]); }
+  if (!used.has(soc)) { out.push({ text: DLG_SOC_LINE[soc][0], skill: soc, dc: DLG_SOC_LINE[soc][1], tag: c.skills.includes(soc) ? (BACKGROUNDS[c.bg]?.skills?.includes(soc) ? BACKGROUNDS[c.bg].name : null) : null }); used.add(soc); }
+  if (!used.has("insight")) out.push({ text: "(Присмотреться: говорит ли он(а) правду?)".replace("он(а)", isFem(n) ? "она" : "он"), skill: "insight", dc: 13, tag: null });
+  if (out.length < 4) out.splice(1, 0, { text: "Расскажи о себе. Давно ты здесь?", skill: null, dc: 0, tag: null });
+  return out.slice(0, 4);
+}
+function dlgParse(list) {
+  return (Array.isArray(list) ? list : []).map(o => { const text = str(typeof o === "string" ? o : o?.text, 120).replace(/^[«"“]|[»"”]$/g, ""); const sk = typeof o === "object" && DLG_SKILLS.includes(o?.skill) && SKILLS[o.skill] ? o.skill : null; let tag = str(o?.tag, 24); if (/^(null|нет|-)$/i.test(tag)) tag = "";
+    return { text, skill: sk, dc: clamp(Math.round(Number(o?.dc) || 13), 8, 22), tag: sk || tag ? (tag || null) : null }; }).filter(o => o.text).slice(0, 4);
+}
+function dlgEffects(eff) {
+  const sp = eff?.speaker; const want = S.dlgPending; S.dlgPending = null;
+  if (S.world.combat || S.dead || S.dying || !dlgNpcOk(sp)) { S.dialogue = null; return; }
+  let opts = dlgParse(eff.dialogue);
+  if (!opts.length && (want === sp || S.dialogue?.npc === sp)) opts = dlgFallback(sp);
+  if (!opts.length) { S.dialogue = null; return; }
+  S.dialogue = { npc: sp, opts, n: S.dialogue?.npc === sp ? (S.dialogue.n || 0) + 1 : 1 };
+}
+function dlgStart(id) {
+  const n = NPCS[id]; if (!n || busy || S.dead) return; showTab("story");
+  if (S.dialogue?.npc === id) { renderDlg(); document.querySelector("#dlg .dlg-o")?.focus(); return; }
+  S.dlgPending = id; takeTurn(`Подхожу и заговариваю: ${n.name}`, { checks: [], talk_to: id });
+}
+function dlgEnd(silent) { if (!S?.dialogue) return; const n = NPCS[S.dialogue.npc]; S.dialogue = null; if (!silent && n) pushFeed({ t: "sys", html: `Вы заканчиваете разговор: <b>${esc(n.name)}</b>.` }); renderSugg(); save(); }
+function dlgPick(i) {
+  const d = S?.dialogue; const o = d?.opts?.[i]; if (!o || busy || S.dead) return; const n = NPCS[d.npc]; if (!dlgNpcOk(d.npc)) { dlgEnd(true); return; }
+  S.dlgPending = d.npc; S.dlgLast = o.skill ? { npc: d.npc, skill: o.skill } : null;
+  const isAct = /^\(.*\)$/.test(o.text); const line = isAct ? o.text.slice(1, -1) : `«${o.text}»`;
+  S.pendingQNote = `Герой ${isAct ? "делает это в разговоре" : "говорит это"} — собеседник: ${n.name} (id ${d.npc}). Сыграй ответ ${n.name} живой репликой с учётом ${o.skill ? "результата проверки (" + SKILLS[o.skill][0] + ")" : "характера и отношения к герою"}; ${o.skill ? "при успехе дай ощутимую пользу (сведения, уступку, доверие), при провале — последствие (раздражение, подозрение, ложный след)" : "продвинь разговор"}.`;
+  const ch = o.skill ? [{ kind: "skill", skill: o.skill, dc: dlgDC(o, d.npc).dc, reason: `Реплика${o.tag ? " · " + o.tag : ""}` }] : [];
+  takeTurn(line, { checks: ch, talk_to: d.npc });
+}
+function dlgOwn() { const d = S?.dialogue; if (!d) return; const inp = document.getElementById("act-input"); inp.value = `${NPCS[d.npc].name}, `; inp.focus(); S.dlgPending = d.npc; }
+function renderDlg() {
+  const el = document.getElementById("dlg"); if (!el || !S) return; const d = S.dialogue;
+  const on = !!d && !S.world.combat && !S.dead && !S.dying && dlgNpcOk(d.npc);
+  document.getElementById("sugg")?.classList.toggle("dlg-on", on);
+  if (!on) { if (d && (S.world.combat || !dlgNpcOk(d.npc))) S.dialogue = null; el.hidden = true; el.innerHTML = ""; return; }
+  const n = NPCS[d.npc]; const [lab, cl] = attLabel(S.world.npcs[d.npc]?.att || 0);
+  const opts = d.opts.map((o, i) => {
+    let ck = ""; if (o.skill) { const { dc, notes } = dlgDC(o, d.npc); const p = Math.round(dlgChance(o.skill, dc) * 100); const pc = p >= 70 ? "hi" : p >= 40 ? "mid" : "lo";
+      ck = `<span class="dlg-ck" title="${esc(["Бросок d20 " + fmt(skillBonus(o.skill)) + " против КС " + dc, ...notes].join(" · "))}"><i>${esc(SKILLS[o.skill][0])}</i><span>КС ${dc}</span><b class="${pc}">${p}%</b></span>`; }
+    const act = /^\(.*\)$/.test(o.text);
+    return `<li><button type="button" class="dlg-o t-${o.skill ? DLG_TONE[o.skill] || "soc" : "plain"}" data-i="${i}" ${busy ? "disabled" : ""}><span class="dlg-n">${i + 1}</span><span class="dlg-tx">${o.tag ? `<em class="dlg-tag">${esc(o.tag)}</em>` : ""}${act ? `<span class="dlg-act">${esc(o.text.slice(1, -1))}</span>` : esc(o.text)}</span>${ck}</button></li>`;
+  }).join("");
+  el.innerHTML = `<div class="dlg-head">${npcPh(d.npc, "dlg-ph")}<div class="dlg-who"><b>${esc(n.name)}</b><small>${esc(n.role || "")} · <span class="att ${cl}">${lab}</span></small></div><button type="button" class="dlg-x" title="Закончить разговор (Esc)" aria-label="Закончить разговор">✕</button></div>
+  <ol class="dlg-opts">${opts}<li><button type="button" class="dlg-o own" ${busy ? "disabled" : ""}><span class="dlg-n">✎</span><span class="dlg-tx">Сказать своё…</span></button></li><li><button type="button" class="dlg-o end" ${busy ? "disabled" : ""}><span class="dlg-n">0</span><span class="dlg-tx">Закончить разговор</span></button></li></ol>`;
+  el.hidden = false;
+  el.querySelectorAll(".dlg-o[data-i]").forEach(b => b.onclick = () => dlgPick(+b.dataset.i));
+  el.querySelector(".dlg-o.own").onclick = dlgOwn; el.querySelector(".dlg-o.end").onclick = () => dlgEnd(); el.querySelector(".dlg-x").onclick = () => dlgEnd();
+}
+function dlgBrief() { const d = S?.dialogue; if (!d || !NPCS[d.npc]) return ""; return `\nИдёт разговор с ${NPCS[d.npc].name} (реплика ${d.n || 1}).`; }
+/* обёртки */
+{ const _ae = applyEffects; applyEffects = function (eff) { _ae.apply(this, arguments); try { dlgEffects(eff || {}); } catch (e) { console.error(e); } }; }
+{ const _rs = renderSugg; renderSugg = function () { _rs.apply(this, arguments); try { renderDlg(); } catch (e) { console.error(e); } }; }
+{ const _na = npcAfterTurn; npcAfterTurn = function (results) { const r = _na.apply(this, arguments); try { const L = S.dlgLast; S.dlgLast = null;
+  if (L) { const ck = (results || []).find(x => x.kind === "skill" && x.skill === L.skill); if (ck && !ck.ok) { const st = S.world.npcs[L.npc] || (S.world.npcs[L.npc] = { att: 0, mem: [] }); st.dlgFail = st.dlgFail || {}; st.dlgFail[L.skill] = Math.min(3, (st.dlgFail[L.skill] || 0) + 1); } } } catch (e) {} return r; }; }
+{ const _pn = popNPC; popNPC = function (id) { if (S?.dlgPending === id || S?.dialogue?.npc === id) return; return _pn.apply(this, arguments); }; }
+{ const _mt = moveTo; moveTo = function () { if (S) S.dialogue = null; return _mt.apply(this, arguments); }; }
+document.addEventListener("keydown", e => {
+  if (e.ctrlKey || e.metaKey || e.altKey || !S?.dialogue || S.world.combat) return; const tag = document.activeElement?.tagName; if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+  const mr = document.getElementById("modal-root"); if (mr && mr.innerHTML.trim()) return; if (document.getElementById("screen-game").hidden || document.getElementById("dlg")?.hidden) return;
+  if (/^[1-9]$/.test(e.key)) { const b = document.querySelectorAll("#dlg .dlg-o[data-i]")[+e.key - 1]; if (b && !b.disabled) { e.preventDefault(); b.click(); } }
+  else if (e.key === "0" || e.key === "Escape") { e.preventDefault(); dlgEnd(); }
+});
+{ const _rd = renderDlg; renderDlg = function () { _rd.apply(this, arguments); const on = !document.getElementById("dlg")?.hidden; document.body.classList.toggle("dlg-on", on); if (!on) document.body.classList.remove("dlg-typing"); }; }
+{ const _ow = dlgOwn; dlgOwn = function () { document.body.classList.add("dlg-typing"); _ow.apply(this, arguments); }; }
+{ const mq = matchMedia("(max-width: 600px)"); const ph = () => { const i = document.getElementById("act-input"); if (i) i.placeholder = mq.matches ? "Что вы делаете?" : "Что вы делаете? Можно всё: действие, реплику, план…"; }; ph(); mq.addEventListener?.("change", ph); }
+
 /* =========================================================================
    ЗВУК: музыка по настроению, фон, эффекты
    Музыка и звуки — Battle for Wesnoth (GPL v2+); «Three Sheets» — Scott Buckley (CC BY-SA 4.0)
@@ -5816,7 +6004,7 @@ function renderWorld() {
   loc.npcs.forEach(id => { const n = NPCS[id]; if (!n) return; const [lab, cl] = attLabel(S.world.npcs[id]?.att || 0);
     const b = document.createElement("button"); b.type = "button"; b.className = "npc-row";
     const qm = questMark(id); b.innerHTML = `${npcPh(id)}<span class="t"><b>${esc(n.name)}</b><small>${esc(n.role)}</small></span>${qm ? `<span class="q-mark${qm === "?" ? " d" : ""}" title="${qm === "?" ? "Можно сдать поручение" : "Есть просьба"}">${qm}</span>` : ""}<span class="att ${cl}">${lab}</span>`;
-    b.onclick = () => { const qa = questNpcActs(id); if (qa.length && !busy) { qa[0].fn(); return; } const inp = document.getElementById("act-input"); inp.value = `${n.name}, `; inp.focus(); showTab("story"); };
+    b.onclick = () => { const qa = questNpcActs(id); if (qa.length && !busy) { qa[0].fn(); return; } dlgStart(id); };
     list.append(b); });
   const ms = merchantsHere(); if (ms.length && !S.world.combat) { const tw = document.createElement("div"); tw.className = "trade-row"; ms.forEach(m => { const b = document.createElement("button"); b.type = "button"; b.className = "trade-chip"; b.innerHTML = `${COIN}<span>Торговать · ${esc(m.name)}</span>`; b.disabled = busy; b.onclick = () => openShop(m); tw.append(b); }); list.append(tw); }
   el.querySelector("#map-big").onclick = openBigMap; syncAudio();
@@ -6074,8 +6262,8 @@ ${resultsBrief(results)}`}
 - Не решай за героя, что он делает дальше. Закончи на моменте выбора.
 
 После текста поставь строку @@@ и затем ОДНУ строку JSON с последствиями (только то, что реально произошло в тексте):
-{"speaker": "id НПС, который говорит больше всех, или null", "damage": [{"dice":"1d4","reason":"почему"}], "heal": null, "items_add": [{"name":"…","desc":"…"}], "items_remove": [], "gold": 0, "xp": 0, "attitude": {"id_нпс": 0}, "facts": ["1–2 важных новых факта для памяти, коротко"], "quest": null, "map_notes": [{"place":"id места","note":"что герой узнал об этом месте, до 8 слов"}], "rumors": ["id места, о котором герой услышал, но ещё не был"], "building": null, "npc_moves": [], "rep": 0, "side_quests": [], "npc_attack": [], "ending": null, "scene": {"add": [{"label":"предмет, 1–3 слова","acc":"он же в винительном падеже","kind":"chest|crate|barrel|table|bed|altar|statue|body|item|fire|lantern|boat|rock|bell|cart|cauldron|sack"}], "remove": ["label исчезнувшего предмета"], "crowd": null}, "new_npcs": [{"id":"latin_snake_case","name":"…","role":"…","look":"внешность 6–10 слов","persona":"характер, 1 предложение","gender":"m|f","age":"young|adult|old","important":false}], "threat": 0, "start_combat": [], "suggestions": ["3 коротких варианта следующего действия, до 6 слов"]}
-damage — только если герой получил вред от окружения или ловушки (не от врагов, их урон уже посчитан). xp — 25–75 за важное открытие или решённую проблему, иначе 0. attitude — изменения от −15 до +15. quest — новая формулировка задания, если оно изменилось. npc_moves — если по сюжету НПС ушёл, сбежал, его увели или он пришёл в другое место: [{"id":"id НПС","to":"id места из списка или null — вернуться домой"}]. ending — короткое название концовки (3–6 слов), ТОЛЬКО если главная история окончательно завершилась в этой сцене (тайна раскрыта и разрешена, злодей побеждён или ушёл навсегда, либо всё безвозвратно проиграно), иначе null. npc_attack — id НПС, которые САМИ нападают на героя в этом тексте (злодей раскрыт и бросается, стража хватает разыскиваемого, обиженный бьёт первым), иначе []. side_quests — [{"id":"id поручения","status":"ready|failed"}] только если поручение явно выполнено или провалено НЕ через механику движка (например, договорился словами), иначе []. rep — изменение репутации героя в поселении от −10 до +10, если поступок стал известен местным (помощь, щедрость, драка, кража, хамство), иначе 0. scene — только если в сцене появился заметный предмет, с которым герой может взаимодействовать (тело, сундук, записка, следы), или предмет исчез/унесён; crowd — сколько безымянных людей сейчас фоном в локации (0–8), только если это заметно изменилось, иначе null. new_npcs — только если в сцене впервые появился новый человек с именем, которого нет в списке НПС (important: true — если он важен для тайны). threat: +1, если противник получил преимущество или герой потратил время впустую, −1 при серьёзном успехе против противника, иначе 0.`;
+{"speaker": "id НПС, который говорит больше всех, или null", "damage": [{"dice":"1d4","reason":"почему"}], "heal": null, "items_add": [{"name":"…","desc":"…"}], "items_remove": [], "gold": 0, "xp": 0, "attitude": {"id_нпс": 0}, "facts": ["1–2 важных новых факта для памяти, коротко"], "quest": null, "map_notes": [{"place":"id места","note":"что герой узнал об этом месте, до 8 слов"}], "rumors": ["id места, о котором герой услышал, но ещё не был"], "building": null, "npc_moves": [], "rep": 0, "side_quests": [], "npc_attack": [], "ending": null, "scene": {"add": [{"label":"предмет, 1–3 слова","acc":"он же в винительном падеже","kind":"chest|crate|barrel|table|bed|altar|statue|body|item|fire|lantern|boat|rock|bell|cart|cauldron|sack"}], "remove": ["label исчезнувшего предмета"], "crowd": null}, "new_npcs": [{"id":"latin_snake_case","name":"…","role":"…","look":"внешность 6–10 слов","persona":"характер, 1 предложение","gender":"m|f","age":"young|adult|old","important":false}], "threat": 0, "start_combat": [], "dialogue": [], "suggestions": ["3 коротких варианта следующего действия, до 6 слов"]}
+damage — только если герой получил вред от окружения или ловушки (не от врагов, их урон уже посчитан). xp — 25–75 за важное открытие или решённую проблему, иначе 0. attitude — изменения от −15 до +15. quest — новая формулировка задания, если оно изменилось. npc_moves — если по сюжету НПС ушёл, сбежал, его увели или он пришёл в другое место: [{"id":"id НПС","to":"id места из списка или null — вернуться домой"}]. ending — короткое название концовки (3–6 слов), ТОЛЬКО если главная история окончательно завершилась в этой сцене (тайна раскрыта и разрешена, злодей побеждён или ушёл навсегда, либо всё безвозвратно проиграно), иначе null. npc_attack — id НПС, которые САМИ нападают на героя в этом тексте (злодей раскрыт и бросается, стража хватает разыскиваемого, обиженный бьёт первым), иначе []. side_quests — [{"id":"id поручения","status":"ready|failed"}] только если поручение явно выполнено или провалено НЕ через механику движка (например, договорился словами), иначе []. rep — изменение репутации героя в поселении от −10 до +10, если поступок стал известен местным (помощь, щедрость, драка, кража, хамство), иначе 0. scene — только если в сцене появился заметный предмет, с которым герой может взаимодействовать (тело, сундук, записка, следы), или предмет исчез/унесён; crowd — сколько безымянных людей сейчас фоном в локации (0–8), только если это заметно изменилось, иначе null. new_npcs — только если в сцене впервые появился новый человек с именем, которого нет в списке НПС (important: true — если он важен для тайны). threat: +1, если противник получил преимущество или герой потратил время впустую, −1 при серьёзном успехе против противника, иначе 0. dialogue — ТОЛЬКО если герой сейчас разговаривает с НПС (speaker не null) и разговор может продолжиться: 3–4 варианта следующей реплики героя от первого лица, до 90 символов: [{"text":"…","skill":null,"dc":0,"tag":null}]. 1–2 простых вопроса/ответа без проверки (skill null) и 1–2 смелых хода с проверкой навыка (skill: persuasion|deception|intimidation|insight|performance|investigation|history|arcana|religion|medicine|nature|survival), которые опираются на класс, предысторию, расу, черты героя и то, что он знает; tag — название класса/предыстории/расы, если реплика на них опирается, иначе null; dc: 10 легко, 13 средне, 16 трудно, 19 очень трудно. Действие в разговоре (присмотреться, подсунуть монету) пиши в скобках. Варианты должны продвигать разговор и вести к тайне, поручениям или выгоде. Если разговора нет — [].`;
   ctl = new AbortController(); document.getElementById("btn-stop").hidden = false;
   let full = "";
   try {
