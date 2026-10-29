@@ -28,6 +28,9 @@ async def main():
         await pg.route("https://api.groq.com/**", lambda r, q: chat(r, q, "groq"))
         await pg.route("https://openrouter.ai/**", lambda r, q: chat(r, q, "openrouter"))
         await pg.route("https://gen.pollinations.ai/v1/**", lambda r, q: chat(r, q, "polltext"))
+        await pg.route("https://x.workers.dev/v1/**", lambda r, q: chat(r, q, "proxy"))
+        async def pimg(route, req): hits.append("pimg"); await route.fulfill(status=200, headers={"content-type":"image/jpeg","access-control-allow-origin":"*"}, body=IMG)
+        await pg.route("https://x.workers.dev/image**", pimg)
         async def img(route, req): hits.append("img"); await route.fulfill(status=200, headers={"content-type":"image/jpeg","access-control-allow-origin":"*"}, body=IMG)
         await pg.route("https://gen.pollinations.ai/image/**", img); await pg.route("https://image.pollinations.ai/**", img)
         await pg.goto("file:///home/claude/salt-harbor.html"); await pg.wait_for_selector(".ai-modal", timeout=6000); await pg.wait_for_timeout(300)
@@ -62,6 +65,16 @@ async def main():
         # portraits via pollinations key
         await pg.evaluate("() => { const c = aiCfg(); c.keys.pollinations='sk_test'; c.img='pollinations'; c.puter=false; aiSave(c); retryPortraits(); }")
         await pg.wait_for_timeout(6000); print("img hits", hits.count("img"), "cache", await pg.evaluate("Object.keys(imgCache).length"), "note", await pg.evaluate("imgNote"))
+        # own proxy (Cloudflare worker)
+        await pg.evaluate("() => { const c = aiCfg(); c.url='https://x.workers.dev/v1'; c.prov='auto'; c.img='auto'; aiSave(c); lastProv=null; initSample(); }")
+        await pg.fill("#act-input", "Иду к причалу"); await pg.click("#btn-send")
+        try: await pg.wait_for_selector("#btn-roll", timeout=6000); await pg.click("#btn-roll")
+        except Exception: pass
+        await pg.wait_for_function("!busy", timeout=20000); await pg.wait_for_timeout(300)
+        print("proxy hits", hits.count("proxy"), "pill", await pg.inner_text("#pill-ai-t"))
+        print("chain", await pg.evaluate("imgChain()"), "jobs", await pg.evaluate("portraitJobs.length"), "paused", await pg.evaluate("portraitPaused")); await pg.evaluate("() => { redrawWorldPortraits(S.wd); retryPortraits(); }"); print("running", await pg.evaluate("jobRunning")); await pg.wait_for_timeout(50000); print("proxy img hits", hits.count("pimg"), "jobs", await pg.evaluate("portraitJobs.length"), "note", await pg.evaluate("imgNote"))
+        await pg.click("#pill-ai"); await pg.click("[data-prov=puter]"); await pg.wait_for_timeout(300); await pg.screenshot(path=SP+f"/p{W}_puter.png")
+        await pg.click("[data-prov=local]"); await pg.wait_for_timeout(300); await pg.screenshot(path=SP+f"/p{W}_local.png"); await pg.click("#ai-ok")
         # oauth return
         await pg.goto("file:///home/claude/salt-harbor.html#api_key=sk_fromgithub"); await pg.wait_for_timeout(800)
         print("oauth key:", await pg.evaluate("aiCfg().keys.pollinations"), "hash:", await pg.evaluate("location.hash"))
