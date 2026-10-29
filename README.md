@@ -28,7 +28,7 @@
 - `build/` — скрипты патчей и сборки (`build24.sh`).
 - `tests/` — Playwright-тесты; `mock.js` подменяет ИИ, `t31.py` проверяет гостевой режим с поддельными API.
 - `worker/` — бесплатный прокси рассказчика для Cloudflare Workers (ключи в секретах воркера).
-- `assets/snd/` — звуки (Battle for Wesnoth, GPL).
+- `snd/` — звуки (Battle for Wesnoth, GPL).
 - `versions/` — снимки HTML прошлых версий.
 
 ## История версий
