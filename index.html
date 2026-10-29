@@ -1054,6 +1054,31 @@ body.low-hp::after { content: ""; position: fixed; inset: 0; pointer-events: non
 .cb-fi.ph { padding: 0; overflow: hidden; } .cb-fi.ph img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 20%; filter: saturate(.85) contrast(1.05); }
 .cb-foe.dead .cb-fi.ph img { filter: grayscale(1); }
 .sc-tok.corpse:hover { filter: brightness(1.3) drop-shadow(0 0 5px rgba(232, 115, 90, .8)); }
+.storage-note { display: flex; flex-direction: column; gap: 4px; font-size: 11.5px; color: var(--dim); min-width: 170px; } .storage-note i { display: block; height: 4px; border-radius: 99px; background: var(--shoal); overflow: hidden; } .storage-note b { display: block; height: 100%; }
+.fallen.ended { color: var(--lantern); border-color: rgba(242, 180, 92, .45); }
+.mem-pins { padding: 14px; border-radius: 14px; border: 1px solid rgba(242, 180, 92, .4); background: linear-gradient(180deg, var(--lantern-soft), transparent 70%), var(--deep); display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+.pin-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; } .pin-list li, .chron.edit li { display: flex; gap: 10px; align-items: flex-start; justify-content: space-between; }
+.pin-list li { padding: 7px 10px; border-radius: 10px; background: rgba(0, 0, 0, .25); font-size: 14px; color: var(--foam); } .pin-list li.fix { border-left: 3px solid #c59af0; } .pin-list b { color: #d9c0f5; font-weight: 600; }
+.pin-x { flex: none; width: 24px; height: 24px; border-radius: 7px; border: 1px solid var(--line); background: transparent; color: var(--dim); font-size: 12px; line-height: 1; opacity: .6; } .pin-x:hover { opacity: 1; color: var(--ember); border-color: var(--ember); }
+.chron.edit li .pin-x { opacity: 0; } .chron.edit li:hover .pin-x, .chron.edit li .pin-x:focus-visible { opacity: .8; } @media (hover: none) { .chron.edit li .pin-x { opacity: .6; } }
+.pin-add { display: flex; gap: 6px; } .pin-add input { flex: 1; min-width: 0; background: var(--shoal); border: 1px solid var(--line); border-radius: 9px; padding: 8px 11px; color: var(--foam); }
+.mem-sum textarea, .modal textarea#fix-t { background: var(--shoal); border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; color: var(--foam); font: inherit; }
+.narr-tools { display: flex; gap: 14px; } .narr-fix { margin-top: 8px; border: 0; background: none; color: var(--dim); font: 600 12px var(--ui); padding: 2px 0; opacity: 0; transition: opacity .2s; } .e-narr:hover .narr-fix, .narr-fix:focus-visible { opacity: 1; } .narr-fix:hover { color: #c59af0; } @media (hover: none) { .narr-fix { opacity: .7; } }
+.fix-q { margin: 0; padding: 8px 12px; border-left: 3px solid var(--line); color: var(--mist); font-family: var(--story); font-size: 14px; }
+.j-end { margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--line); display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.epi-modal { max-width: 760px; } .epi { display: flex; flex-direction: column; gap: 16px; } .epi-head h2 { margin: 2px 0; font-size: 40px; }
+.epi-text { font-family: var(--story); font-size: 17px; line-height: 1.75; color: var(--foam); max-height: 46vh; overflow-y: auto; padding-right: 6px; } .epi-text p { margin: 0 0 .8em; } .epi-text p:first-child::first-letter { font-family: var(--display); font-size: 3.2em; float: left; line-height: .8; margin: .08em .1em 0 0; color: var(--lantern); }
+.thinking-l { display: flex; gap: 10px; align-items: center; color: var(--mist); font-family: var(--ui); font-size: 14px; }
+.epi-badges { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; } .epi-b { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(242, 180, 92, .4); background: var(--lantern-soft); animation: lootIn .5s both; } .epi-b .gi { color: var(--lantern); flex: none; } .epi-b b { display: block; font-size: 14px; } .epi-b small { color: var(--mist); font-size: 11.5px; }
+.epi-stats { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--mist); } .epi-stats b { color: var(--foam); font-family: var(--mono); margin-left: 4px; } .epi-stats .bad b { color: var(--ember); }
+.epi-row { justify-content: flex-end; flex-wrap: wrap; }
+.rnd-hero { float: right; margin: 0 0 8px 12px; display: inline-flex; gap: 6px; align-items: center; } .rnd-hero .gi { color: var(--lantern); }
+.tip-toast { position: fixed; right: 20px; bottom: 20px; z-index: 95; width: min(360px, calc(100vw - 32px)); padding: 14px 16px; border-radius: 16px; background: #13202a; border: 1px solid rgba(242, 180, 92, .5); box-shadow: 0 20px 50px rgba(0, 0, 0, .55); transform: translateY(20px); opacity: 0; transition: transform .35s cubic-bezier(.2, .9, .3, 1.2), opacity .3s; }
+.tip-toast.in { transform: none; opacity: 1; } .tip-toast b { font-family: var(--display); font-size: 22px; color: var(--lantern); } .tip-toast p { margin: 6px 0 10px; color: var(--foam); font-size: 13.5px; line-height: 1.5; } .tip-toast .row { justify-content: flex-end; gap: 6px; }
+@media (max-width: 760px) { .tip-toast { right: 16px; bottom: 140px; } .epi-head h2 { font-size: 30px; } }
+kbd { font: 600 11px var(--mono); padding: 1px 6px; border-radius: 5px; border: 1px solid var(--line); background: var(--shoal); color: var(--foam); } .hk { line-height: 2; }
+body.fs-s .e-narr { font-size: 15.5px; } body.fs-l .e-narr { font-size: 19.5px; } body.fs-xl .e-narr { font-size: 22px; line-height: 1.7; }
+body.fs-l .e-player, body.fs-l .e-sys { font-size: 1.08em; } body.fs-xl .e-player, body.fs-xl .e-sys { font-size: 1.16em; }
 </style>
 
 <div id="app">
@@ -1515,9 +1540,9 @@ function lsGet(k) { try { const r = localStorage.getItem(k); return r ? JSON.par
 function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
 function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
 function campIndex() { const i = lsGet(IDX_KEY); return Array.isArray(i) ? i : []; }
-function indexEntry(s) { return { id: s.id, world: s.wd.name, img: s.char.img && !String(s.char.img).startsWith("data:") ? s.char.img : "", hero: s.char.name, cls: s.char.cls, race: s.char.race, gender: s.char.gender, level: s.char.level, mode: s.mode, updated: Date.now(), dead: !!s.dead, loc: s.wd.places[s.world.loc]?.name || "" }; }
+function indexEntry(s) { return { id: s.id, world: s.wd.name, img: s.char.img && !String(s.char.img).startsWith("data:") ? s.char.img : "", hero: s.char.name, cls: s.char.cls, race: s.char.race, gender: s.char.gender, level: s.char.level, mode: s.mode, updated: Date.now(), dead: !!s.dead, ended: !!s.ended, loc: s.wd.places[s.world.loc]?.name || "" }; }
 function save() {
-  if (!S) return; S.updated = Date.now(); lsSet(C_KEY(S.id), S);
+  if (!S) return; S.updated = Date.now(); if (!lsSet(C_KEY(S.id), S)) saveRescue();
   const idx = campIndex().filter(e => e.id !== S.id); idx.unshift(indexEntry(S)); lsSet(IDX_KEY, idx.slice(0, 30));
 }
 function loadCamp(id) { const s = lsGet(C_KEY(id)); return s && s.v === 2 && s.char && s.wd ? s : null; }
@@ -2206,7 +2231,7 @@ function renderHome() {
   const grid = el.querySelector("#camps");
   idx.forEach(e => {
     const d = document.createElement("article"); d.className = "camp" + (e.dead ? " dead" : ""); d.style.setProperty("--cls", CLASSES[e.cls]?.color || "var(--lantern)");
-    d.innerHTML = `${heroPh({ cls: e.cls, race: e.race, name: e.hero, img: e.img })}<div class="body"><div class="nm">${esc(e.hero)}</div><div class="sub">${esc(RACES[e.race]?.name || "")} · ${esc(CLASSES[e.cls]?.name || "")} · ур. ${e.level}</div><div class="sub">${esc(e.world)}${e.loc ? " · " + esc(e.loc) : ""}</div><div class="meta">${MODES[e.mode]?.name || ""} · ${ago(e.updated)}</div>${e.dead ? '<div class="fallen">Пал в бою</div>' : ""}
+    d.innerHTML = `${heroPh({ cls: e.cls, race: e.race, name: e.hero, img: e.img })}<div class="body"><div class="nm">${esc(e.hero)}</div><div class="sub">${esc(RACES[e.race]?.name || "")} · ${esc(CLASSES[e.cls]?.name || "")} · ур. ${e.level}</div><div class="sub">${esc(e.world)}${e.loc ? " · " + esc(e.loc) : ""}</div><div class="meta">${MODES[e.mode]?.name || ""} · ${ago(e.updated)}</div>${e.dead ? '<div class="fallen">Пал в бою</div>' : e.ended ? '<div class="fallen ended">История завершена</div>' : ""}
       <div class="row">${e.dead ? "" : `<button class="btn small primary" type="button" data-a="play">Продолжить</button>`}<button class="btn small" type="button" data-a="export">Экспорт</button><button class="btn small ghost" type="button" data-a="del">Удалить</button></div></div>`;
     d.querySelector("[data-a=play]")?.addEventListener("click", () => openCampaign(e.id));
     d.querySelector("[data-a=export]").onclick = () => exportCampaign(e.id);
@@ -2276,6 +2301,7 @@ function renderCreate() {
   });
   const body = document.getElementById("step-body"); body.innerHTML = "";
   [stepWorld, stepRace, stepClass, stepAbil, stepSkills, stepGear, stepLook, stepMode][D.step](body);
+  if (D.step >= 1 && D.step <= 5 && D.world) { const rb = document.createElement("button"); rb.type = "button"; rb.className = "btn small rnd-hero"; rb.innerHTML = `${ico("i_gems", 16)} Случайный герой`; rb.title = "Собрать героя случайно и перейти к имени и облику"; rb.onclick = randomHero; body.prepend(rb); }
   const back = document.getElementById("btn-back"); back.disabled = D.forge.stage >= 0; back.textContent = D.step === 0 ? "К кампаниям" : "Назад";
   const nx = document.getElementById("btn-next"); nx.disabled = !stepValid(D.step); nx.textContent = D.step === 7 ? "Начать приключение" : "Далее";
   document.getElementById("step-hint").textContent = stepValid(D.step) ? (D.step === 7 ? "Мир ждёт" : "Можно дальше") : STEP_HINTS[D.step];
@@ -5030,7 +5056,7 @@ function renderCombatHud() {
   if (!on) { if (hudWas) { hudWas = false; hud.classList.add("out"); setTimeout(() => { if (!S?.world.combat) { hud.hidden = true; hud.innerHTML = ""; hud.classList.remove("out"); } }, 380); } return; }
   ensureIntents(); const tgt = curTarget();
   if (!hudWas || !hud.querySelector(".cb-foes")) { hudWas = true; hud.hidden = false; hud.classList.remove("out"); hud.innerHTML = `<div class="cb-head"><span class="cb-round"></span><div class="cb-hero"></div><button type="button" class="cb-min" title="Свернуть панель" aria-label="Свернуть боевую панель">▾</button></div><div class="cb-foes"></div><div class="cb-acts"></div>`;
-    hud.querySelector(".cb-min").onclick = () => { hud.classList.toggle("mini"); }; if (!S.world.hudSeen || S.world.hudSeen !== S.world.fightId) { S.world.hudSeen = S.world.fightId; combatBanner("Бой!"); sfx("horn3"); } }
+    hud.querySelector(".cb-min").onclick = () => { hud.classList.toggle("mini"); }; if (!S.world.hudSeen || S.world.hudSeen !== S.world.fightId) { S.world.hudSeen = S.world.fightId; combatBanner("Бой!"); setTimeout(() => tipOnce("combat"), 2200); sfx("horn3"); } }
   const hc = hcond(); hud.querySelector(".cb-round").innerHTML = `${ico("k_swords", 16)}<span>Раунд ${S.world.round || 1}</span><b>${busy ? "ход врагов…" : "ваш ход"}</b>`;
   const hp = c.hp / c.maxHp; hud.querySelector(".cb-hero").innerHTML = `<span class="cb-hp"><i style="width:${hp * 100}%;background:${hp > .5 ? "var(--kelp)" : hp > .25 ? "var(--lantern)" : "var(--ember)"}"></i><b>${c.hp} / ${c.maxHp}</b></span><span class="cb-ac" title="Класс доспеха">${ico("i_shield", 13)} ${c.ac}</span>${Object.keys(hc).filter(k => COND_RU[k] && hc[k]).map(k => `<span class="cb-cond ${k}" title="${COND_RU[k]}">${ico(COND_ICO[k], 13)}${COND_RU[k]}</span>`).join("")}`;
   const box = hud.querySelector(".cb-foes"); const ids = foeCardsList(); const keep = new Set(ids);
@@ -5261,6 +5287,164 @@ function npcSpecial(id, it, out) {
 BESTIARY.guard_x = { label: "стражник", ac: 16, hp: 11, atk: 3, dmg: "1d6+1", dex: 1, xp: 25, npcOnly: true }; FOE_KIT.guard_x = FOE_KIT.guard; FOE_ICO.guard_x = "b_watch";
 { const _hurt0 = hurtEnemy; hurtEnemy = function (id, amt) { const was = S.world.enemies[id]?.alive; _hurt0(id, amt); const e = S.world.enemies[id]; if (was && e && !e.alive && ENEMIES[id]?.npc) npcDown(id); }; }
 
+/* POLISH */
+/* =========================================================================
+   ПАМЯТЬ ИГРОКА, ПОПРАВКИ, ЭПИЛОГ, СЛУЧАЙНЫЙ ГЕРОЙ, ПОДСКАЗКИ, ГОРЯЧИЕ КЛАВИШИ,
+   РАЗМЕР ТЕКСТА, ЗАЩИТА СОХРАНЕНИЙ
+   ========================================================================= */
+/* ---------- защита сохранений ---------- */
+let storageWarned = false;
+function lsUsage() { let n = 0; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); n += (k.length + (localStorage.getItem(k) || "").length) * 2; } } catch (e) {} return n; }
+function saveRescue() {
+  const key = C_KEY(S.id);
+  if (S.feed.length > 70) S.feed.splice(0, S.feed.length - 70); if (S.log.length > 24) S.log.splice(0, S.log.length - 24);
+  Object.values(S.wd.npcs || {}).forEach(n => { if (n.img && String(n.img).startsWith("data:")) delete n.img; }); if (lsSet(key, S)) return true;
+  const cur = new Set([S.wd.id]); Object.keys(imgCache).forEach(k => { if (!cur.has(k.split(":")[0]) && String(imgCache[k]).startsWith("data:")) delete imgCache[k]; }); lsSet(IMG_KEY, imgCache); if (lsSet(key, S)) return true;
+  Object.keys(imgCache).forEach(k => { if (String(imgCache[k]).startsWith("data:")) delete imgCache[k]; }); lsSet(IMG_KEY, imgCache); if (lsSet(key, S)) return true;
+  if (!storageWarned) { storageWarned = true; modal(`<div class="eyebrow" style="color:var(--ember)">Сохранение не удалось</div><h2>Память браузера заполнена</h2><p>Игра не смогла записать прогресс: место в хранилище браузера закончилось. Освободите место — удалите старые кампании на главной или экспортируйте их в файл.</p><div class="row"><button class="btn" type="button" id="sw-ok">Понятно</button><button class="btn primary" type="button" id="sw-home">К кампаниям</button></div>`, root => { root.querySelector("#sw-ok").onclick = closeModal; root.querySelector("#sw-home").onclick = () => { closeModal(); document.getElementById("btn-home")?.click(); }; }); }
+  return false;
+}
+function addStorageNote() { const head = document.querySelector("#screen-home .band-head"); if (!head || head.querySelector(".storage-note")) return; const used = lsUsage() / 1048576; const pct = Math.min(100, used / 5 * 100);
+  head.insertAdjacentHTML("beforeend", `<div class="storage-note" title="Кампании, миры и портреты хранятся в вашем браузере"><span>Память браузера: ${used.toFixed(1)} из ~5 МБ</span><i><b style="width:${pct}%;background:${pct > 85 ? "var(--ember)" : pct > 65 ? "var(--lantern)" : "var(--kelp)"}"></b></i></div>`); }
+/* ---------- записи и поправки игрока ---------- */
+function pinsOf() { return S.world.pins || (S.world.pins = []); }
+function pinsBrief() { const p = pinsOf(); return p.length ? `ЗАПИСИ И ПОПРАВКИ ИГРОКА (это канон — важнее всего остального, соблюдай строго):\n${p.map((x, i) => `${i + 1}) ${x.k === "fix" ? "Поправка: " : ""}${x.t}`).join("\n")}\n` : ""; }
+function addPin(t, k) { t = str(t, 200); if (!t) return; pinsOf().push({ t, k: k || "note", day: worldTime().day }); if (pinsOf().length > 20) pinsOf().shift(); save(); }
+function chronHTML() {
+  const p = pinsOf();
+  return `<div class="mem-pins"><div class="eyebrow">Записи героя · канон для рассказчика</div>
+    ${p.length ? `<ul class="pin-list">${p.map((x, i) => `<li class="${x.k}"><span>${x.k === "fix" ? "<b>Поправка:</b> " : ""}${esc(x.t)}</span><button type="button" class="pin-x" data-pin="${i}" aria-label="Удалить запись">✕</button></li>`).join("")}</ul>` : `<p class="empty">Запишите то, что рассказчик не должен забыть: обещания, долги, договорённости, важные детали. Он будет строго соблюдать эти записи.</p>`}
+    <form class="pin-add" id="pin-add"><input id="pin-t" maxlength="200" placeholder="Например: я пообещал Осту не выдавать его брата" autocomplete="off"><button class="btn small primary" type="submit">Записать</button></form></div>
+    <div class="mem-sum"><div class="row" style="justify-content:space-between;align-items:center"><div class="eyebrow">Краткая летопись</div><button class="btn small ghost" type="button" id="sum-edit">${S.summary ? "Править" : "Написать"}</button></div>
+      <div id="sum-box">${S.summary ? `<p class="summary-box j-sum">${esc(S.summary)}</p>` : `<p class="empty">Появится, когда история станет длиннее.</p>`}</div></div>
+    <div class="eyebrow" style="margin-top:14px">Факты, которые помнит рассказчик</div>
+    ${S.world.facts.length ? `<ol class="chron edit">${S.world.facts.map((f, i) => `<li><span>${esc(f)}</span><button type="button" class="pin-x" data-fact="${i}" title="Это неверно — забыть" aria-label="Удалить факт">✕</button></li>`).join("")}</ol>` : `<p class="empty">Летопись пока пуста.</p>`}`;
+}
+function bindChron(root, redraw) {
+  root.querySelector("#pin-add")?.addEventListener("submit", e => { e.preventDefault(); const v = root.querySelector("#pin-t").value; if (!v.trim()) return; addPin(v, "note"); sfx("pick"); redraw(); });
+  root.querySelectorAll("[data-pin]").forEach(b => b.onclick = () => { pinsOf().splice(+b.dataset.pin, 1); save(); redraw(); });
+  root.querySelectorAll("[data-fact]").forEach(b => b.onclick = () => { S.world.facts.splice(+b.dataset.fact, 1); save(); redraw(); });
+  root.querySelector("#sum-edit")?.addEventListener("click", () => { const box = root.querySelector("#sum-box"); box.innerHTML = `<textarea id="sum-t" maxlength="1200" style="width:100%;min-height:110px">${esc(S.summary || "")}</textarea><div class="row" style="justify-content:flex-end;margin-top:6px"><button class="btn small primary" type="button" id="sum-save">Сохранить</button></div>`;
+    box.querySelector("#sum-save").onclick = () => { S.summary = str(box.querySelector("#sum-t").value, 1200); save(); redraw(); }; });
+}
+function openFix(text) {
+  modal(`<div class="eyebrow">Поправить рассказчика</div><h2>Что не так?</h2><p class="home-note">Рассказчик ошибся — перепутал имя, забыл событие, нарушил правила мира? Опишите, как на самом деле. Поправка станет каноном и будет учитываться во всех следующих ходах.</p>
+    ${text ? `<blockquote class="fix-q">${esc(text.slice(0, 260))}${text.length > 260 ? "…" : ""}</blockquote>` : ""}
+    <textarea id="fix-t" maxlength="200" placeholder="Например: Марта рыжая, а не седая. Я не брал денег у старосты." style="width:100%;min-height:90px"></textarea>
+    <div class="row"><button class="btn" type="button" id="fix-no">Отмена</button><button class="btn primary" type="button" id="fix-ok">Записать поправку</button></div>`, root => {
+    const t = root.querySelector("#fix-t"); t.focus(); root.querySelector("#fix-no").onclick = closeModal;
+    root.querySelector("#fix-ok").onclick = () => { if (!t.value.trim()) return; addPin(t.value, "fix"); closeModal(); pushFeed({ t: "chips", items: [{ c: "xp", x: "Поправка записана — рассказчик её учтёт" }] }); sfx("chime"); };
+  });
+}
+document.addEventListener("click", e => { const b = e.target.closest?.(".narr-fix"); if (!b || !S) return; openFix(b.parentElement.querySelector(".tx")?.innerText || ""); });
+/* ---------- эпилог ---------- */
+function campaignStats() {
+  const w = S.world; const c = C(); const killed = Object.keys(w.enemies).filter(id => !w.enemies[id].alive && !w.enemies[id].fled && !w.enemies[id].surrendered && !w.enemies[id].ko && !ENEMIES[id]?.npc).length;
+  const npcDead = Object.keys(w.deadNpcs || {}); const qs = allQuests().map(q => qSt(q.id).st); const done = qs.filter(s => s === "done").length, failed = qs.filter(s => s === "failed").length;
+  const spared = Object.keys(w.enemies).filter(id => w.enemies[id].surrendered || w.enemies[id].ko).length; const secretMurders = (w.crimes || []).filter(x => x.k === "murder" && !x.seen).length;
+  return { day: worldTime().day, turns: S.turn, killed, npcDead, done, failed, rep: w.rep || 0, money: purse(c), level: c.level, clues: Object.keys(w.flags || {}).filter(k => k.startsWith("clue_")).length, spared, secretMurders, crimes: (w.crimes || []).length, places: w.visited.length };
+}
+function endingBadges(st) {
+  const b = []; if (st.npcDead.length >= 2) b.push(["k_skull", "Мясник", "убито жителей: " + st.npcDead.length]); else if (st.npcDead.length) b.push(["k_skull", "Убийца", "на руках кровь жителя"]);
+  if (st.secretMurders) b.push(["t_hidden", "Тень", "тайные убийства"]); if (!st.npcDead.length && !st.crimes && st.spared) b.push(["k_heart", "Милосердный", "пощадил побеждённых"]);
+  if (st.done >= 3) b.push(["t_quest", "Добрый сосед", `поручений выполнено: ${st.done}`]); if (st.rep >= 30) b.push(["k_trophy", "Любимец народа", "репутация " + st.rep]); if (st.rep <= -30) b.push(["k_broken", "Изгой", "репутация " + st.rep]);
+  if (st.killed >= 10) b.push(["k_swords", "Гроза чудовищ", `повержено врагов: ${st.killed}`]); if (st.clues >= 4) b.push(["x_look", "Сыщик", `улик найдено: ${st.clues}`]); if (st.places >= 10) b.push(["t_boots", "Странник", `мест посещено: ${st.places}`]); if (st.money >= 1000) b.push(["i_coins", "Богач", fmtMoney(st.money)]);
+  if (!b.length) b.push(["i_scroll", "Летописец", "история рассказана"]); return b;
+}
+function showEpilogueText() { openEpilogue(true, true); }
+async function openEpilogue(manual, reuse) {
+  if (!S) return; const st = campaignStats(); const badges = endingBadges(st); const c = C();
+  modal(`<div class="epi"><div class="epi-head"><div class="eyebrow">Эпилог${S.endingName ? " · " + esc(S.endingName) : ""}</div><h2>${esc(WD.name)}</h2><small class="home-note">${esc(c.name)}, ${esc(CLASSES[c.cls].name.toLowerCase())} ${c.level} уровня · день ${st.day} · ходов: ${st.turns}</small></div>
+    <div class="epi-text" id="epi-text"><p class="thinking-l"><span class="dots"><i></i><i></i><i></i></span> Летописец дописывает последнюю страницу…</p></div>
+    <div class="epi-badges">${badges.map(([i, t, s]) => `<div class="epi-b">${ico(i, 26)}<span><b>${t}</b><small>${esc(s)}</small></span></div>`).join("")}</div>
+    <div class="epi-stats"><span>Повержено врагов <b>${st.killed}</b></span><span>Поручения <b>${st.done}</b>${st.failed ? ` / провалено ${st.failed}` : ""}</span><span>Улики <b>${st.clues}</b></span><span>Репутация <b>${st.rep}</b></span><span>Кошель <b>${fmtMoney(st.money)}</b></span>${st.npcDead.length ? `<span class="bad">Погибли жители <b>${st.npcDead.length}</b></span>` : ""}</div>
+    <div class="row epi-row"><button class="btn" type="button" id="epi-txt">Скачать летопись</button><button class="btn" type="button" id="epi-home">К кампаниям</button><button class="btn primary" type="button" id="epi-go">Продолжить играть</button></div></div>`, async root => {
+    root.querySelector(".modal").classList.add("wide", "epi-modal");
+    root.querySelector("#epi-go").onclick = closeModal; root.querySelector("#epi-home").onclick = () => { closeModal(); save(); S = null; renderHome(); };
+    root.querySelector("#epi-txt").onclick = () => downloadChronicle(root.querySelector("#epi-text").innerText);
+    if (!reuse) sfx("victory"); S.ended = true; S.endedDay = S.endedDay || st.day; save();
+    const text = reuse && S.epilogue ? S.epilogue : await writeEpilogue(st); S.epilogue = text; save(); const box = root.querySelector("#epi-text"); if (box) box.innerHTML = narrHTML(text);
+  });
+}
+async function writeEpilogue(st) {
+  const sample = await getSample(); const dead = st.npcDead.map(id => `${NPCS[id].name} (${NPCS[id].role}) — ${S.world.deadNpcs[id].how}`).join("; ") || "никто";
+  const npcs = Object.keys(NPCS).filter(id => !NPCS[id].bld && !NPCS[id].traveler && !NPCS[id].dead).map(id => `${NPCS[id].name} (${NPCS[id].role}): отношение ${S.world.npcs[id]?.att || 0}`).join("; ");
+  const fallback = () => `${C().name} покидает ${WD.name}. ${st.npcDead.length ? `Здесь ещё долго будут вспоминать тех, кто погиб от его руки: ${dead}.` : "Люди провожают героя кто благодарным словом, кто настороженным взглядом."} ${st.done ? `Выполнено поручений: ${st.done}.` : ""}\n\n${S.world.quest}\n\nЛетопись закрыта — но дороги остаются открытыми.`;
+  if (!sample) return fallback();
+  try { const r = await sample(`Ты — летописец. Напиши эпилог завершённой кампании настольной ролевой игры. По-русски, 3–4 коротких абзаца, во втором лице («ты»), в тоне: ${(NARR_TONES[S.settings?.tone] || NARR_TONES.classic).prompt}
+Абзацы: 1) чем закончилась главная история и что стало с тайной; 2) судьбы ключевых жителей; 3) что изменилось в этих местах из-за поступков героя; 4) куда ведёт дорога героя дальше. Честно отрази и добрые, и тёмные поступки, без морализаторства. Не используй списки и заголовки.
+МИР «${WD.name}»: ${WD.public}
+ТАЙНА: ${WD.secret}
+ВОЗМОЖНЫЕ КОНЦОВКИ: ${(WD.endings || []).join(" | ")}${S.endingName ? `\nНАСТУПИВШАЯ КОНЦОВКА: ${S.endingName}` : ""}
+ГЕРОЙ: ${charBrief()}
+ТЕКУЩЕЕ ЗАДАНИЕ НА МОМЕНТ ФИНАЛА: ${S.world.quest}
+ЛЕТОПИСЬ: ${S.summary || ""} ${S.world.facts.slice(-16).join(" | ")}
+${pinsBrief()}ПОГИБШИЕ ЖИТЕЛИ: ${dead}. ЖИВЫЕ ЖИТЕЛИ: ${npcs}.
+Поручения выполнены: ${st.done}, провалены: ${st.failed}. Репутация: ${st.rep}. Повержено врагов: ${st.killed}. Преступлений: ${st.crimes}.`, { modelTier: "default", cache: false });
+    return str(r.text, 3000).replace(/@@@[\s\S]*$/, "").trim() || fallback(); } catch (e) { return fallback(); }
+}
+async function downloadChronicle(epi) {
+  let dl = null; try { dl = window.claude?.use ? await window.claude.use("downloads") : null; } catch (e) {}
+  const story = S.feed.filter(e => e.t === "narr" || e.t === "player").map(e => e.t === "player" ? `— ${e.text}` : e.text).join("\n\n");
+  const txt = `${WD.name}\n${C().name} · ${RACES[C().race].name} · ${CLASSES[C().cls].name}\n\nЭПИЛОГ\n${epi || S.epilogue || ""}\n\nЛЕТОПИСЬ\n${S.summary || ""}\n\n${S.world.facts.map(f => "• " + f).join("\n")}\n\nПОСЛЕДНИЕ СТРАНИЦЫ\n${story}`;
+  if (!dl) { pushFeed({ t: "sys", html: "Сохранение файлов недоступно в этом просмотре." }); return; }
+  try { await dl.save({ filename: `${C().name}-${WD.name}-летопись.txt`.replace(/[\\/:*?"<>|]/g, ""), data: txt }); } catch (e) {}
+}
+function confirmEnding() {
+  modal(`<div class="eyebrow">Финал</div><h2>Завершить историю?</h2><p>Летописец напишет эпилог по вашим поступкам: тайна, судьбы жителей, цена решений. После эпилога можно продолжить играть в этом мире.</p><div class="row"><button class="btn" type="button" id="ce-no">Ещё не время</button><button class="btn primary" type="button" id="ce-yes">Написать эпилог</button></div>`, root => {
+    root.querySelector("#ce-no").onclick = closeModal; root.querySelector("#ce-yes").onclick = () => { closeModal(); openEpilogue(true); }; });
+}
+/* ---------- случайный герой ---------- */
+function shuffleArr(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+const LOOK_BITS = { hair: ["коротко стриженные тёмные волосы", "рыжая коса", "седые виски", "светлые растрёпанные волосы", "бритая голова", "чёрные волосы, собранные в хвост"], face: ["шрам через бровь", "веснушки", "тяжёлый взгляд", "сломанный нос", "добрые морщинки у глаз", "татуировка на шее"], wear: ["потёртый дорожный плащ", "кожаная куртка с заплатами", "плащ с капюшоном", "простая льняная рубаха и пояс с ножом", "выцветший мундир", "шерстяной плащ с меховым воротником"] };
+function randomHero() {
+  const R = Math.random, pick = a => a[Math.floor(R() * a.length)];
+  D.race = pick(Object.keys(RACES)); D.cls = pick(Object.keys(CLASSES)); D.method = "array"; D.pool = STD.slice(); D.pickTok = null; autoAssign();
+  D.bg = pick(Object.keys(BACKGROUNDS)); const lk = lockedSkills(); const cl = CLASSES[D.cls]; D.skills = shuffleArr(cl.skillList.filter(k => !lk.has(k))).slice(0, cl.skillCount);
+  D.kit = Math.floor(R() * (KITS[D.cls]?.length || 1)); D.kitSeed = rnd(1e9); D.kitW = null; if (D.cls === "ranger") D.favored = pick(Object.keys(FAVORED));
+  D.gender = R() < .5 ? "m" : "f"; const ns = nameSet(D.world); D.name = pick(ns[D.gender] || ns.m); D.lookDesc = `${pick(LOOK_BITS.hair)}, ${pick(LOOK_BITS.face)}, ${pick(LOOK_BITS.wear)}`;
+  TRAITS.forEach(t => { D[t.k] = R() < .45 ? (R() < .5 ? 12 + Math.round(R() * 14) : 74 + Math.round(R() * 14)) : 40 + Math.round(R() * 20); });
+  D.story = ""; D.epithet = ""; D.about = ""; D.step = 6; sfx("dice"); renderCreate();
+}
+/* ---------- подсказки при первом знакомстве ---------- */
+const TIPS_KEY = "sh-tips";
+const TIPS = {
+  welcome: ["Как играть", "Пишите что угодно: действие, реплику, план — рассказчик поймёт. Кнопки над полем ввода — готовые идеи. Справа карта мира и план места: по ним можно ходить и нажимать на людей и предметы. Журнал хранит поручения и записи, которые рассказчик никогда не забудет."],
+  combat: ["Бой", "Выберите цель на карточке врага. Под ней видно, что враг задумал, — успейте ответить: уклониться, сбить с ног, оценить врага. На кнопке атаки показан шанс попасть. Темп боя меняется в настройках."],
+  map: ["Путешествия", "Нажмите на любую точку карты — путь проложится сам. Выберите темп: осторожно — дольше, но безопаснее. В дороге случаются встречи."],
+  enc: ["Встреча в пути", "Выберите, как поступить. Подписи под вариантами — какая проверка нужна и насколько это трудно."],
+  quest: ["Поручения", "Жители со знаком «!» просят о помощи. Поручения отмечаются на карте, а выполненные сдаются тому, кто просил (знак «?»). Некоторые помогают раскрыть главную тайну."]
+};
+function tipOnce(k) {
+  let seen = lsGet(TIPS_KEY) || {}; if (seen.off || seen[k] || !TIPS[k]) return; seen[k] = 1; lsSet(TIPS_KEY, seen);
+  document.querySelector(".tip-toast")?.remove(); const t = document.createElement("div"); t.className = "tip-toast"; t.setAttribute("role", "status");
+  t.innerHTML = `<b>${TIPS[k][0]}</b><p>${TIPS[k][1]}</p><div class="row"><button type="button" class="btn small ghost" data-t="off">Больше не показывать</button><button type="button" class="btn small primary" data-t="ok">Понятно</button></div>`;
+  document.body.append(t); t.querySelector("[data-t=ok]").onclick = () => t.remove(); t.querySelector("[data-t=off]").onclick = () => { seen = lsGet(TIPS_KEY) || {}; seen.off = 1; lsSet(TIPS_KEY, seen); t.remove(); };
+  setTimeout(() => t.classList.add("in"), 30);
+}
+/* ---------- размер текста ---------- */
+const FS_KEY = "sh-fs"; const FS = { s: "Мелкий", m: "Обычный", l: "Крупный", xl: "Очень крупный" };
+function applyFs() { const v = lsGet(FS_KEY) || "m"; Object.keys(FS).forEach(k => document.body.classList.toggle("fs-" + k, k === v)); }
+applyFs();
+/* ---------- горячие клавиши ---------- */
+document.addEventListener("keydown", e => {
+  if (e.ctrlKey || e.metaKey || e.altKey) return; const tag = document.activeElement?.tagName; if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+  const mr = document.getElementById("modal-root"); const open = mr && mr.innerHTML.trim();
+  if (e.key === "Escape" && open) { const b = [...mr.querySelectorAll("button")].find(x => /close|-x$|-ok$|-no$/.test(x.id || "") || /^(Закрыть|Готово|Отмена|Передумать|Не сейчас|Ещё не время)$/.test(x.textContent.trim())); if (b && !mr.querySelector(".enc")) { e.preventDefault(); b.click(); } return; }
+  if (open || !S || document.getElementById("screen-game").hidden) return;
+  const k = e.key.toLowerCase();
+  if (k === "m" || k === "ь") { e.preventDefault(); openBigMap(); return; } if (k === "j" || k === "о") { e.preventDefault(); openJournal(); return; }
+  if (k === "/" ) { e.preventDefault(); document.getElementById("act-input")?.focus(); return; }
+  if (/^[1-9]$/.test(k) && S.world.combat) { const btns = [...document.querySelectorAll("#combat-hud .cb-act")]; const b = btns[+k - 1]; if (b && !b.disabled) { e.preventDefault(); b.click(); } return; }
+  if (k === "tab" && S.world.combat) { const al = aliveEnemiesHere(); if (al.length > 1) { e.preventDefault(); const i = al.indexOf(curTarget()); setTarget(al[(i + 1) % al.length]); } }
+});
+/* обёртки: подсказки и заметка о памяти */
+{ const _rh = renderHome; renderHome = function () { _rh.apply(this, arguments); try { addStorageNote(); } catch (e) {} }; }
+{ const _ob = openBigMap; openBigMap = function (o) { _ob(o); setTimeout(() => tipOnce("map"), 600); }; }
+{ const _oe = openEncounter; openEncounter = function () { _oe(); setTimeout(() => tipOnce("enc"), 500); }; }
+{ const _oq = openQuestOffer; openQuestOffer = function (q) { _oq(q); setTimeout(() => tipOnce("quest"), 500); }; }
+{ const _sg = startGame; startGame = function (f) { _sg(f); setTimeout(() => tipOnce("welcome"), 1600); }; }
+
 /* =========================================================================
    ЗВУК: музыка по настроению, фон, эффекты
    Музыка и звуки — Battle for Wesnoth (GPL v2+); «Three Sheets» — Scott Buckley (CC BY-SA 4.0)
@@ -5436,7 +5620,7 @@ function narrHTML(text) { const t = esc(text).replace(/«([^»]{1,400})»/g, "<q
 function speakerHTML(id) { const n = NPCS[id]; return n ? `<div class="speaker">${npcPh(id)}<span><b>${esc(n.name)}</b><small>${esc(n.role)}</small></span></div>` : ""; }
 function renderEntry(e, fresh) {
   const fi = document.getElementById("feed-inner"); const d = document.createElement("div"); Object.defineProperty(e, "_el", { value: d, writable: true, configurable: true, enumerable: false });
-  if (e.t === "narr") { d.className = "e-narr"; d.innerHTML = (e.speaker ? speakerHTML(e.speaker) : "") + `<div class="tx ${e.first ? "e-first" : ""}">${narrHTML(e.text)}${e.streaming ? '<span class="caret"></span>' : ""}</div>` + (HAS_TTS ? `<button class="narr-voice" type="button" title="Озвучить" aria-label="Озвучить фрагмент">▶ Озвучить</button>` : ""); }
+  if (e.t === "narr") { d.className = "e-narr"; d.innerHTML = (e.speaker ? speakerHTML(e.speaker) : "") + `<div class="tx ${e.first ? "e-first" : ""}">${narrHTML(e.text)}${e.streaming ? '<span class="caret"></span>' : ""}</div>` + `<div class="narr-tools">${HAS_TTS ? `<button class="narr-voice" type="button" title="Озвучить" aria-label="Озвучить фрагмент">▶ Озвучить</button>` : ""}${e.first || e.quick ? "" : `<button class="narr-fix" type="button" title="Рассказчик ошибся — записать поправку">✎ Поправить</button>`}</div>`; }
   else if (e.t === "recap") { d.className = "e-recap"; d.innerHTML = `<div class="eyebrow">Ранее в «${esc(WD.name)}»</div>${narrHTML(e.text)}`; }
   else if (e.t === "player") { d.className = "e-player"; d.innerHTML = `<div class="who-s">${esc(C().name)}</div>${esc(e.text)}`; }
   else if (e.t === "sys") { d.className = "e-sys"; d.innerHTML = e.html; }
@@ -5645,7 +5829,7 @@ ${sceneBrief()}
 ${npcBrief()}${combatBrief()}${travelBrief()}${questBrief()}
 ЗАДАНИЕ: ${S.world.quest}
 КРАТКО О ПРОШЛОМ (летопись архивариуса): ${S.summary || "кампания только началась"}
-УСТАНОВЛЕННЫЕ ФАКТЫ (не противоречь): ${S.world.facts.slice(-14).join(" | ") || "пока ничего"}
+${pinsBrief()}УСТАНОВЛЕННЫЕ ФАКТЫ (не противоречь): ${S.world.facts.slice(-14).join(" | ") || "пока ничего"}
 НЕДАВНИЕ СОБЫТИЯ:
 ${recentLog(10) || "—"}
 
@@ -5664,8 +5848,8 @@ ${resultsBrief(results)}`}
 - Не решай за героя, что он делает дальше. Закончи на моменте выбора.
 
 После текста поставь строку @@@ и затем ОДНУ строку JSON с последствиями (только то, что реально произошло в тексте):
-{"speaker": "id НПС, который говорит больше всех, или null", "damage": [{"dice":"1d4","reason":"почему"}], "heal": null, "items_add": [{"name":"…","desc":"…"}], "items_remove": [], "gold": 0, "xp": 0, "attitude": {"id_нпс": 0}, "facts": ["1–2 важных новых факта для памяти, коротко"], "quest": null, "map_notes": [{"place":"id места","note":"что герой узнал об этом месте, до 8 слов"}], "rumors": ["id места, о котором герой услышал, но ещё не был"], "building": null, "npc_moves": [], "rep": 0, "side_quests": [], "npc_attack": [], "scene": {"add": [{"label":"предмет, 1–3 слова","acc":"он же в винительном падеже","kind":"chest|crate|barrel|table|bed|altar|statue|body|item|fire|lantern|boat|rock|bell|cart|cauldron|sack"}], "remove": ["label исчезнувшего предмета"], "crowd": null}, "new_npcs": [{"id":"latin_snake_case","name":"…","role":"…","look":"внешность 6–10 слов","persona":"характер, 1 предложение","gender":"m|f","age":"young|adult|old","important":false}], "threat": 0, "start_combat": [], "suggestions": ["3 коротких варианта следующего действия, до 6 слов"]}
-damage — только если герой получил вред от окружения или ловушки (не от врагов, их урон уже посчитан). xp — 25–75 за важное открытие или решённую проблему, иначе 0. attitude — изменения от −15 до +15. quest — новая формулировка задания, если оно изменилось. npc_moves — если по сюжету НПС ушёл, сбежал, его увели или он пришёл в другое место: [{"id":"id НПС","to":"id места из списка или null — вернуться домой"}]. npc_attack — id НПС, которые САМИ нападают на героя в этом тексте (злодей раскрыт и бросается, стража хватает разыскиваемого, обиженный бьёт первым), иначе []. side_quests — [{"id":"id поручения","status":"ready|failed"}] только если поручение явно выполнено или провалено НЕ через механику движка (например, договорился словами), иначе []. rep — изменение репутации героя в поселении от −10 до +10, если поступок стал известен местным (помощь, щедрость, драка, кража, хамство), иначе 0. scene — только если в сцене появился заметный предмет, с которым герой может взаимодействовать (тело, сундук, записка, следы), или предмет исчез/унесён; crowd — сколько безымянных людей сейчас фоном в локации (0–8), только если это заметно изменилось, иначе null. new_npcs — только если в сцене впервые появился новый человек с именем, которого нет в списке НПС (important: true — если он важен для тайны). threat: +1, если противник получил преимущество или герой потратил время впустую, −1 при серьёзном успехе против противника, иначе 0.`;
+{"speaker": "id НПС, который говорит больше всех, или null", "damage": [{"dice":"1d4","reason":"почему"}], "heal": null, "items_add": [{"name":"…","desc":"…"}], "items_remove": [], "gold": 0, "xp": 0, "attitude": {"id_нпс": 0}, "facts": ["1–2 важных новых факта для памяти, коротко"], "quest": null, "map_notes": [{"place":"id места","note":"что герой узнал об этом месте, до 8 слов"}], "rumors": ["id места, о котором герой услышал, но ещё не был"], "building": null, "npc_moves": [], "rep": 0, "side_quests": [], "npc_attack": [], "ending": null, "scene": {"add": [{"label":"предмет, 1–3 слова","acc":"он же в винительном падеже","kind":"chest|crate|barrel|table|bed|altar|statue|body|item|fire|lantern|boat|rock|bell|cart|cauldron|sack"}], "remove": ["label исчезнувшего предмета"], "crowd": null}, "new_npcs": [{"id":"latin_snake_case","name":"…","role":"…","look":"внешность 6–10 слов","persona":"характер, 1 предложение","gender":"m|f","age":"young|adult|old","important":false}], "threat": 0, "start_combat": [], "suggestions": ["3 коротких варианта следующего действия, до 6 слов"]}
+damage — только если герой получил вред от окружения или ловушки (не от врагов, их урон уже посчитан). xp — 25–75 за важное открытие или решённую проблему, иначе 0. attitude — изменения от −15 до +15. quest — новая формулировка задания, если оно изменилось. npc_moves — если по сюжету НПС ушёл, сбежал, его увели или он пришёл в другое место: [{"id":"id НПС","to":"id места из списка или null — вернуться домой"}]. ending — короткое название концовки (3–6 слов), ТОЛЬКО если главная история окончательно завершилась в этой сцене (тайна раскрыта и разрешена, злодей побеждён или ушёл навсегда, либо всё безвозвратно проиграно), иначе null. npc_attack — id НПС, которые САМИ нападают на героя в этом тексте (злодей раскрыт и бросается, стража хватает разыскиваемого, обиженный бьёт первым), иначе []. side_quests — [{"id":"id поручения","status":"ready|failed"}] только если поручение явно выполнено или провалено НЕ через механику движка (например, договорился словами), иначе []. rep — изменение репутации героя в поселении от −10 до +10, если поступок стал известен местным (помощь, щедрость, драка, кража, хамство), иначе 0. scene — только если в сцене появился заметный предмет, с которым герой может взаимодействовать (тело, сундук, записка, следы), или предмет исчез/унесён; crowd — сколько безымянных людей сейчас фоном в локации (0–8), только если это заметно изменилось, иначе null. new_npcs — только если в сцене впервые появился новый человек с именем, которого нет в списке НПС (important: true — если он важен для тайны). threat: +1, если противник получил преимущество или герой потратил время впустую, −1 при серьёзном успехе против противника, иначе 0.`;
   ctl = new AbortController(); document.getElementById("btn-stop").hidden = false;
   let full = "";
   try {
@@ -5706,6 +5890,7 @@ function applyEffects(eff, combatEnded) {
   (Array.isArray(eff.map_notes) ? eff.map_notes : []).slice(0, 2).forEach(m => { const id = m?.place; const n = str(m?.note, 80); if (POIS[id] && n) { const isNew = !S.world.notes[id]; S.world.notes[id] = n; if (isNew) chips.push({ c: "gold", x: `На карте: ${POIS[id].name}` }); } });
   (Array.isArray(eff.rumors) ? eff.rumors : []).slice(0, 2).forEach(id => { if (POIS[id] && !S.world.visited.includes(id) && !S.world.rumors.includes(id)) { S.world.rumors.push(id); chips.push({ c: "gold", x: `Слух: ${POIS[id].name}` }); } });
   sideQuestEffects(eff.side_quests); npcAttackEffects(eff.npc_attack);
+  if (eff.ending && typeof eff.ending === "string" && !S.ended) { S.endingName = str(eff.ending, 60); pushFeed({ t: "chips", items: [{ c: "xp", x: `Финал: ${S.endingName}` }] }); setTimeout(() => { if (!busy) openEpilogue(); else { const iv = setInterval(() => { if (!busy) { clearInterval(iv); openEpilogue(); } }, 600); } }, 1800); }
   if (eff.quest && typeof eff.quest === "string") { S.world.quest = str(eff.quest, 200); chips.push({ c: "xp", x: "Задание обновлено" }); }
   const sc = (Array.isArray(eff.start_combat) ? eff.start_combat : []).filter(id => enemyHere(id));
   if (sc.length && !S.world.combat) { S.world.combat = true; const ini = rnd(20); const tot = ini + mod(c.scores.dex) + traitFx(c.traits || {}).init;
@@ -5804,19 +5989,20 @@ function openJournal() {
     if (journalTab === "quest") { const th = S.world.threat || 0; const tm = worldTime();
       return `<div class="j-quest"><div class="eyebrow">Текущее задание</div><p class="j-big">${esc(S.world.quest)}</p>
         <div class="j-row"><div><div class="eyebrow">Время</div><b>День ${tm.day} · ${DAY_PARTS[tm.part]}</b></div><div><div class="eyebrow">Часы угрозы</div><span class="threat big ${th >= 5 ? "hot" : ""}">${Array.from({ length: 6 }, (_, i) => `<i class="${i < th ? "on" : ""}"></i>`).join("")}</span></div><div><div class="eyebrow">Найдено улик</div><b>${Object.keys(S.world.flags || {}).filter(k => k.startsWith("clue_")).length}</b></div></div>
-        <p class="home-note">Часы угрозы растут, когда противник получает преимущество. На 3 и 6 он делает заметный ход.</p></div>`; }
+        <p class="home-note">Часы угрозы растут, когда противник получает преимущество. На 3 и 6 он делает заметный ход.</p>
+        <div class="j-end">${S.ended ? `<button class="btn small" type="button" id="j-epi">Перечитать эпилог</button>` : `<button class="btn small" type="button" id="j-end">Завершить историю…</button><small class="home-note">Когда главная история решена — летописец напишет эпилог по вашим поступкам.</small>`}</div></div>`; }
     if (journalTab === "side") return questJournalHTML();
     if (journalTab === "people") return met.length ? `<div class="j-people">${met.map(id => { const n = NPCS[id]; const st = S.world.npcs[id] || { att: 0, mem: [] }; const [lab, cl] = attLabel(st.att);
       const where = Object.values(POIS).find(p => p.npcs.includes(id)); return `<article class="j-person">${npcPh(id)}<div><b>${esc(n.name)}</b><small>${esc(n.role)}${where ? " · " + esc(where.name) : ""}</small><span class="att ${cl}">${lab}</span>${st.mem.length ? `<ul>${st.mem.slice(-3).map(m => `<li>${esc(m)}</li>`).join("")}</ul>` : `<p class="empty">Пока ничего особенного.</p>`}</div></article>`; }).join("")}</div>` : `<p class="empty">Вы ещё ни с кем не познакомились.</p>`;
     if (journalTab === "places") return `<div class="j-places">${outerEntries().filter(([id]) => S.world.visited.includes(id) || S.world.rumors?.includes(id)).map(([id, p]) => { const st = placeState(id); return `<article class="j-place"><span class="mk-pin sm">${mkIcon(p.kind)}</span><div><b>${esc(p.name)}</b><small>${st.visited ? "посещено" : "по слухам"}${st.danger ? " · опасно" : ""}${st.cleared ? " · зачищено" : ""}${st.clue ? " · найдены улики" : ""}</small><p>${esc(st.note || p.short)}</p></div></article>`; }).join("")}</div>`;
-    return `${S.summary ? `<p class="summary-box j-sum">${esc(S.summary)}</p>` : ""}${S.world.facts.length ? `<ol class="chron">${S.world.facts.map(f => `<li>${esc(f)}</li>`).join("")}</ol>` : `<p class="empty">Летопись пока пуста.</p>`}`;
+    return chronHTML();
   };
   modal(`<div class="journal"><div class="bigmap-head"><div><div class="eyebrow">Журнал героя</div><h2>${esc(C().name)}</h2></div><button class="btn small" type="button" id="j-close">Закрыть</button></div>
     <div class="tabs j-tabs" role="tablist">${tabs.map(([k, t]) => `<button type="button" role="tab" data-j="${k}" aria-selected="${journalTab === k}">${t}</button>`).join("")}</div><div class="j-body" id="j-body">${body()}</div></div>`, root => {
     root.querySelector(".modal").classList.add("wide");
     root.querySelector("#j-close").onclick = closeModal;
     root.querySelectorAll("[data-j]").forEach(b => b.onclick = () => { journalTab = b.dataset.j; root.querySelectorAll("[data-j]").forEach(x => x.setAttribute("aria-selected", String(x === b))); root.querySelector("#j-body").innerHTML = body(); bindJ(); });
-    const bindJ = () => root.querySelectorAll("[data-route]").forEach(b => b.onclick = () => { closeModal(); openBigMap({ target: b.dataset.route }); }); bindJ();
+    const bindJ = () => { root.querySelectorAll("[data-route]").forEach(b => b.onclick = () => { closeModal(); openBigMap({ target: b.dataset.route }); }); bindChron(root, () => { root.querySelector("#j-body").innerHTML = body(); bindJ(); }); root.querySelector("#j-end")?.addEventListener("click", () => { closeModal(); confirmEnding(); }); root.querySelector("#j-epi")?.addEventListener("click", () => { closeModal(); showEpilogueText(); }); }; bindJ();
   });
 }
 /* ---------- выбор модели портретов ---------- */
@@ -5835,15 +6021,19 @@ function openSettings() {
   modal(`<div class="eyebrow">Настройки кампании</div><h2>Рассказчик</h2>
     <div class="opt-group"><span>Длина описаний</span><div class="opts" id="set-len">${[["short", "Коротко"], ["normal", "Обычно"], ["long", "Подробно"]].map(([k, t]) => `<button type="button" data-v="${k}" aria-pressed="${st.len === k}">${t}</button>`).join("")}</div></div>
     <div class="opt-group"><span>Тон рассказчика</span><div class="opts" id="set-tone">${Object.entries(NARR_TONES).map(([k, t]) => `<button type="button" data-v="${k}" aria-pressed="${(st.tone || "classic") === k}" title="${esc(t.sample)}">${t.name}</button>`).join("")}</div><small class="home-note" id="set-tone-s">${esc((NARR_TONES[st.tone] || NARR_TONES.classic).sample)}</small></div>
+    <div class="opt-group"><span>Размер текста</span><div class="opts" id="set-fs">${Object.entries(FS).map(([k, t]) => `<button type="button" data-v="${k}" aria-pressed="${(lsGet(FS_KEY) || "m") === k}">${t}</button>`).join("")}</div></div>
     <div class="opt-group"><span>Описание боя</span><div class="opts" id="set-fight">${[["full", "Подробно"], ["brief", "Коротко"], ["fast", "Быстро (без ИИ)"]].map(([k, t]) => `<button type="button" data-v="${k}" aria-pressed="${(st.fight || "brief") === k}">${t}</button>`).join("")}</div><small class="home-note">«Быстро» — ходы боя описываются движком мгновенно, рассказчик подключается в начале и в конце схватки.</small></div>
     ${HAS_TTS ? `<div class="opt-group"><span>Озвучка</span><div class="opts" id="set-voice"><button type="button" data-v="0" aria-pressed="${!st.voice}">Только по кнопке</button><button type="button" data-v="1" aria-pressed="${!!st.voice}">Читать вслух сразу</button></div><small class="home-note">Используется голос вашего браузера.</small></div>` : ""}
     ${soundSettingsHTML()}
     ${modelPickerHTML("set-model")}
     <div class="opt-group"><span>Портреты этого мира</span><div><button class="btn small" type="button" id="set-redraw">Перерисовать выбранной моделью</button></div><small class="home-note">Пригодится, когда у FLUX Krea восстановится квота. Перерисуются встреченные люди и типажи.</small></div>
     <div class="opt-group"><span>Отмена хода</span><small class="home-note">${MODES[S.mode]?.undo === false ? `В режиме «${MODES[S.mode].name}» ходы не отменяются.` : "Последний ход можно отменить кнопкой «↶ Отменить ход» под строкой ввода."}</small></div>
-    <div class="row"><button class="btn primary" type="button" id="set-ok">Готово</button></div>`, root => {
+    <div class="opt-group"><span>Горячие клавиши</span><small class="home-note hk"><kbd>M</kbd> карта · <kbd>J</kbd> журнал · <kbd>/</kbd> к строке ввода · <kbd>R</kbd> бросить кубик · <kbd>1</kbd>–<kbd>9</kbd> действия в бою · <kbd>Tab</kbd> сменить цель · <kbd>Esc</kbd> закрыть окно</small></div>
+    <div class="row"><button class="btn" type="button" id="set-tips">Показать подсказки заново</button><button class="btn primary" type="button" id="set-ok">Готово</button></div>`, root => {
+    root.querySelector("#set-tips").onclick = e => { lsSet(TIPS_KEY, {}); e.target.textContent = "Подсказки включены"; e.target.disabled = true; };
     root.querySelectorAll("#set-len button").forEach(b => b.onclick = () => { st.len = b.dataset.v; root.querySelectorAll("#set-len button").forEach(x => x.setAttribute("aria-pressed", String(x === b))); save(); });
     root.querySelectorAll("#set-voice button").forEach(b => b.onclick = () => { st.voice = b.dataset.v === "1"; root.querySelectorAll("#set-voice button").forEach(x => x.setAttribute("aria-pressed", String(x === b))); if (!st.voice) try { speechSynthesis.cancel(); } catch (e) {} save(); });
+    root.querySelectorAll("#set-fs button").forEach(b => b.onclick = () => { lsSet(FS_KEY, b.dataset.v); applyFs(); root.querySelectorAll("#set-fs button").forEach(x => x.setAttribute("aria-pressed", String(x === b))); });
     root.querySelectorAll("#set-fight button").forEach(b => b.onclick = () => { st.fight = b.dataset.v; root.querySelectorAll("#set-fight button").forEach(x => x.setAttribute("aria-pressed", String(x === b))); save(); });
     root.querySelectorAll("#set-tone button").forEach(b => b.onclick = () => { st.tone = b.dataset.v; root.querySelectorAll("#set-tone button").forEach(x => x.setAttribute("aria-pressed", String(x === b))); root.querySelector("#set-tone-s").textContent = NARR_TONES[st.tone].sample; save(); });
     bindModelPicker(root, "set-model"); bindSoundSettings(root);
