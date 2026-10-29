@@ -17,3 +17,4 @@ button.pill { background: transparent; font: inherit; cursor: pointer; } button.
 @media (max-width: 600px) { .ai-set h2 { font-size: 27px; } .ai-x label { flex-basis: 100%; } }
 .ai-set > .row { position: sticky; bottom: -24px; margin: 4px -4px -24px; padding: 10px 4px 24px; background: var(--deep); z-index: 2; } @media (max-width: 600px) { .ai-set > .row { bottom: -18px; margin-bottom: -18px; padding-bottom: 18px; } }
 .ai-hint { flex: 1 1 100%; font-size: 12px; line-height: 1.45; } .ai-hint a { color: var(--lantern); }
+.ai-best { font-style: normal; font-size: 10.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #1d1406; background: var(--lantern); border-radius: 99px; padding: 2px 8px; margin-left: 6px; vertical-align: 2px; } .ai-card:has(.ai-best) { border-color: rgba(242, 180, 92, .55); }
