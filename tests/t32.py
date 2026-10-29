@@ -21,7 +21,19 @@ async def main():
         # narration with emotion text
         await pg.evaluate("() => { voxLast=0; for (const k in voxNpcLast) delete voxNpcLast[k]; window.__plays.length=0; S.feed.push({t:'narr', text:'Марта тяжело вздыхает и долго молчит.'}); applyEffects({speaker:'marta', suggestions:[]}); }"); await pg.wait_for_timeout(500)
         print("narr sigh:", await pg.evaluate("window.__plays"))
-        # male npc hostile greet
+        # narrator-chosen voice, no cue in text
+        await pg.evaluate("() => { voxLast=0; for (const k in voxNpcLast) delete voxNpcLast[k]; window.__plays.length=0; S.feed.push({t:'narr', text:'Марта отвечает на вопрос.'}); applyEffects({speaker:'marta', voice:'gasp', suggestions:[]}); }"); await pg.wait_for_timeout(500)
+        print("voice field gasp:", await pg.evaluate("window.__plays"))
+        # no voice, no cue -> fallback still plays
+        await pg.evaluate("() => { voxLast=0; for (const k in voxNpcLast) delete voxNpcLast[k]; window.__plays.length=0; S.feed.push({t:'narr', text:'Марта отвечает на вопрос.'}); applyEffects({speaker:'marta', suggestions:[]}); }"); await pg.wait_for_timeout(500)
+        print("fallback plays:", await pg.evaluate("window.__plays.length"))
+        # conversation started not through dlgStart (quest act / typed): streaming entry greets
+        await pg.evaluate("() => { voxLast=0; for (const k in voxNpcLast) delete voxNpcLast[k]; window.__plays.length=0; S.dialogue=null; const e = pushFeed({t:'narr', text:'', streaming:true, speaker:'marta'}); e.streaming=false; }"); await pg.wait_for_timeout(300)
+        print("stream greet:", await pg.evaluate("window.__plays"))
+        # full turn via typed talk
+        await pg.evaluate("() => { voxLast=0; for (const k in voxNpcLast) delete voxNpcLast[k]; window.__plays.length=0; S.dialogue=null; takeTurn('Заговариваю с Мартой', {checks:[], talk_to:'marta'}); }"); await pg.wait_for_function("!busy", timeout=15000); await pg.wait_for_timeout(500)
+        print("typed turn plays:", await pg.evaluate("window.__plays.length"))
+        # male hostile greet
         mid = await pg.evaluate("Object.keys(NPCS).find(id => !isFem(NPCS[id]))")
         await pg.evaluate(f"() => {{ voxLast=0; window.__plays.length=0; (S.world.npcs['{mid}'] = S.world.npcs['{mid}'] || {{att:0,mem:[]}}).att = -40; vox('{mid}', voxGreet('{mid}')); }}"); await pg.wait_for_timeout(200)
         print("male hostile:", mid, await pg.evaluate("window.__plays"))

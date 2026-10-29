@@ -51,10 +51,14 @@ let voxTurn = null;
 /* ---------- обёртки ---------- */
 { const _ds = dlgStart; dlgStart = function (id) { try { if (NPCS[id] && !busy && S?.dialogue?.npc !== id) vox(id, voxGreet(id), { delay: 120 }); } catch (e) {} return _ds.apply(this, arguments); }; }
 { const _na = npcAfterTurn; npcAfterTurn = function (results) { try { voxTurn = results || null; } catch (e) {} return _na.apply(this, arguments); }; }
-{ const _ae = applyEffects; applyEffects = function (eff) { const r = _ae.apply(this, arguments); try { const sp = eff?.speaker; if (sp && NPCS[sp] && (POIS[S.world.loc]?.npcs || []).includes(sp)) {
-  const last = S.feed.filter(e => e.t === "narr").slice(-1)[0]; const att = Number(eff.attitude?.[sp]) || 0;
-  const emo = voxFromText(last?.text) || voxFromResults(voxTurn, sp) || (att >= 5 ? "pleased" : att <= -5 ? "angry" : null);
-  if (emo) vox(sp, emo, { delay: 250 }); } voxTurn = null; } catch (e) { console.error(e); } return r; }; }
+const VOX_EMOS = ["hmm", "huh", "sigh", "laugh", "pleased", "gasp", "angry", "fear"];
+function voxPick(eff, sp) { const v = String(eff?.voice || "").toLowerCase().trim(); if (VOX_EMOS.includes(v)) return v;
+  const last = S.feed.filter(e => e.t === "narr").slice(-1)[0]; const att = Number(eff?.attitude?.[sp]) || 0;
+  return voxFromText(last?.text) || voxFromResults(voxTurn, sp) || (att >= 5 ? "pleased" : att <= -5 ? "angry" : null) || voxGreet(sp); }
+/* реакция говорящего на каждую реплику: эмоцию выбирает рассказчик (поле voice), иначе — по тексту, проверке, отношению */
+{ const _ae = applyEffects; applyEffects = function (eff) { const r = _ae.apply(this, arguments); try { const sp = eff?.speaker; if (sp && NPCS[sp] && (POIS[S.world.loc]?.npcs || []).includes(sp)) vox(sp, voxPick(eff, sp), { delay: 250 }); voxTurn = null; } catch (e) { console.error(e); } return r; }; }
+/* начало любого разговора (клик, поручение, свой текст) — сразу приветственный звук, если NPC давно молчал */
+{ const _pf = pushFeed; pushFeed = function (e) { const r = _pf.apply(this, arguments); try { const sp = e?.t === "narr" && e.streaming && e.speaker; if (sp && NPCS[sp] && S.dialogue?.npc !== sp && Date.now() - (voxNpcLast[sp] || 0) > 20000) vox(sp, voxGreet(sp), { delay: 80 }); } catch (er) {} return r; }; }
 { const _ca = compApprove; compApprove = function (id, d) { const r = _ca.apply(this, arguments); try { if (d) vox(id, d >= 4 ? "laugh" : d > 0 ? "pleased" : d <= -4 ? "angry" : "sigh", { delay: 200 }); } catch (e) {} return r; }; }
 { const _ha = heroAssault; heroAssault = function (nid) { try { vox(nid, "gasp", { force: true }); } catch (e) {} return _ha.apply(this, arguments); }; }
 { const _cj = compJoin; compJoin = function (id) { try { vox(id, "pleased", { force: true, delay: 300 }); } catch (e) {} return _cj.apply(this, arguments); }; }
