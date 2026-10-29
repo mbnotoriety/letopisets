@@ -1273,6 +1273,18 @@ button.pill { background: transparent; font: inherit; cursor: pointer; } button.
 /* ГОЛОСА */
 .vox-speak { animation: voxSpeak .9s ease-out; } @keyframes voxSpeak { 0% { box-shadow: 0 0 0 0 rgba(242, 180, 92, .7); } 60% { box-shadow: 0 0 0 7px rgba(242, 180, 92, 0); } 100% { box-shadow: 0 0 0 0 rgba(242, 180, 92, 0); } }
 @media (prefers-reduced-motion: reduce) { .vox-speak { animation: none; } }
+/* WORLDS */
+.set-grid { margin: 0 0 12px; } .set-lab { display: block; font-size: 11.5px; color: var(--dim); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .08em; }
+.set-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+.set-card { text-align: left; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--line); border-left: 3px solid var(--sc); background: rgba(255, 255, 255, .02); color: var(--mist); display: flex; flex-direction: column; gap: 2px; cursor: pointer; font: inherit; }
+.set-card b { font-size: 13.5px; } .set-card small { font-size: 11.5px; color: var(--dim); line-height: 1.3; }
+.set-card[aria-pressed="true"] { border-color: var(--sc); background: color-mix(in srgb, var(--sc) 16%, transparent); }
+.set-card[aria-pressed="true"] b { color: var(--sc); } .set-card:disabled { opacity: .55; cursor: default; }
+.u-badge { font-style: normal; font-size: 10.5px; margin-left: 6px; padding: 1px 7px; border-radius: 999px; background: rgba(197, 154, 240, .22); color: #e6d4ff; vertical-align: 2px; white-space: nowrap; font-family: var(--ui); }
+.pick-card.uniq { box-shadow: inset 0 0 0 1px rgba(197, 154, 240, .55), 0 0 22px -8px #c59af0; }
+.bg-row.uniq { box-shadow: inset 3px 0 0 #c59af0; } .bg-row.uniq::after { content: "✦"; color: #c59af0; margin-left: auto; padding-left: 6px; }
+.w-uniq { color: #cdb0f2 !important; }
+@media (max-width: 600px) { .set-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } .set-card small { font-size: 11px; } }
 /* MOBILE */
 /* МОБИЛЬНАЯ ВЁРСТКА — финальные правки (идут последними) */
 #app { overflow-x: clip; }
@@ -1641,6 +1653,14 @@ function buildMap(biome, seed, placeList) {
       t = d < .17 ? "S" : d < .22 ? "a" : e > .74 ? "r" : m > .6 ? "f" : "g";
     } else if (biome === "marsh") t = e < .3 ? "W" : m > .7 ? "f" : m > .4 ? "m" : "g";
     else if (biome === "mountains") t = e > .76 ? "n" : e > .58 ? "r" : e < .16 ? "W" : m > .6 ? "f" : "g";
+    else if (biome === "desert") t = e < .12 ? "W" : e > .72 ? "r" : m > .78 ? "f" : "g";
+    else if (biome === "tundra") t = e > .72 ? "n" : e > .58 ? "r" : e < .16 ? "W" : m > .62 ? "f" : "g";
+    else if (biome === "jungle") t = e < .17 ? "W" : e > .82 ? "r" : m > .3 ? "f" : m < .12 ? "m" : "g";
+    else if (biome === "islands") { const dc = Math.hypot((x - MAP_W / 2) / (MAP_W / 2), (y - MAP_H / 2) / (MAP_H / 2)); const isl = e * .62 + (1 - dc) * .55 + (m - .5) * .12; t = isl < .46 ? "S" : isl < .51 ? "a" : e > .8 ? "r" : m > .6 ? "f" : "g"; }
+    else if (biome === "steppe") t = e < .1 ? "W" : e > .84 ? "r" : m > .8 ? "f" : "g";
+    else if (biome === "wasteland") t = e < .1 ? "W" : e > .68 ? "r" : m > .72 ? "m" : m > .6 ? "f" : "g";
+    else if (biome === "city") t = e < .13 ? "W" : e > .8 ? "r" : m > .46 ? "f" : "g";
+    else if (biome === "alien") t = e < .16 ? "W" : e > .74 ? "r" : m > .55 ? "f" : m < .12 ? "m" : "g";
     else t = e < .2 ? "W" : m > .38 ? "f" : "g";
     grid[y].push(t);
   } }
@@ -1696,7 +1716,7 @@ async function forgeWorld(opts, onStage, signal) {
   const sample = await getSample(); if (!sample) throw { code: "no_ai" };
   onStage(0);
   const nPl = { small: 5, normal: 7, large: 9 }[opts.size] || 7; const nFoe = { small: "1–2 места", normal: "Ровно 2 места", large: "Ровно 3 места" }[opts.size] || "Ровно 2 места";
-  const seedLine = `Окружение: ${BIOMES[opts.biome]}. Жанр: ${GENRES[opts.genre] || "Расследование"}. Тон: ${TONES[opts.tone]}. Время года: ${SEASONS[opts.season] || "Осень"}. Культура: ${CULTURE_PROMPT[opts.culture] || CULTURE_PROMPT.auto}. Поселение: ${SETTLES[opts.settle] || "Деревня"}. Опасность: ${DANGERS[opts.danger] || "Опасный"}. ${MAGICS[opts.magic]}. Пожелания игрока: ${opts.wish || "нет"}.`;
+  const seedLine = `${settingLine(opts)}Окружение: ${BIOMES[opts.biome]}. Жанр: ${GENRES[opts.genre] || "Расследование"}. Тон: ${TONES[opts.tone]}. Время года: ${SEASONS[opts.season] || "Осень"}. Культура: ${CULTURE_PROMPT[opts.culture] || CULTURE_PROMPT.auto}. Поселение: ${SETTLES[opts.settle] || "Деревня"}. Опасность: ${DANGERS[opts.danger] || "Опасный"}. ${MAGICS[opts.magic]}. Пожелания игрока: ${opts.wish || "нет"}.`;
   onStage(1);
   const core = await sample.json(`Ты — мастер настольных ролевых игр. Создай оригинальную местность для короткой кампании 5e (2–4 сессии) для одного героя 1 уровня. Пиши по-русски, конкретно, без клише про «тёмного властелина» и «избранного».
 ${seedLine}
@@ -1773,7 +1793,7 @@ ${seedLine}
     if (type === "deliver") { const to = npcIdMap[q.to]; if (!to || to === giver || !npcs[to]) return; d.to = to; d.item = str(q.item, 40) || "Письмо"; d.target = placeList.find(p => p.npcs.includes(to))?.id || start; }
     quests[id] = d; });
   const sp = npcIdMap[people.intro_speaker];
-  return { id: uid(), photo_style: str(core.photo_style, 300) || `cinematic photograph, realistic fantasy ${({ coast: "coastal", marsh: "marsh", mountains: "mountain", forest: "forest" })[opts.biome]} village, natural light, 85mm lens, film grain`, name: str(core.name, 40), tagline: str(core.tagline, 70), biome: opts.biome, tone: opts.tone, genre: opts.genre, season: opts.season, culture: opts.culture, settle: opts.settle, danger: opts.danger, start,
+  return { id: uid(), photo_style: str(core.photo_style, 300) || (WSET[opts.setting]?.photo || `cinematic photograph, realistic fantasy ${BIOME_EN[opts.biome] || "rural"} village, natural light, 85mm lens, film grain`), name: str(core.name, 40), tagline: str(core.tagline, 70), biome: opts.biome, tone: opts.tone, genre: opts.genre, season: opts.season, culture: opts.culture, settle: opts.settle, danger: opts.danger, start,
     public: str(core.public, 700), secret: str(core.secret, 1400), beats: (Array.isArray(core.beats) ? core.beats : []).slice(0, 5).map(b => str(b, 160)), endings: (Array.isArray(core.endings) ? core.endings : []).slice(0, 3).map(b => str(b, 160)),
     quest: str(core.quest, 200) || "Разобраться, что здесь происходит.", recommended, bg_hooks: bg,
     intro: String(people.intro || "").slice(0, 1200), intro_speaker: sp && places[start].npcs.includes(sp) ? sp : places[start].npcs[0] || null,
@@ -1849,17 +1869,17 @@ function resolveCheck(ch) {
     let adv = ch.adv || (e.asleep ? 1 : 0); adv += heroAttackAdv(ch.target, ch.weapon, notes); if (c.bless) { adv = Math.max(adv, 1); c.bless = false; notes.push("благословение"); }
     if (d.props.includes("heavy") && RACES[c.race]?.small) { adv = Math.min(adv, 0) - 1; notes.push("тяжёлое для маленького: помеха"); } if (d.props.includes("two") && g.shield && !d.props.includes("ranged")) { adv = Math.min(adv, 0) - 1; notes.push("двуручное со щитом: помеха"); }
     adv = clamp(adv, -1, 1); const r = d20(adv); const ins = useInsp(c); const tot = r.nat + bonus + (ins?.total || 0);
-    const critOn = Math.min(c.cls === "fighter" && c.level >= 3 ? 19 : 20, d.crit || 20); const isCrit = r.nat >= critOn; const hit = isCrit || (r.nat !== 1 && tot >= E.ac);
+    const critOn = Math.min(bcls(c) === "fighter" && c.level >= 3 ? 19 : 20, d.crit || 20); const isCrit = r.nat >= critOn; const hit = isCrit || (r.nat !== 1 && tot >= E.ac);
     let dmg = null, extra = "";
     if (hit) {
       dmg = rollDice({ ...parseDice(weaponDice(c, d)), mod: dmgMod }, isCrit); const add = (label, dice) => { const x = typeof dice === "number" ? { total: dice, text: String(dice) } : rollDice(dice, isCrit); dmg.total += x.total; extra += ` + ${label} ${x.text}`; };
-      if (c.cls === "rogue" && adv > 0 && !S.turnSneak) { add("скрытая атака", Math.ceil(c.level / 2) + "d6"); S.turnSneak = true; }
+      if (bcls(c) === "rogue" && adv > 0 && !S.turnSneak) { add("скрытая атака", Math.ceil(c.level / 2) + "d6"); S.turnSneak = true; }
       if (c.rage && !w.ranged && ab === "str") add("ярость", 2);
       if (d.vs?.undead && UNDEAD.has(E.type)) add("серебро/свет", d.vs.undead);
       if (c.mark && c.mark.target === ch.target) add(c.mark.name.toLowerCase(), c.mark.dice);
       if (c.smite) { add("кара", UNDEAD.has(E.type) ? "3d8" : "2d8"); c.smite = false; }
       if (c.favored && FAVORED[c.favored]?.[2].has(E.type)) add("избранный враг", 2);
-      if (c.cls === "ranger" && c.level >= 3 && e.hp < E.hp && !S.turnColossus) { add("охотник", "1d8"); S.turnColossus = true; }
+      if (bcls(c) === "ranger" && c.level >= 3 && e.hp < E.hp && !S.turnColossus) { add("охотник", "1d8"); S.turnColossus = true; }
       extra += heroDmgMods(ch.target, d, dmg, isCrit); hurtEnemy(ch.target, dmg.total); S._hitInfo = null;
     } else fcond(ch.target).hidden = false;
     return { ...ch, nat: r.nat, pair: r.pair, total: tot, ok: hit, crit: isCrit, fumble: r.nat === 1, dmg: dmg?.total || 0, title: `Атака: ${w.name} → ${E.name}${ch.extra ? " (вторая)" : ""}`,
@@ -1881,7 +1901,7 @@ function castSpell(ch) {
   const E = ENEMIES[ch.target]; const e = S.world.enemies[ch.target]; const base = { ...ch, title: `Заклинание: ${sp.name}${E ? " → " + E.name : ""}` };
   if (sp.kind === "attack") {
     const r = d20(e?.asleep ? 1 : 0); const b = spellAtk(); const tot = r.nat + b; const hit = r.nat === 20 || (r.nat !== 1 && tot >= E.ac);
-    let d = null; if (hit) { d = rollDice(spellDiceFor(sp), r.nat === 20); d.total += spellDmgBonus(sp); if (ch.spell === "eldritch_blast" && C().cls === "warlock" && C().level >= 2) d.total += castMod(); if (C().mark && C().mark.target === ch.target) { const x = rollDice(C().mark.dice); d.total += x.total; d.text += " + " + x.text; } hurtEnemy(ch.target, d.total); }
+    let d = null; if (hit) { d = rollDice(spellDiceFor(sp), r.nat === 20); d.total += spellDmgBonus(sp); if (ch.spell === "eldritch_blast" && bcls(C()) === "warlock" && C().level >= 2) d.total += castMod(); if (C().mark && C().mark.target === ch.target) { const x = rollDice(C().mark.dice); d.total += x.total; d.text += " + " + x.text; } hurtEnemy(ch.target, d.total); }
     return { ...base, nat: r.nat, total: tot, ok: hit, crit: r.nat === 20, dmg: d?.total || 0, formula: `d20 (${r.nat}) ${fmt(b)} = ${tot} против КД ${E.ac}` + (hit ? ` · урон ${d.text} ${sp.type}` : ""), enemyAfter: enemyStatus(ch.target) };
   }
   if (sp.kind === "mark") { C().mark = { target: ch.target, dice: sp.dice, name: sp.name }; return { ...base, nat: 0, ok: true, formula: `${E.name}: ваши попадания наносят ещё ${sp.dice} до конца боя` }; }
@@ -2153,7 +2173,7 @@ async function genHeroPortrait(btn, st) {
   try {
     let prompt = "";
     const sample = await getSample();
-    const desc = `${D.gender === "f" ? "woman" : "man"}, race ${RACES[D.race]?.name}, class ${CLASSES[D.cls]?.name}, background ${BACKGROUNDS[D.bg]?.name}. Appearance from player: ${D.lookDesc || "—"}. Character: ${personality(D.sl1, D.sl2)}.`;
+    const desc = `${D.gender === "f" ? "woman" : "man"}, race ${RACES[D.race]?.name}${RACES[D.race]?.look ? ` (${RACES[D.race].look})` : ""}, class ${CLASSES[D.cls]?.name}, background ${BACKGROUNDS[D.bg]?.name}. Appearance from player: ${D.lookDesc || "—"}. Character: ${personality(D.sl1, D.sl2)}.`;
     if (sample) { try { const r = await sample.json(`Write ONE realistic photo portrait prompt in ENGLISH (35–55 words) for a fantasy tabletop hero. Keep every detail the player gave about appearance. Translate fantasy race into realistic features (elf: tall, slender, pointed ears; dwarf: short, stocky, braided beard; halfling: small, youthful round face). Show class gear: ${({ fighter: "chainmail and shield", rogue: "dark leather armour, hood, dagger", wizard: "worn robes, staff, spellbook", cleric: "scale armour, holy symbol" })[D.cls]}. Hero: ${desc} World style: ${D.world.photo_style}. Reply only JSON {"prompt":"…"}`, { modelTier: "quick", cache: false }); prompt = str(r?.prompt, 600); } catch (e) {} }
     if (!prompt) prompt = `portrait of a ${D.gender === "f" ? "woman" : "man"} adventurer, ${({ elf: "elf with pointed ears, slender", dwarf: "stocky dwarf with braided beard", halfling: "small halfling with round youthful face", human: "human" })[D.race]}, ${({ fighter: "chainmail and shield", rogue: "dark leather armour and hood", wizard: "worn robes and staff", cleric: "scale armour and holy symbol" })[D.cls]}`;
     D.imgPrompt = prompt;
@@ -2301,9 +2321,10 @@ function mapBase(width, Q) {
   const hr = mulberry(hash(WD.id + "h"));
   (WD.houses || []).forEach(([hx, hy]) => { for (let j = 0; j < 3; j++) { const X = (hx + .2 + hr() * .6) * t, Y = (hy + .25 + hr() * .55) * t; if (!isWater(X, Y) && !nearPoi(X, Y, t * .5)) items.push({ type: "house", X, Y, s: (2.6 + hr() * 1.2) * k, q: hr() }); } });
   items.sort((a, b) => a.Y - b.Y);
+  { const gm = BIOME_GLYPH[WD.biome]; if (gm) items.forEach(it => { if (gm[it.type]) it.type = gm[it.type]; }); }
   const ink = `rgb(${P.ink.join(",")})`; g.lineJoin = "round"; g.lineCap = "round";
   for (const it of items) {
-    const { X, Y, s, q } = it;
+    const { X, Y, s, q } = it; if (drawGlyph(g, it, ink)) continue;
     if (it.type === "m") {
       const lean = (q - .5) * .4 * s;
       g.fillStyle = "rgba(40,30,18,.22)"; g.beginPath(); g.ellipse(X + s * .4, Y + s * .5, s * 1.25, s * .28, 0, 0, 7); g.fill();
@@ -2332,10 +2353,10 @@ function mapBase(width, Q) {
       g.fillStyle = "rgba(70,90,96,.5)"; g.beginPath(); g.ellipse(X, Y + s * 1.15, s * 1.2, s * .3, 0, 0, 7); g.fill();
     } else if (it.type === "tuft") {
       g.strokeStyle = "rgba(70,62,30,.55)"; g.lineWidth = .7; g.beginPath(); g.moveTo(X - s * .7, Y); g.lineTo(X - s * .9, Y - s * .7); g.moveTo(X, Y); g.lineTo(X, Y - s); g.moveTo(X + s * .7, Y); g.lineTo(X + s * .9, Y - s * .7); g.stroke();
-    } else if (it.type === "house") {
+    } else if (it.type === "house") { if (drawHouseAlt(g, it, ink)) continue;
       g.fillStyle = "rgba(30,24,14,.3)"; g.fillRect(X - s + 1, Y - s * .1 + 1.2, s * 2, s * 1.2);
       g.fillStyle = "#e6d6b0"; g.fillRect(X - s, Y - s * .2, s * 2, s * 1.2); g.strokeStyle = ink; g.lineWidth = .7; g.strokeRect(X - s, Y - s * .2, s * 2, s * 1.2);
-      g.beginPath(); g.moveTo(X - s * 1.25, Y - s * .1); g.lineTo(X, Y - s * 1.3); g.lineTo(X + s * 1.25, Y - s * .1); g.closePath(); g.fillStyle = q > .5 ? "#9c4a32" : "#7d5a3a"; g.fill(); g.stroke();
+      g.beginPath(); g.moveTo(X - s * 1.25, Y - s * .1); g.lineTo(X, Y - s * 1.3); g.lineTo(X + s * 1.25, Y - s * .1); g.closePath(); g.fillStyle = roofCol(q); g.fill(); g.stroke();
     }
   }
   // точечная фактура бумаги
@@ -2479,8 +2500,8 @@ function renderHome() {
   <footer class="foot"><div class="wrap"><span>Летописец · прототип ИИ-мастера</span><span>Механика по System Reference Document 5.1 © Wizards of the Coast, лицензия CC-BY-4.0</span></div></footer>`;
   const grid = el.querySelector("#camps");
   idx.forEach(e => {
-    const d = document.createElement("article"); d.className = "camp" + (e.dead ? " dead" : ""); d.style.setProperty("--cls", CLASSES[e.cls]?.color || "var(--lantern)");
-    d.innerHTML = `${heroPh({ cls: e.cls, race: e.race, name: e.hero, img: e.img })}<div class="body"><div class="nm">${esc(e.hero)}</div><div class="sub">${esc(RACES[e.race]?.name || "")} · ${esc(CLASSES[e.cls]?.name || "")} · ур. ${e.level}</div><div class="sub">${esc(e.world)}${e.loc ? " · " + esc(e.loc) : ""}</div><div class="meta">${MODES[e.mode]?.name || ""} · ${ago(e.updated)}</div>${e.dead ? '<div class="fallen">Пал в бою</div>' : e.ended ? '<div class="fallen ended">История завершена</div>' : ""}
+    const d = document.createElement("article"); d.className = "camp" + (e.dead ? " dead" : ""); d.style.setProperty("--cls", CLASSES[e.cls]?.color || e.clsColor || "var(--lantern)");
+    d.innerHTML = `${heroPh({ cls: CLASSES[e.cls] ? e.cls : (e.clsBase || "fighter"), race: RACES[e.race] ? e.race : (e.raceBase || "human"), name: e.hero, img: e.img })}<div class="body"><div class="nm">${esc(e.hero)}</div><div class="sub">${esc(e.raceName || RACES[e.race]?.name || "")} · ${esc(e.clsName || CLASSES[e.cls]?.name || "")} · ур. ${e.level}</div><div class="sub">${esc(e.world)}${e.loc ? " · " + esc(e.loc) : ""}</div><div class="meta">${MODES[e.mode]?.name || ""} · ${ago(e.updated)}</div>${e.dead ? '<div class="fallen">Пал в бою</div>' : e.ended ? '<div class="fallen ended">История завершена</div>' : ""}
       <div class="row">${e.dead ? "" : `<button class="btn small primary" type="button" data-a="play">Продолжить</button>`}<button class="btn small" type="button" data-a="export">Экспорт</button><button class="btn small ghost" type="button" data-a="del">Удалить</button></div></div>`;
     d.querySelector("[data-a=play]")?.addEventListener("click", () => openCampaign(e.id));
     d.querySelector("[data-a=export]").onclick = () => exportCampaign(e.id);
@@ -2518,7 +2539,7 @@ const STD = [15, 14, 13, 12, 10, 8];
 const PB_COST = { 8: 0, 9: 1, 10: 2, 11: 3, 12: 4, 13: 5, 14: 7, 15: 9 };
 let forgeCtl = null;
 function newDraft() {
-  return { step: 0, world: null, worlds: [makeDefaultWorld()], forge: { biome: "coast", tone: "grim", magic: "rare", genre: "mystery", season: "autumn", culture: "auto", settle: "village", size: "normal", danger: "mid", wish: "", stage: -1, err: "" },
+  return { step: 0, world: null, worlds: [makeDefaultWorld()], forge: { setting: "fantasy", biome: "coast", tone: "grim", magic: "rare", genre: "mystery", season: "autumn", culture: "auto", settle: "village", size: "normal", danger: "mid", wish: "", stage: -1, err: "" },
     race: null, cls: null, method: "array", pool: STD.slice(), assign: {}, pb: { str: 8, dex: 8, con: 8, int: 8, wis: 8, cha: 8 },
     rolled: null, bg: null, skills: [], name: "", gender: "m", about: "", lookDesc: "", img: "", gen: false, sl1: 50, sl2: 50, sl3: 50, sl4: 50, sl5: 50, sl6: 50, sl7: 50, kit: 0, kitSeed: 0, kitW: null, favored: "humanoids", epithet: "", story: "", mode: "sandbox" };
 }
@@ -2577,12 +2598,12 @@ function stepWorld(body) {
   const forge = document.createElement("div"); forge.className = "forge";
   const left = document.createElement("div"); left.className = "forge-box";
   left.innerHTML = `<h3>Сотворить новый мир</h3><p>Займёт около минуты. Каждый раз получается другая история.</p>`;
-  left.append(optRow("Окружение", BIOMES, "biome"), optRow("Жанр", GENRES, "genre"), optRow("Тон", TONES, "tone"));
+  left.append(settingGrid(), optRow("Окружение", BIOMES, "biome"), optRow("Жанр", GENRES, "genre"), optRow("Тон", TONES, "tone"));
   const more = document.createElement("div"); more.className = "forge-more";
   more.innerHTML = [["Время года", SEASONS, "season"], ["Культура и имена", CULTURES, "culture"], ["Поселение", SETTLES, "settle"], ["Размер мира", SIZES, "size"], ["Опасность", DANGERS, "danger"], ["Магия", MAGICS, "magic"]]
     .map(([l, dict, k]) => `<label class="fm"><span>${l}</span><select data-k="${k}" ${D.forge.stage >= 0 ? "disabled" : ""}>${Object.entries(dict).map(([v, t]) => `<option value="${v}" ${D.forge[k] === v ? "selected" : ""}>${t}</option>`).join("")}</select></label>`).join("");
   more.querySelectorAll("select").forEach(sel => sel.onchange = () => { D.forge[sel.dataset.k] = sel.value; }); left.append(more);
-  left.insertAdjacentHTML("beforeend", `<div class="field" style="margin-bottom:12px"><label for="f-wish">Пожелания (необязательно)</label><textarea id="f-wish" maxlength="300" placeholder="Например: ведьма на болотах, пропавшие дети, никаких драконов" ${D.forge.stage >= 0 ? "disabled" : ""}>${esc(D.forge.wish)}</textarea></div>
+  left.insertAdjacentHTML("beforeend", `<div class="field" style="margin-bottom:12px"><label for="f-wish">Пожелания (необязательно)</label><textarea id="f-wish" maxlength="300" placeholder="${D.forge.setting === "custom" ? "Опишите свой мир: эпоха, технологии или магия, кто там живёт, какая атмосфера" : "Например: ведьма на болотах, пропавшие дети, никаких драконов"}" ${D.forge.stage >= 0 ? "disabled" : ""}>${esc(D.forge.wish)}</textarea></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="button" id="f-forge" ${D.forge.stage >= 0 ? "disabled" : ""}>Сотворить мир</button>${D.forge.stage >= 0 ? `<button class="btn" type="button" id="f-cancel">Отменить</button>` : ""}</div>
     ${D.forge.err ? `<p class="err">${esc(D.forge.err)}</p>` : ""}${retryBtnHTML()}
     ${D.forge.stage >= 0 ? `<ol class="stages">${FORGE_STAGES.map((s, i) => `<li class="${i < D.forge.stage ? "ok" : i === D.forge.stage ? "run" : ""}"><i>${i < D.forge.stage ? "✓" : ""}</i>${s}</li>`).join("")}</ol>` : ""}`);
@@ -2593,7 +2614,7 @@ function stepWorld(body) {
   const list = right.querySelector("#wlist");
   D.worlds.forEach((w, i) => {
     const b = document.createElement("button"); b.type = "button"; b.className = "world-pick"; b.setAttribute("aria-pressed", String(D.world === w)); b.disabled = D.forge.stage >= 0;
-    b.innerHTML = `<span class="eyebrow">${i === D.worlds.length - 1 ? "Готовый мир" : "Сотворён ИИ"} · ${BIOMES[w.biome] || ""}</span><b>${esc(w.name)}</b>${w.tagline ? `<span class="tagline">${esc(w.tagline)}</span>` : ""}<small>${esc(w.public)}</small>
+    b.innerHTML = `<span class="eyebrow">${i === D.worlds.length - 1 ? "Готовый мир" : "Сотворён ИИ"} · ${w.setting && w.setting !== "fantasy" && WSET[w.setting] ? WSET[w.setting].n + " · " : ""}${BIOMES[w.biome] || ""}</span><b>${esc(w.name)}</b>${w.tagline ? `<span class="tagline">${esc(w.tagline)}</span>` : ""}<small>${esc(w.public)}</small>${uniqSummary(w)}
       ${D.world === w ? `${mapMarkup("mini-map", "mini")}<small><b style="font-family:var(--ui);font-size:12.5px">Задание:</b> ${esc(w.quest)}</small>` : ""}`;
     b.onclick = () => { D.world = w; D.bg = null; queueWorldPortraits(w); renderCreate(); };
     list.append(b);
@@ -2638,9 +2659,9 @@ function finishCreation() {
   const slots = {}; Object.entries(slotsFor(D.cls, 1)).forEach(([l, n]) => slots[l] = [n, n]);
   const wd = JSON.parse(JSON.stringify(D.world)); setWorld(wd);
   const char = { name: D.name.trim(), gender: D.gender, race: D.race, cls: D.cls, bg: D.bg, level: 1, xp: 0, scores: sc, skills: draftSkills(),
-    hp, maxHp: hp, ac: 10, hitDice: 1, slots, spells: (cls.spells || []).slice(), weapons: [], wdefs: {}, secondWind: D.cls === "fighter",
+    hp, maxHp: hp, ac: 10, hitDice: 1, slots, spells: (cls.spells || []).slice(), weapons: [], wdefs: {}, secondWind: bcls(D) === "fighter",
     items: [], gold: 10, silver: 0, epithet: D.epithet, story: D.story || templateStory(), persona: traitWords(D), about: D.about, look: D.lookDesc, img: D.img, hook: bgHook(D.bg, wd),
-    traits: Object.fromEntries(TRAITS.map(t => [t.k, D[t.k] ?? 50])), favored: D.cls === "ranger" ? (D.favored || "humanoids") : null };
+    traits: Object.fromEntries(TRAITS.map(t => [t.k, D[t.k] ?? 50])), favored: bcls(D) === "ranger" ? (D.favored || "humanoids") : null };
   { const dk = draftKit(); const K = dk.kit; dk.list.forEach(d => giveWeapon(char, { ...d }));
     if (K.armor) char.items.push({ name: ITEMS[K.armor].n, id: K.armor, desc: ITEMS[K.armor].d }); if (K.shield) char.items.push({ name: "Щит", id: "shield", desc: ITEMS.shield.d });
     (CLASS_GEAR[D.cls] || []).forEach(n => char.items.push({ name: n })); const bg = BACKGROUNDS[D.bg]; if (bg.item) char.items.push({ name: bg.item, ...(ITEM_BY_NAME[bg.item.toLowerCase()] ? { id: ITEM_BY_NAME[bg.item.toLowerCase()] } : {}) });
@@ -2702,11 +2723,11 @@ function renderSheet() {
         () => takeTurn(`Применяю «${sp.name}»${needT ? ": " + ENEMIES[tgt].name : self ? " на себя" : ""}`, { checks: [{ kind: "spell", spell: sid, target: needT ? tgt : null, reason: sp.desc }] }))); });
     merchantsHere().slice(0, 2).forEach(m => tb.prepend(actBtn(`Торговать: ${m.name}`, `${MERCH[m.type].title} · товар, цены, торг`, "лавка", busy || S.world.combat, () => openShop(m))));
     { const rs = resOf(c); const inC = !!S.world.combat;
-      if (c.cls === "barbarian") tb.append(actBtn(c.rage ? "В ярости" : "Ярость", "+2 к урону силой, вдвое меньше урона до конца боя", `${rs.rage} раз`, busy || !inC || c.rage || rs.rage < 1, () => { rs.rage--; c.rage = true; pushFeed({ t: "chips", items: [{ c: "dmg", x: "Ярость! +2 к урону, урон по вам вдвое меньше" }] }); sfx("horn"); after(); }));
-      if (c.cls === "paladin") tb.append(actBtn("Наложение рук", `Запас исцеления: ${rs.lay} HP`, "касание", busy || rs.lay < 1 || c.hp >= c.maxHp, () => { const amt = Math.min(rs.lay, c.maxHp - c.hp); rs.lay -= amt; const got = healHero(amt); pushFeed({ t: "chips", items: [{ c: "heal", x: `+${got} HP · Наложение рук` }] }); sfx("heal"); after(); }));
-      if (c.cls === "bard") tb.append(actBtn(c.insp ? "Вдохновлены" : "Вдохновение", `+${bardDie(c)} к следующему броску`, `${rs.insp} раз`, busy || !!c.insp || rs.insp < 1, () => { rs.insp--; c.insp = bardDie(c); pushFeed({ t: "chips", items: [{ c: "xp", x: `Вдохновение: +${c.insp} к следующему броску` }] }); sfx("chime"); after(); }));
+      if (bcls(c) === "barbarian") tb.append(actBtn(c.rage ? "В ярости" : "Ярость", "+2 к урону силой, вдвое меньше урона до конца боя", `${rs.rage} раз`, busy || !inC || c.rage || rs.rage < 1, () => { rs.rage--; c.rage = true; pushFeed({ t: "chips", items: [{ c: "dmg", x: "Ярость! +2 к урону, урон по вам вдвое меньше" }] }); sfx("horn"); after(); }));
+      if (bcls(c) === "paladin") tb.append(actBtn("Наложение рук", `Запас исцеления: ${rs.lay} HP`, "касание", busy || rs.lay < 1 || c.hp >= c.maxHp, () => { const amt = Math.min(rs.lay, c.maxHp - c.hp); rs.lay -= amt; const got = healHero(amt); pushFeed({ t: "chips", items: [{ c: "heal", x: `+${got} HP · Наложение рук` }] }); sfx("heal"); after(); }));
+      if (bcls(c) === "bard") tb.append(actBtn(c.insp ? "Вдохновлены" : "Вдохновение", `+${bardDie(c)} к следующему броску`, `${rs.insp} раз`, busy || !!c.insp || rs.insp < 1, () => { rs.insp--; c.insp = bardDie(c); pushFeed({ t: "chips", items: [{ c: "xp", x: `Вдохновение: +${c.insp} к следующему броску` }] }); sfx("chime"); after(); }));
       if (RACES[c.race]?.breath) tb.append(actBtn("Оружие дыхания", `${c.level >= 5 ? "3d6" : "2d6"} огнём по всем врагам, спасбросок ЛОВ`, rs.breath ? "1 раз" : "потрачено", busy || !inC || !rs.breath, () => takeTurn("Выдыхаю пламя на врагов", { checks: [{ kind: "breath" }] }))); }
-    if (c.cls === "fighter") tb.append(actBtn("Второе дыхание", "Восстановить 1d10 + уровень HP", c.secondWind ? "1 раз" : "потрачено", busy || !c.secondWind || c.hp >= c.maxHp, () => {
+    if (bcls(c) === "fighter") tb.append(actBtn("Второе дыхание", "Восстановить 1d10 + уровень HP", c.secondWind ? "1 раз" : "потрачено", busy || !c.secondWind || c.hp >= c.maxHp, () => {
       const d = rollDice("1d10"); const got = healHero(d.total + c.level); c.secondWind = false; pushFeed({ t: "chips", items: [{ c: "heal", x: `+${got} HP · Второе дыхание (${d.text} +${c.level})` }] }); after(); }));
     tb.append(actBtn("Короткий отдых", "Потратить кость хитов: 1d" + cls.hd + fmt(mod(c.scores.con)), `костей: ${c.hitDice}`, busy || S.world.combat || c.hitDice < 1 || c.hp >= c.maxHp, shortRest));
     tb.append(POIS[S.world.loc].wild && !POIS[S.world.loc].rest ? actBtn("Разбить лагерь", "Долгий отдых под открытым небом — ночью могут потревожить", "8 часов", busy || S.world.combat || (S.world.enc && !encDone()), campRest) : actBtn("Долгий отдых", POIS[S.world.loc].rest ? "Полное восстановление" : "Только в безопасном месте для ночлега", "8 часов", busy || S.world.combat || !POIS[S.world.loc].rest, longRest));
@@ -3340,7 +3361,7 @@ function bldAction(bid, act) {
   const s = bldSlot(bid); if (s) { const dp = doorPt(s); scState(b.parent).player = { x: +dp.x.toFixed(2), y: +dp.y.toFixed(2) }; }
   S.pendingBld = { bid, act }; st.known = tkey();
   const checks = { knock: [], listen: [{ kind: "skill", skill: "perception", dc: 12, reason: "Расслышать, что за дверью" }], peek: [{ kind: "skill", skill: "stealth", dc: part >= 2 ? 11 : 13, reason: "Заглянуть в окно незаметно" }],
-    pick: [{ kind: "skill", skill: "sleight", dc: b.lock, adv: C().cls === "rogue" || hasTag("lockpick") ? 1 : 0, reason: hasTag("lockpick") ? "Вскрыть замок отмычками" : "Вскрыть замок" }], force: [{ kind: "skill", skill: "athletics", dc: b.lock + 1, adv: hasTag("crowbar") ? 1 : 0, reason: hasTag("crowbar") ? "Выломать дверь ломом" : "Выбить дверь" }] }[act];
+    pick: [{ kind: "skill", skill: "sleight", dc: b.lock, adv: bcls(C()) === "rogue" || hasTag("lockpick") ? 1 : 0, reason: hasTag("lockpick") ? "Вскрыть замок отмычками" : "Вскрыть замок" }], force: [{ kind: "skill", skill: "athletics", dc: b.lock + 1, adv: hasTag("crowbar") ? 1 : 0, reason: hasTag("crowbar") ? "Выломать дверь ломом" : "Выбить дверь" }] }[act];
   if (act === "enter") { st.how = st.broken ? "выбил дверь" : st.unlocked === tkey() ? "вскрыл замок" : st.open === tkey() ? "впустили хозяева" : (b.bk === "shop" || b.bk === "smithy") ? "заведение открыто" : "дверь была не заперта";
     return takeTurn(`Вхожу: ${b.name}`, { checks: [], move_to: bid }); }
   takeTurn(`${BLD_ACTS[act]}: ${b.name}`, { checks });
@@ -3613,7 +3634,7 @@ function searchAfterChecks(results) {
   if (!r || !r.ok) { note(`Поиски (${ps.label}) ничего не дали`); return; }
   if (stash && stash.obj === ps.obj && !S.world.taken[key]) {
     S.world.taken[key] = true; const c = C(); const chips = [];
-    if (stash.loot.gold) { c.gold += stash.loot.gold; chips.push({ c: "gold", x: `+${stash.loot.gold} зм` }); sfx("gold"); note(`НАХОДКА в «${ps.label}»: ${stash.loot.gold} золотых (уже добавлено движком, не дублируй в gold)`); }
+    if (stash.loot.gold) { c.gold += stash.loot.gold; chips.push({ c: "gold", x: `+${stash.loot.gold} ${MZ()}` }); sfx("gold"); note(`НАХОДКА в «${ps.label}»: ${stash.loot.gold} ${MZW()} (уже добавлено движком, не дублируй в gold)`); }
     else { const it = stash.loot.item; c.items.push({ ...it }); chips.push({ c: "item", x: `+ ${it.name}` }); sfx("chest"); note(`НАХОДКА в «${ps.label}»: ${it.name} — ${it.desc} (уже в инвентаре, не дублируй в items_add; если уместно, свяжи находку с тайной)`); }
     pushFeed({ t: "chips", items: chips });
   } else note(`В «${ps.label}» нет ничего ценного (не выдавай предметов и золота, только детали обстановки)`);
@@ -3850,10 +3871,10 @@ function baseAttitude(id, c) {
 }
 function ensureNpcState(id) { if (!S || !NPCS[id]) return null; return S.world.npcs[id] || (S.world.npcs[id] = { att: baseAttitude(id), mem: [] }); }
 /* ---------- ресурсы классов ---------- */
-function resMax(c) { const ch = mod(c.scores.cha); return { rage: c.cls === "barbarian" ? (c.level >= 6 ? 4 : c.level >= 3 ? 3 : 2) : 0, indom: c.cls === "fighter" && c.level >= 9 ? 1 : 0, lay: c.cls === "paladin" ? 5 * c.level : 0, insp: c.cls === "bard" ? Math.max(1, ch) : 0, breath: RACES[c.race]?.breath ? 1 : 0, relentless: RACES[c.race]?.relentless ? 1 : 0 }; }
+function resMax(c) { const ch = mod(c.scores.cha); return { rage: bcls(c) === "barbarian" ? (c.level >= 6 ? 4 : c.level >= 3 ? 3 : 2) : 0, indom: bcls(c) === "fighter" && c.level >= 9 ? 1 : 0, lay: bcls(c) === "paladin" ? 5 * c.level : 0, insp: bcls(c) === "bard" ? Math.max(1, ch) : 0, breath: RACES[c.race]?.breath ? 1 : 0, relentless: RACES[c.race]?.relentless ? 1 : 0 }; }
 function resOf(c) { if (!c.res) c.res = resMax(c); return c.res; }
-function restoreRes(c, kind) { const m = resMax(c); const r = resOf(c); if (kind === "long") Object.assign(r, m); r.breath = m.breath; if (kind === "short" && c.cls === "bard" && c.level >= 5) r.insp = m.insp;
-  if (c.cls === "warlock") Object.values(c.slots).forEach(s => s[1] = s[0]); c.rage = false; }
+function restoreRes(c, kind) { const m = resMax(c); const r = resOf(c); if (kind === "long") Object.assign(r, m); r.breath = m.breath; if (kind === "short" && bcls(c) === "bard" && c.level >= 5) r.insp = m.insp;
+  if (bcls(c) === "warlock") Object.values(c.slots).forEach(s => s[1] = s[0]); c.rage = false; }
 function useInsp(c) { if (!c.insp) return null; const d = rollDice(c.insp); c.insp = null; return d; }
 /* ---------- оружие: типы, вариации, качество, материалы ---------- */
 const WT = {
@@ -3948,7 +3969,7 @@ function giveWeapon(c, def) { c.wdefs = c.wdefs || {}; c.wdefs[def.k] = def; reg
 const PROP_RU = { finesse: "фехтовальное", light: "лёгкое", heavy: "тяжёлое", two: "двуручное", reach: "длинное", thrown: "метательное", versatile: "универсальное", ranged: "дальнобойное" };
 const WP_MART = { rogue: ["rapier", "longsword", "shortsword", "scimitar"], bard: ["rapier", "longsword", "shortsword", "scimitar"], druid: [], wizard: [], warlock: [], cleric: [] };
 const WP_ONLY = { druid: ["club", "dagger", "javelin", "mace", "staff", "scimitar", "sickle", "sling", "spear"], wizard: ["dagger", "staff", "lcrossbow", "sling"] };
-function weaponProf(c, wid) { const d = typeof wid === "object" ? wid : wDef(wid); if (!d) return true; if (WP_ONLY[c.cls]) return WP_ONLY[c.cls].includes(d.type); if (["fighter", "barbarian", "paladin", "ranger"].includes(c.cls)) return true; return d.cat === "simple" || (WP_MART[c.cls] || []).includes(d.type); }
+function weaponProf(c, wid) { const d = typeof wid === "object" ? wid : wDef(wid); if (!d) return true; if (WP_ONLY[c.cls]) return WP_ONLY[c.cls].includes(d.type); if (["fighter", "barbarian", "paladin", "ranger"].includes(bcls(c))) return true; return d.cat === "simple" || (WP_MART[c.cls] || []).includes(d.type); }
 function weaponDice(c, d) { if (d.props.includes("versatile") && !gearOf(c).shield && !d.props.includes("two")) { const m = String(d.dice).match(/^(\d+)d(\d+)$/); if (m) { const up = { 4: 6, 6: 8, 8: 10, 10: 12 }[m[2]]; if (up) return `${m[1]}d${up}`; } } return d.dice; }
 function weaponLine(c, wid) { const d = wDef(wid); const a = weaponAtk(wid); return `${fmt(a.bonus)} · ${weaponDice(c, d)}${a.dmgMod ? fmt(a.dmgMod) : ""} ${d.dt || ""}`.trim(); }
 function weaponTile(d, size = 40) { return `<span class="w-tile t-${d.tier || "common"}" style="--wc:${d.col || "#d8ccb0"}">${ico(d.ico || "longsword", Math.round(size * .66))}</span>`; }
@@ -4026,7 +4047,7 @@ function catIcon(cat, size = 20) { return ico(CAT_ICO[cat] || "i_scroll", size);
 /* кошелёк */
 function purse(c) { return (c.gold || 0) * 10 + (c.silver || 0); }
 function setPurse(c, sp) { sp = Math.max(0, Math.round(sp)); c.gold = Math.floor(sp / 10); c.silver = sp % 10; }
-function fmtMoney(sp) { sp = Math.round(sp); const g = Math.floor(Math.abs(sp) / 10), s = Math.abs(sp) % 10; return (sp < 0 ? "−" : "") + (g ? `${g} зм` : "") + (g && s ? " " : "") + (s || !g ? `${s} см` : ""); }
+function fmtMoney(sp) { sp = Math.round(sp); const g = Math.floor(Math.abs(sp) / 10), s = Math.abs(sp) % 10; return (sp < 0 ? "−" : "") + (g ? `${g} ${MZ()}` : "") + (g && s ? " " : "") + (s || !g ? `${s} ${MS()}` : ""); }
 /* предметы героя */
 function itemIdOf(it) { if (it.wk) return null; return it.id || ITEM_BY_NAME[String(it.name || "").toLowerCase()] || null; }
 function itemCat(it) { if (it.wk) return "weapon"; const id = itemIdOf(it); if (id) return ITEMS[id].cat; if (it.potion) return "potion"; return "misc"; }
@@ -4048,7 +4069,7 @@ function gearOf(c) {
   if (!c.gear) { const def = { fighter: ["chainmail", true], cleric: ["scale", true], rogue: ["leather", false], wizard: [null, false], barbarian: [null, false], paladin: ["chainmail", true], ranger: ["leather", false], bard: ["leather", false], warlock: ["leather", false], druid: ["leather", true] }[c.cls] || [null, false]; c.gear = { armor: def[0], shield: def[1] }; }
   return c.gear;
 }
-function acNow(c) { const g = gearOf(c); const dex = mod(c.scores.dex); const A = g.armor && ITEMS[g.armor]?.a; return (A ? A.base + Math.min(dex, A.dex) : 10 + dex + (c.cls === "barbarian" ? mod(c.scores.con) : 0)) + (g.shield ? 2 : 0); }
+function acNow(c) { const g = gearOf(c); const dex = mod(c.scores.dex); const A = g.armor && ITEMS[g.armor]?.a; return (A ? A.base + Math.min(dex, A.dex) : 10 + dex + (bcls(c) === "barbarian" ? mod(c.scores.con) : 0)) + (g.shield ? 2 : 0); }
 function recalcAC(c) { c.ac = acNow(c); return c.ac; }
 function canWear(c, id) { const A = ITEMS[id]?.a; return !!A && (APROF[c.cls] || []).includes(A.t); }
 function hasTag(tag) { return C().items.some(it => { const id = itemIdOf(it); return id && ITEMS[id].tag === tag; }); }
@@ -4239,9 +4260,9 @@ function stepRace(body) {
   head(body, "Шаг 2", "Кто вы по крови?", "Раса даёт бонусы к характеристикам, врождённые черты — и то, как вас встретят люди. Отношение меняется поступками, но первое впечатление остаётся.");
   const g = document.createElement("div"); g.className = "pick-grid";
   Object.entries(RACES).forEach(([id, r]) => {
-    const b = document.createElement("button"); b.type = "button"; b.className = "choice pick-card"; b.setAttribute("aria-pressed", String(D.race === id)); b.style.setProperty("--pc", RACE_COL[id] || "#e9c99a");
+    const b = document.createElement("button"); b.type = "button"; b.className = "choice pick-card" + (r.uniq ? " uniq" : ""); b.setAttribute("aria-pressed", String(D.race === id)); b.style.setProperty("--pc", RACE_COL[id] || "#e9c99a");
     const att = RACE_ATT[id] || 0;
-    b.innerHTML = `<div class="pc-top"><span class="pc-ico">${ico("r_" + id, 40)}</span><div><div class="ch-name">${r.name}</div><div class="ch-sub">${esc(r.sub)}</div></div></div>
+    b.innerHTML = `<div class="pc-top"><span class="pc-ico">${ico("r_" + id, 40)}</span><div><div class="ch-name">${r.name}${r.uniq ? `<em class="u-badge">✦ мир</em>` : ""}</div><div class="ch-sub">${esc(r.sub)}${r.uniq ? ` · основа: ${esc(r.baseName || "")}` : ""}</div></div></div>
       <div class="pc-chips">${Object.entries(r.bonus).map(([a, v]) => `<span>${ABIL_RU[a]} +${v}</span>`).join("")}<span class="dim">шаг ${r.speed} фт</span></div>
       <ul class="pc-list">${r.traits.slice(id === "human" ? 1 : 0, 3).map(t => `<li>${esc(t)}</li>`).join("")}</ul>
       <div class="pc-social ${att <= -4 ? "neg" : att >= 2 ? "pos" : ""}"><b>Люди:</b> ${esc(RACE_SOCIAL[id] || "")}${att ? ` <span>${att > 0 ? "+" : ""}${att}</span>` : ""}</div>`;
@@ -4255,12 +4276,12 @@ function classProfText(cls) {
 }
 function stepClass(body) {
   const w = D.world; const rec = {}; (w.recommended || []).forEach(r => rec[r.cls] = r.why);
-  head(body, "Шаг 3", "Чем вы зарабатываете на жизнь?", `Десять путей. Мир «${esc(w.name)}» подсказывает, кому здесь будет интереснее, но справится любой.`);
+  head(body, "Шаг 3", "Чем вы зарабатываете на жизнь?", `${Object.values(CLASSES).some(c => c.uniq) ? `${Object.keys(CLASSES).length} путей, из них ✦ — особые для этого мира.` : "Десять путей."} Мир «${esc(w.name)}» подсказывает, кому здесь будет интереснее, но справится любой.`);
   const g = document.createElement("div"); g.className = "pick-grid cls";
   Object.entries(CLASSES).forEach(([id, c]) => {
     const meta = CLASS_META[id] || { diff: 2, prim: [] };
-    const b = document.createElement("button"); b.type = "button"; b.className = "choice pick-card cls-card"; b.setAttribute("aria-pressed", String(D.cls === id)); b.style.setProperty("--pc", c.color);
-    b.innerHTML = `<div class="pc-top"><span class="pc-ico">${ico("c_" + id, 38)}</span><div><div class="ch-name">${c.name}</div><div class="ch-sub">${esc(c.role)}</div></div></div>
+    const b = document.createElement("button"); b.type = "button"; b.className = "choice pick-card cls-card" + (c.uniq ? " uniq" : ""); b.setAttribute("aria-pressed", String(D.cls === id)); b.style.setProperty("--pc", c.color);
+    b.innerHTML = `<div class="pc-top"><span class="pc-ico">${ico("c_" + id, 38)}</span><div><div class="ch-name">${c.name}${c.uniq ? `<em class="u-badge">✦ мир</em>` : ""}</div><div class="ch-sub">${esc(c.role)}${c.uniq ? ` · основа: ${esc(c.baseName || "")}` : ""}</div></div></div>
       <div class="pc-chips"><span>d${c.hd}</span>${meta.prim.map(a => `<span>${ABIL_RU[a]}</span>`).join("")}${c.spells || c.half ? `<span class="mag">магия</span>` : ""}</div>
       <p class="pc-blurb">${esc(c.blurb)}</p><div class="pc-foot"><span>Сложность ${dots(meta.diff)}</span>${rec[id] ? `<span class="rec">★ ${esc(rec[id])}</span>` : ""}</div>`;
     b.onclick = () => { D.cls = id; D.skills = []; D.kit = 0; D.kitW = null; if (D.method !== "pb") autoAssign(); renderCreate(); }; g.append(b);
@@ -4274,7 +4295,7 @@ function stepClass(body) {
       <h4>Рост до 10 уровня</h4><ol class="cd-levels">${[2, 3, 4, 5, 6, 7, 8, 9, 10].map(l => `<li><b>${l}</b><span>${esc(LEVEL_FEATS[id]?.[l] || "")}</span></li>`).join("")}</ol></div>
       <div><h4>Владение</h4><dl class="cd-prof"><dt>Кость хитов</dt><dd>d${c.hd}</dd><dt>Спасброски</dt><dd>${c.saves.map(a => ABIL_FULL[a]).join(", ")}</dd><dt>Доспехи</dt><dd>${pr.armor}</dd><dt>Оружие</dt><dd>${esc(pr.weapons)}</dd><dt>Навыков</dt><dd>${c.skillCount} на выбор</dd></dl>
       ${spells.length ? `<h4>Заклинания</h4><ul class="cd-spells">${[...new Set(spells)].map(s => SPELLS[s] ? `<li><b>${SPELLS[s].name}</b><small>${SPELLS[s].lvl ? SPELLS[s].lvl + " круг" : "заговор"} · ${esc(SPELLS[s].desc)}</small></li>` : "").join("")}</ul>` : ""}
-      ${id === "ranger" ? `<h4>Избранный враг</h4><div class="fav" id="fav">${Object.entries(FAVORED).map(([k, [n, d]]) => `<button type="button" data-f="${k}" aria-pressed="${(D.favored || "humanoids") === k}"><b>${n}</b><small>${d}</small></button>`).join("")}</div>` : ""}</div></div>`;
+      ${bcls({ cls: id }) === "ranger" ? `<h4>Избранный враг</h4><div class="fav" id="fav">${Object.entries(FAVORED).map(([k, [n, d]]) => `<button type="button" data-f="${k}" aria-pressed="${(D.favored || "humanoids") === k}"><b>${n}</b><small>${d}</small></button>`).join("")}</div>` : ""}</div></div>`;
   det.querySelectorAll("#fav [data-f]").forEach(b => b.onclick = () => { D.favored = b.dataset.f; renderCreate(); });
   body.append(det);
 }
@@ -4286,7 +4307,7 @@ function stepGear(body) {
   const wrap = document.createElement("div"); wrap.className = "kits";
   KITS[D.cls].forEach((K, i) => {
     const sel = D.kit === i; const card = document.createElement("div"); card.className = "kit" + (sel ? " sel" : "");
-    const armor = [K.armor ? ITEMS[K.armor].n : (D.cls === "barbarian" ? "Без доспеха (10 + ЛОВ + ТЕЛ)" : "Без доспеха"), K.shield ? "щит" : ""].filter(Boolean).join(" + ");
+    const armor = [K.armor ? ITEMS[K.armor].n : (bcls(D) === "barbarian" ? "Без доспеха (10 + ЛОВ + ТЕЛ)" : "Без доспеха"), K.shield ? "щит" : ""].filter(Boolean).join(" + ");
     const ac = acNow({ cls: D.cls, scores: sc, gear: { armor: K.armor || null, shield: !!K.shield } });
     card.innerHTML = `<button type="button" class="kit-head" data-k="${i}" aria-pressed="${sel}"><div><b>${esc(K.n)}</b><small>${esc(K.d)}</small></div><div class="kit-meta">${K.w.map(t => `<span class="w-mini" title="${esc(WT[t].n)}">${ico(WT[t].ico, 22)}</span>`).join("")}<span class="kit-ac">КД ${ac}</span></div></button>
       ${sel ? `<div class="kit-body">${dk.list.map(d => weaponCardHTML(d, fake)).join("")}<div class="kit-armor">${ico(K.armor ? ITEM_ICO[K.armor] : "i_backpack", 20)}<span>${esc(armor)}</span></div>
@@ -4346,7 +4367,7 @@ function modWord(m) { return m <= -2 ? ["слабо", "bad"] : m === -1 ? ["ни
 function pbAuto() { if (!D.cls) return; const order = CLASSES[D.cls].prio; D.pb = {}; ABIL.forEach(a => D.pb[a] = 8); order.forEach((a, k) => D.pb[a] = STD[k] ?? 8); }
 function abilSummary(sc) {
   if (!D.cls || !D.race) return "";
-  const c = CLASSES[D.cls]; const meta = CLASS_META[D.cls] || { prim: ["str"] }; const atkA = meta.prim.find(a => a === "str" || a === "dex") || (D.cls === "rogue" || D.cls === "ranger" ? "dex" : "str");
+  const c = CLASSES[D.cls]; const meta = CLASS_META[D.cls] || { prim: ["str"] }; const atkA = meta.prim.find(a => a === "str" || a === "dex") || (bcls(D) === "rogue" || bcls(D) === "ranger" ? "dex" : "str");
   const items = [["Хиты", maxHP(D.cls, D.race, sc), "con"], ["КД", draftAC(), "dex"], ["Инициатива", fmt(mod(sc.dex) + traitFx(D).init), "dex"], ["Атака оружием", fmt(mod(sc[atkA]) + 2), atkA]];
   if (c.cast) items.push(["Сложность чар", 8 + 2 + mod(sc[c.cast]), c.cast]);
   return `<div class="ab-sum">${items.map(([l, v, a]) => `<div><small>${l}</small><b>${v}</b><span>${ABIL_RU[a]}</span></div>`).join("")}</div>`;
@@ -4484,7 +4505,7 @@ function bgDetailHTML(id) {
     <p class="bgd-hook">Вы ${esc(bgHook(id))}.</p>
     ${b.feat ? `<div class="bgd-feat"><b>Особенность</b><span>${esc(b.feat)}</span></div>` : ""}
     <div class="bgd-grid"><div><h4>Навыки</h4><div class="pc-chips">${b.skills.map(k => `<span>${SKILLS[k][0]} <i>${ABIL_RU[SKILLS[k][1]]}</i></span>`).join("")}</div></div>
-      <div><h4>С собой</h4><div class="bgd-gear"><span>${COIN}<b>${b.gold || 10} зм</b></span>${b.item ? `<span>${ico("i_backpack", 16)}${esc(b.item)}</span>` : ""}</div></div></div>
+      <div><h4>С собой</h4><div class="bgd-gear"><span>${COIN}<b>${b.gold || 10} ${MZ()}</b></span>${b.item ? `<span>${ico("i_backpack", 16)}${esc(b.item)}</span>` : ""}</div></div></div>
     <h4>Как вас встретят</h4><div class="bgd-att">${att.length ? att.map(([g, v]) => `<span class="${v > 0 ? "pos" : "neg"}">${GROUP_RU[g]}<b>${v > 0 ? "+" : ""}${v}</b></span>`).join("") : `<span class="dim">Без особого отношения</span>`}</div>`;
 }
 function stepSkills(body) {
@@ -4492,7 +4513,7 @@ function stepSkills(body) {
   const wrap = document.createElement("div"); wrap.className = "bg-wrap"; D.bgCat = D.bgCat || "all";
   wrap.innerHTML = `<div class="bg-side"><div class="bg-cats">${Object.entries(BG_CATS).map(([k, t]) => `<button type="button" data-c="${k}" aria-pressed="${D.bgCat === k}">${t}</button>`).join("")}</div>
     <div class="bg-search">${ico("x_look", 15)}<input id="bg-q" placeholder="Поиск по названию или навыку" autocomplete="off" aria-label="Поиск предыстории"></div>
-    <div class="bg-list" id="bg-list">${Object.entries(BACKGROUNDS).map(([id, b]) => `<button type="button" class="choice bg-row" data-bg="${id}" data-cat="${b.cat || "all"}" data-q="${esc((b.name + " " + b.skills.map(k => SKILLS[k][0]).join(" ")).toLowerCase())}" aria-pressed="${D.bg === id}">
+    <div class="bg-list" id="bg-list">${Object.entries(BACKGROUNDS).map(([id, b]) => `<button type="button" class="choice bg-row${b.uniq ? " uniq" : ""}" data-bg="${id}" data-cat="${b.cat || "all"}" data-q="${esc((b.name + " " + b.skills.map(k => SKILLS[k][0]).join(" ")).toLowerCase())}" aria-pressed="${D.bg === id}">
       <span class="bg-ri">${ico("b_" + id, 22)}</span><span class="bg-rt"><b>${b.name}</b><small>${b.skills.map(k => SKILLS[k][0]).join(" · ")}</small></span></button>`).join("")}<p class="bg-none" hidden>Ничего не нашлось.</p></div></div>
     <div class="bg-detail" id="bg-detail">${bgDetailHTML(D.bg)}</div>`;
   body.append(wrap);
@@ -4872,9 +4893,9 @@ function encChoices(e) {
   const c = C(); const ch = []; const add = (k, t, sub, icon, o = {}) => ch.push({ k, t, sub, icon, ...o });
   if (e.kind === "ambush") { const E = ENEMIES[e.foes[0]]; const beast = ["wolf", "giant_rat", "giant_spider"].includes(e.type); const undead = ["zombie", "skeleton"].includes(e.type);
     if (e.noticed) { add("strike", "Напасть первым", "внезапная атака, инициатива +5", "t_clash"); add("sneak", "Обойти стороной", encCheckLbl("stealth", 12), "t_hidden"); add("hide", "Затаиться и переждать", encCheckLbl("stealth", 10) + " · −1 ч", "t_hidden");
-      if (e.type === "bandit" || e.type === "goblin") { const pay = e.type === "bandit" ? 5 + c.level * 3 : 3; add("pay", `Откупиться (${pay} зм)`, "без драки, но с потерей", "i_coins", { pay, dis: purse(c) < pay * 10 }); add("talk", "Заговорить зубы", encCheckLbl(c.skills.includes("deception") ? "deception" : "persuasion", 13), "x_talk"); }
+      if (e.type === "bandit" || e.type === "goblin") { const pay = e.type === "bandit" ? 5 + c.level * 3 : 3; add("pay", `Откупиться (${pay} ${MZ()})`, "без драки, но с потерей", "i_coins", { pay, dis: purse(c) < pay * 10 }); add("talk", "Заговорить зубы", encCheckLbl(c.skills.includes("deception") ? "deception" : "persuasion", 13), "x_talk"); }
       if (beast && c.items.some(i => /факел|фонарь/i.test(i.name))) add("fire", "Отпугнуть огнём", encCheckLbl("survival", 11), "i_torch");
-      if (undead && ["cleric", "paladin"].includes(c.cls)) add("turn", "Отогнать нежить молитвой", encCheckLbl("religion", 12), "i_holy"); }
+      if (undead && ["cleric", "paladin"].includes(bcls(c))) add("turn", "Отогнать нежить молитвой", encCheckLbl("religion", 12), "i_holy"); }
     else { add("defend", "Защищаться", "бой — враги бьют первыми", "t_clash"); add("flee", "Бежать", encCheckLbl("athletics", 13) + " · провал — бой", "t_run"); }
   } else if (e.kind === "traveler") { add("talk", "Заговорить", "рассказчик отыграет встречу", "x_talk"); if (e.trade) add("trade", "Поторговать", "открыть товары", "i_coins"); if (e.heal) add("heal", "Перевязать раны", encCheckLbl("medicine", 10), "e_hurt"); if (e.quest) add("quest", "Выслушать просьбу", "может стать поручением", "t_quest"); add("pass", "Пройти мимо", "продолжить путь", "t_boots");
   } else if (e.kind === "discovery") { add("search", "Осмотреть", encCheckLbl(e.skill, 12), "x_look"); if (e.spring) add("drink", "Напиться и отдохнуть", "−1 ч, немного сил", "e_spring"); add("mark", "Отметить на карте и идти дальше", "место останется на карте", "t_sign");
@@ -4899,7 +4920,7 @@ function encAct(k, c) {
   if (e.kind === "ambush") {
     if (k === "strike") { e.fought = true; takeTurn(`Нападаю первым: ${ENEMIES[e.foes[0]].name}`, { checks: [{ kind: "attack", target: e.foes[0], weapon: C().weapons[0], reason: "Внезапная атака" }] }); return; }
     if (k === "defend") { e.fought = true; encStartCombat(false); S.pendingEnc = null; takeTurn("Выхватываю оружие и встаю в стойку!", { checks: [] }); return; }
-    if (k === "pay") { const c2 = C(); setPurse(c2, purse(c2) - c.pay * 10); pushFeed({ t: "chips", items: [{ c: "gold", x: `−${c.pay} зм · откуп` }] }); despawnFoes(e.foes); e.done = true; takeTurn(`Бросаю им кошель: ${c.pay} золотых. Пропустите — и разойдёмся миром.`, { checks: [] }); return; }
+    if (k === "pay") { const c2 = C(); setPurse(c2, purse(c2) - c.pay * 10); pushFeed({ t: "chips", items: [{ c: "gold", x: `−${c.pay} ${MZ()} · откуп` }] }); despawnFoes(e.foes); e.done = true; takeTurn(`Бросаю им кошель: ${c.pay} ${MZW()}. Пропустите — и разойдёмся миром.`, { checks: [] }); return; }
     const map = { sneak: ["stealth", 12, "Прокрасться мимо"], hide: ["stealth", 10, "Затаиться"], talk: [C().skills.includes("deception") ? "deception" : "persuasion", 13, "Убедить уйти"], fire: ["survival", 11, "Отпугнуть огнём"], turn: ["religion", 12, "Изгнать нежить"], flee: ["athletics", 13, "Оторваться"] }[k];
     const txt = { sneak: `Пытаюсь незаметно обойти: ${foeName}`, hide: "Затаиваюсь и жду, пока опасность пройдёт мимо", talk: "Заговариваю с ними: никому не нужна драка", fire: "Размахиваю огнём, чтобы отпугнуть зверей", turn: "Поднимаю святой символ и читаю молитву против нежити", flee: "Бегу со всех ног!" }[k];
     if (k === "hide") passHours(1); takeTurn(txt, { checks: [ch(map[0], map[1], "skill", map[2])] }); return;
@@ -4935,11 +4956,11 @@ function encAfterChecks(results) {
     if (ok) { despawnFoes(e.foes); e.done = true; note({ sneak: "Герою удалось незаметно обойти врагов, встречи не было", hide: "Опасность прошла мимо, герой остался незамеченным", talk: "Слова сработали: враги отступили и пропустили героя", fire: "Звери шарахнулись от огня и ушли", turn: "Нежить отступила перед святым словом и рассыпалась прахом", flee: "Герою удалось оторваться и уйти" }[pe.k] + ". Теперь можно продолжить путь."); return; }
     e.fought = true; encStartCombat(false); note("Не вышло — враги нападают, бой начался (start_combat не нужен)"); return;
   }
-  if (e.kind === "traveler" && pe.k === "heal") { e.done = true; if (ok) { const n = NPCS[e.npc]; const st = S.world.npcs[e.npc]; if (st) st.att += 15; const g = 2 + rnd(6); C().gold += g; pushFeed({ t: "chips", items: [{ c: "gold", x: `+${g} зм · благодарность` }, { c: "npc", x: `${n.name}: +15 к отношению` }] }); note(`Рана перевязана. ${n.name} благодарит и уже отдал ${g} зм (выдано движком, не дублируй gold). Пусть поделится полезным слухом или советом`); } else note("Перевязка не задалась: рана снова кровит, путник морщится, но благодарит за попытку"); return; }
+  if (e.kind === "traveler" && pe.k === "heal") { e.done = true; if (ok) { const n = NPCS[e.npc]; const st = S.world.npcs[e.npc]; if (st) st.att += 15; const g = 2 + rnd(6); C().gold += g; pushFeed({ t: "chips", items: [{ c: "gold", x: `+${g} ${MZ()} · благодарность` }, { c: "npc", x: `${n.name}: +15 к отношению` }] }); note(`Рана перевязана. ${n.name} благодарит и уже отдал ${g} ${MZ()} (выдано движком, не дублируй gold). Пусть поделится полезным слухом или советом`); } else note("Перевязка не задалась: рана снова кровит, путник морщится, но благодарит за попытку"); return; }
   if (e.kind === "discovery") { e.done = true; if (!ok) { note("Осмотр ничего не дал: если здесь что-то и было, оно ускользнуло от героя"); return; }
     const c = C(); const R = Math.random(); let txt;
     if (e.spring) { const got = healHero(rollDice("1d8").total + c.level); txt = `Вода родника целебна: +${got} HP (уже применено)`; pushFeed({ t: "chips", items: [{ c: "heal", x: `+${got} HP · родник` }] }); }
-    else if (R < .35) { const g = 4 + rnd(10) + (WD.danger === "high" ? 6 : 0); c.gold += g; pushFeed({ t: "chips", items: [{ c: "gold", x: `+${g} зм` }] }); sfx("gold"); txt = `НАХОДКА: ${g} золотых (уже добавлено движком, не дублируй gold)`; }
+    else if (R < .35) { const g = 4 + rnd(10) + (WD.danger === "high" ? 6 : 0); c.gold += g; pushFeed({ t: "chips", items: [{ c: "gold", x: `+${g} ${MZ()}` }] }); sfx("gold"); txt = `НАХОДКА: ${g} ${MZW()} (уже добавлено движком, не дублируй gold)`; }
     else if (R < .55) { c.items.push({ name: "Зелье лечения", desc: "Восстанавливает 2d4+2 HP", potion: true, heal: "2d4+2" }); pushFeed({ t: "chips", items: [{ c: "item", x: "+ Зелье лечения" }] }); txt = "НАХОДКА: зелье лечения (уже в инвентаре, не дублируй)"; }
     else if (R < .8) { const it = LOOT[Math.floor(Math.random() * LOOT.length)]; c.items.push({ ...it }); pushFeed({ t: "chips", items: [{ c: "item", x: `+ ${it.name}` }] }); sfx("chest"); txt = `НАХОДКА: ${it.name} — ${it.desc} (уже в инвентаре, не дублируй)`; }
     else { const tg = plotTargets(); if (tg.length) { const id = tg[0]; S.world.rumors = S.world.rumors || []; if (!S.world.rumors.includes(id)) S.world.rumors.push(id); pushFeed({ t: "chips", items: [{ c: "gold", x: `Слух: ${POIS[id].name}` }] }); txt = `НАХОДКА: след, ведущий к месту «${POIS[id].name}» и связанный с главной тайной — дай небольшой намёк, не раскрывая всего`; } else { c.gold += 5; txt = "НАХОДКА: 5 золотых (уже добавлено)"; } }
@@ -4981,7 +5002,7 @@ function genQuests(wd) {
   const R = mulberry(hash(wd.id + "#quests")); const out = {}; const places = Object.entries(wd.places).filter(([id, p]) => !p.inner && id !== wd.start && !p.wild && p.kind !== "street" && !p.btpl && !(p.blds && p.blds.length));
   const far = places.filter(([, p]) => p.where !== "village"); const main = Object.entries(wd.npcs).filter(([, n]) => !n.bld && !n.traveler); const town = Object.entries(wd.npcs).filter(([, n]) => n.bld && /кузнец|пекар|мельник|рыбак|вдова|охотник|травни|хозяй|лавоч|староста|крестьян|пастух/.test(n.role || ""));
   const givers = [...main.slice(0, 3), ...town.sort(() => R() - .5).slice(0, 2)]; if (!givers.length || !places.length) return out;
-  const pick = a => a[Math.floor(R() * a.length)]; const foeBy = { forest: "wolf", marsh: "giant_rat", mountains: "goblin", coast: "wolf" }[wd.biome] || "wolf"; const FN = { wolf: "Волк", giant_rat: "Гигантская крыса", goblin: "Гоблин", bandit: "Разбойник" };
+  const pick = a => a[Math.floor(R() * a.length)]; const foeBy = { forest: "wolf", marsh: "giant_rat", mountains: "goblin", coast: "wolf", desert: "bandit", tundra: "wolf", jungle: "giant_spider", islands: "bandit", steppe: "wolf", wasteland: "giant_rat", city: "bandit", alien: "wolf" }[wd.biome] || "wolf"; const FN = { wolf: foeNm(wd, "wolf", "Волк"), giant_rat: foeNm(wd, "giant_rat", "Гигантская крыса"), goblin: foeNm(wd, "goblin", "Гоблин"), bandit: foeNm(wd, "bandit", "Разбойник"), giant_spider: foeNm(wd, "giant_spider", "Гигантский паук") };
   const usedT = new Set(); const usedTy = [];
   givers.forEach(([gid, n], i) => {
     const types = ["hunt", "fetch", "deliver", "investigate"]; const type = types[(i + Math.floor(R() * 4)) % 4]; const pool0 = far.length ? far : places; const fresh = pool0.filter(([k]) => !usedT.has(k)); const tgt = pick(fresh.length ? fresh : pool0); const [tid, tp] = tgt; usedT.add(tid); const id = `q_${i}_${gid}`.slice(0, 30);
@@ -5009,7 +5030,7 @@ function makeRoadQuest(e) {
   else { const sid = siteAt(t[0], t[1], { name: "Поляна лунной травы", short: "тихая поляна", desc: "Серебристые стебли светятся в тени деревьев. Слишком тихо — даже птиц не слышно." }); Object.assign(q, { type: "fetch", target: sid, item: "Пучок лунной травы", objk: "item", foe: C().level >= 2 && R() < .5 ? { type: "giant_spider", n: 1, name: "Гигантский паук" } : { type: "wolf", n: 1, name: "Волк" }, title: "Лунная трава", brief: `«Принеси мне пучок лунной травы. Я сварю из неё то, что тебе самому пригодится. Найдёшь меня в «${start.name}».»`, goal: "Собрать лунную траву на дальней поляне и принести травнице", reward: { gold: 0, xp: 75, item: { name: "Зелье лечения", potion: true, heal: "2d4+2", desc: "Сварено травницей" }, item2: { name: "Зелье лечения", potion: true, heal: "2d4+2", desc: "Сварено травницей" } } }); }
   WD.quests[id] = q; return id;
 }
-function rewardText(q, st) { const g = Math.round((q.reward?.gold || 0) * (st?.bonus ? 1.5 : 1)); const it = q.reward?.item; const parts = []; if (g) parts.push(`${COIN}${g} зм`); if (q.reward?.xp) parts.push(`${q.reward.xp} опыта`); if (it) parts.push(it.weapon ? `добротное оружие (${(WT[it.weapon]?.n || "оружие").toLowerCase()})` : it.name); if (q.reward?.item2) parts.push(q.reward.item2.name); return parts; }
+function rewardText(q, st) { const g = Math.round((q.reward?.gold || 0) * (st?.bonus ? 1.5 : 1)); const it = q.reward?.item; const parts = []; if (g) parts.push(`${COIN}${g} ${MZ()}`); if (q.reward?.xp) parts.push(`${q.reward.xp} опыта`); if (it) parts.push(it.weapon ? `добротное оружие (${(WT[it.weapon]?.n || "оружие").toLowerCase()})` : it.name); if (q.reward?.item2) parts.push(q.reward.item2.name); return parts; }
 function openQuestOffer(qid) {
   const q = WD.quests[qid]; const st = qSt(qid); const n = NPCS[q.giver]; const tp = POIS[q.target]; let eta = ""; if (tp) { const h = heroPos(); const r = findPath(h.x, h.y, tp.x, tp.y); if (r) eta = fmtH(r.h); }
   const draw = () => `<div class="qo"><div class="qo-head">${npcPh(q.giver)}<div><div class="eyebrow">Просьба · ${QTYPES[q.type] || "Поручение"}</div><h2>${esc(q.title)}</h2><small class="home-note">${esc(n.name)}, ${esc(n.role)}</small></div></div>
@@ -5021,7 +5042,7 @@ function openQuestOffer(qid) {
   modal(draw(), root => { root.querySelector(".modal").classList.add("qo-modal");
     const bind = () => { root.querySelector("#qo-no").onclick = () => { st.st = "declined"; closeModal(); if (q.road) { S.world.enc && (S.world.enc.done = true); leaveEncounterPeople(); } after(); };
       root.querySelector("#qo-yes").onclick = () => { closeModal(); acceptQuest(qid); };
-      root.querySelector("#qo-hag")?.addEventListener("click", () => { const d = rnd(20); const b = skillBonus("persuasion"); const ok = d + b >= 13 || d === 20; if (ok) { st.bonus = true; st.haggled = `🎲 ${d} ${fmt(b)} = ${d + b} — ${n.name} уступает: награда ${Math.round(q.reward.gold * 1.5)} зм.`; sfx("chime"); } else { const ns = S.world.npcs[q.giver]; if (ns) ns.att -= 3; st.haggled = `🎲 ${d} ${fmt(b)} = ${d + b} — ${n.name} хмурится: «Не наглей». Отношение −3.`; sfx("thud"); } root.querySelector(".modal").innerHTML = draw(); bind(); save(); }); };
+      root.querySelector("#qo-hag")?.addEventListener("click", () => { const d = rnd(20); const b = skillBonus("persuasion"); const ok = d + b >= 13 || d === 20; if (ok) { st.bonus = true; st.haggled = `🎲 ${d} ${fmt(b)} = ${d + b} — ${n.name} уступает: награда ${Math.round(q.reward.gold * 1.5)} ${MZ()}.`; sfx("chime"); } else { const ns = S.world.npcs[q.giver]; if (ns) ns.att -= 3; st.haggled = `🎲 ${d} ${fmt(b)} = ${d + b} — ${n.name} хмурится: «Не наглей». Отношение −3.`; sfx("thud"); } root.querySelector(".modal").innerHTML = draw(); bind(); save(); }); };
     bind(); });
 }
 function acceptQuest(qid) {
@@ -5059,7 +5080,7 @@ function questTick() {
 function completeQuest(qid) {
   const q = WD.quests[qid]; const st = qSt(qid); const c = C(); const payer = q.type === "deliver" ? q.to : q.giver; const chips = []; st.st = "done"; st.done = worldTime().day;
   c.items = c.items.filter(i => i.quest !== qid);
-  const g = Math.round((q.reward?.gold || 0) * (st.bonus ? 1.5 : 1)); if (g) { c.gold += g; chips.push({ c: "gold", x: `+${g} зм` }); }
+  const g = Math.round((q.reward?.gold || 0) * (st.bonus ? 1.5 : 1)); if (g) { c.gold += g; chips.push({ c: "gold", x: `+${g} ${MZ()}` }); }
   const xp = Math.round((q.reward?.xp || 0) * (MODES[S.mode]?.xp || 1)); if (xp) { c.xp += xp; chips.push({ c: "xp", x: `+${xp} опыта` }); }
   [q.reward?.item, q.reward?.item2].filter(Boolean).forEach(it => { if (it.weapon) { const d = makeWeapon(it.weapon, mulberry(hash(qid)), { tier: "fine" }); giveWeapon(c, d); chips.push({ c: "item", x: `+ ${d.name}` }); } else { c.items.push({ name: it.name, desc: it.desc || "", ...(it.potion ? { potion: true, heal: it.heal || "2d4+2" } : {}) }); chips.push({ c: "item", x: `+ ${it.name}` }); } });
   [q.giver, payer].filter((v, i, a) => a.indexOf(v) === i).forEach(id => { const ns = S.world.npcs[id] || (S.world.npcs[id] = { att: 0, mem: [] }); ns.att = clamp(ns.att + 12, -100, 100); ns.mem.push(`герой выполнил поручение «${q.title}»`); chips.push({ c: "npc", x: `${NPCS[id].name}: +12 к отношению` }); });
@@ -5152,7 +5173,7 @@ function heroDmgMods(target, d, dmg, crit) {
   fc.hidden = false; S._hitInfo = { crit, ranged: !!d?.props?.includes("ranged") }; return txt;
 }
 function hitChance(bonus, ac, adv) { const p = clamp((21 - (ac - bonus)) / 20, .05, .95); return adv > 0 ? 1 - (1 - p) ** 2 : adv < 0 ? p * p : p; }
-function heroSave(ab, dc) { const hc = hcond(); const c0 = C(); let adv = 0; if (ab === "dex") { if (hc.dodge) adv++; if (hc.restrained) adv--; if (c0.cls === "rogue" && c0.level >= 7) adv++; } let r = d20(clamp(adv, -1, 1)); const b = saveBonus(ab); if (r.nat + b < dc && c0.cls === "fighter" && c0.level >= 9 && resOf(c0).indom > 0) { resOf(c0).indom--; const r2 = d20(clamp(adv, -1, 1)); pushFeed({ t: "chips", items: [{ c: "xp", x: `Несгибаемость: переброс ${r.nat} → ${r2.nat}` }] }); r = r2; } const tot = r.nat + b; return { ok: tot >= dc, nat: r.nat, tot, txt: `${ABIL_RU[ab]} d20 (${r.pair ? r.pair.join("/") : r.nat}) ${fmt(b)} = ${tot} против КС ${dc}` }; }
+function heroSave(ab, dc) { const hc = hcond(); const c0 = C(); let adv = 0; if (ab === "dex") { if (hc.dodge) adv++; if (hc.restrained) adv--; if (bcls(c0) === "rogue" && c0.level >= 7) adv++; } let r = d20(clamp(adv, -1, 1)); const b = saveBonus(ab); if (r.nat + b < dc && bcls(c0) === "fighter" && c0.level >= 9 && resOf(c0).indom > 0) { resOf(c0).indom--; const r2 = d20(clamp(adv, -1, 1)); pushFeed({ t: "chips", items: [{ c: "xp", x: `Несгибаемость: переброс ${r.nat} → ${r2.nat}` }] }); r = r2; } const tot = r.nat + b; return { ok: tot >= dc, nat: r.nat, tot, txt: `${ABIL_RU[ab]} d20 (${r.pair ? r.pair.join("/") : r.nat}) ${fmt(b)} = ${tot} против КС ${dc}` }; }
 /* ---------- намерения врагов ---------- */
 function planIntent(id) {
   const e = S.world.enemies[id], E = ENEMIES[id], K = kitOf(id); if (!e || !e.alive || e.surrendered) return null; const R = Math.random; const round = S.world.round || 1;
@@ -5233,7 +5254,7 @@ async function combatPreAct(act, preset, results) {
     if (r.ok) { const e = S.world.enemies[tgt]; e.known = true; fcond(tgt).marked = true; results.push({ kind: "note", title: `Герой раскусил ${E.name}: ${(K.traits || []).join("; ") || "обычный противник"}. Следующая атака по нему с преимуществом` }); } else results.push({ kind: "note", title: `Герою не удалось понять повадки врага` }); return; }
   if (act === "breakfree") { const r = await roll({ kind: "skill", skill: c.skills.includes("acrobatics") && mod(c.scores.dex) > mod(c.scores.str) ? "acrobatics" : "athletics", dc: 12, adv: 0, reason: "Вырваться из пут" });
     if (r.ok) { delete hc.restrained; delete hc.rTurns; results.push({ kind: "note", title: "Герой вырвался из паутины" }); } else results.push({ kind: "note", title: "Паутина держит крепко" }); return; }
-  if (act === "escape") { const n = aliveEnemiesHere().length; const r = await roll({ kind: "skill", skill: mod(c.scores.dex) >= mod(c.scores.str) ? "acrobatics" : "athletics", dc: 9 + n * 2 + (hc.restrained ? 4 : 0), adv: c.cls === "ranger" && c.level >= 7 ? 1 : 0, reason: "Вырваться из боя и уйти" });
+  if (act === "escape") { const n = aliveEnemiesHere().length; const r = await roll({ kind: "skill", skill: mod(c.scores.dex) >= mod(c.scores.str) ? "acrobatics" : "athletics", dc: 9 + n * 2 + (hc.restrained ? 4 : 0), adv: bcls(c) === "ranger" && c.level >= 7 ? 1 : 0, reason: "Вырваться из боя и уйти" });
     if (r.ok) { const here = S.world.loc; endCombatState(); S.world.combat = false; aliveEnemiesHere().forEach(id => { S.world.enemies[id].intent = undefined; S.world.enemies[id].pos = null; }); const back = S.world.prevLoc && POIS[S.world.prevLoc] && S.world.prevLoc !== here ? S.world.prevLoc : null;
       if (back) { tripTimeDone = true; moveTo(back); } results.push({ kind: "note", title: `Герою удалось вырваться из боя и уйти${back ? " в «" + POIS[back].name + "»" : ""}. Враги остались позади (бой окончен, start_combat не нужен)` }); sfx("whoosh"); combatBanner("Вы ушли", "escape"); }
     else results.push({ kind: "note", title: "Уйти не удалось — враги не отпускают" }); return; }
@@ -5328,8 +5349,8 @@ function renderCombatHud() {
   (c.spells || []).forEach(sid => { const sp = SPELLS[sid]; if (!sp) return; const self = ["heal", "buff", "smite"].includes(sp.kind); const needT = !self && sp.kind !== "sleep"; if (!hasSlot(sp.lvl, c) && sp.lvl) return; if (sp.kind === "heal" && c.hp >= c.maxHp) return;
     const sub = sp.kind === "attack" && T ? `${Math.round(hitChance(spellAtk(), T.ac, heroAttackAdv(tgt, null, null, true)) * 100)}% · ${sp.lvl ? sp.lvl + " круг" : "заговор"}` : sp.lvl ? `${sp.lvl} круг` : "заговор";
     btn("spell", ico("k_book", 22), sp.name, sub, () => takeTurn(`Применяю «${sp.name}»${needT && T ? ": " + T.name : self ? " на себя" : ""}`, { checks: [{ kind: "spell", spell: sid, target: needT ? tgt : null, reason: sp.desc }], combat: true }), dis || (needT && !T), sp.desc); });
-  { const rs = resOf(c); if (c.cls === "barbarian" && !c.rage && rs.rage > 0) btn("cls", ico("c_barbarian", 22), "Ярость", "+2 урона, урон по вам ÷2", () => { rs.rage--; c.rage = true; pushFeed({ t: "chips", items: [{ c: "dmg", x: "Ярость! +2 к урону, урон по вам вдвое меньше" }] }); sfx("horn"); after(); }, dis);
-    if (c.cls === "fighter" && c.secondWind && c.hp < c.maxHp) btn("cls", ico("k_heart", 22), "Второе дыхание", `1d10+${c.level} HP · бонусное`, () => { const d = rollDice("1d10"); const got = healHero(d.total + c.level); c.secondWind = false; pushFeed({ t: "chips", items: [{ c: "heal", x: `+${got} HP · Второе дыхание` }] }); sfx("heal"); fxHeroHeal(got); after(); }, dis);
+  { const rs = resOf(c); if (bcls(c) === "barbarian" && !c.rage && rs.rage > 0) btn("cls", ico("c_barbarian", 22), "Ярость", "+2 урона, урон по вам ÷2", () => { rs.rage--; c.rage = true; pushFeed({ t: "chips", items: [{ c: "dmg", x: "Ярость! +2 к урону, урон по вам вдвое меньше" }] }); sfx("horn"); after(); }, dis);
+    if (bcls(c) === "fighter" && c.secondWind && c.hp < c.maxHp) btn("cls", ico("k_heart", 22), "Второе дыхание", `1d10+${c.level} HP · бонусное`, () => { const d = rollDice("1d10"); const got = healHero(d.total + c.level); c.secondWind = false; pushFeed({ t: "chips", items: [{ c: "heal", x: `+${got} HP · Второе дыхание` }] }); sfx("heal"); fxHeroHeal(got); after(); }, dis);
     if (RACES[c.race]?.breath && rs.breath) btn("cls", ico("e_storm", 22), "Оружие дыхания", "по всем врагам", () => takeTurn("Выдыхаю пламя на врагов", { checks: [{ kind: "breath" }], combat: true }), dis); }
   btn("def", ico("k_dodge", 22), "Уклонение", "враги бьют с помехой", () => takeTurn("Ухожу в глухую оборону, уклоняюсь от ударов", { checks: [], cact: "dodge", combat: true }), dis);
   if (T) btn("def", ico("k_push", 22), "Толкнуть", `${SKILLS.athletics[0]} ${fmt(skillBonus("athletics"))} · КС ${10 + Math.max(0, T.atk - 2)}`, () => takeTurn(`Толкаю ${T.name}, пытаюсь сбить с ног`, { checks: [], cact: "shove", target: tgt, combat: true }), dis, "Сбитый с ног враг тратит ход, чтобы встать — и теряет свой замысел");
@@ -5626,7 +5647,7 @@ async function writeEpilogue(st) {
 МИР «${WD.name}»: ${WD.public}
 ТАЙНА: ${WD.secret}
 ВОЗМОЖНЫЕ КОНЦОВКИ: ${(WD.endings || []).join(" | ")}${S.endingName ? `\nНАСТУПИВШАЯ КОНЦОВКА: ${S.endingName}` : ""}
-ГЕРОЙ: ${charBrief()}
+${settingBrief()}ГЕРОЙ: ${charBrief()}
 ТЕКУЩЕЕ ЗАДАНИЕ НА МОМЕНТ ФИНАЛА: ${S.world.quest}
 ЛЕТОПИСЬ: ${S.summary || ""} ${S.world.facts.slice(-16).join(" | ")}
 ${pinsBrief()}${compEpilogue()}ПОГИБШИЕ ЖИТЕЛИ: ${dead}. ЖИВЫЕ ЖИТЕЛИ: ${npcs}.
@@ -5651,7 +5672,7 @@ function randomHero() {
   const R = Math.random, pick = a => a[Math.floor(R() * a.length)];
   D.race = pick(Object.keys(RACES)); D.cls = pick(Object.keys(CLASSES)); D.method = "array"; D.pool = STD.slice(); D.pickTok = null; autoAssign();
   D.bg = pick(Object.keys(BACKGROUNDS)); const lk = lockedSkills(); const cl = CLASSES[D.cls]; D.skills = shuffleArr(cl.skillList.filter(k => !lk.has(k))).slice(0, cl.skillCount);
-  D.kit = Math.floor(R() * (KITS[D.cls]?.length || 1)); D.kitSeed = rnd(1e9); D.kitW = null; if (D.cls === "ranger") D.favored = pick(Object.keys(FAVORED));
+  D.kit = Math.floor(R() * (KITS[D.cls]?.length || 1)); D.kitSeed = rnd(1e9); D.kitW = null; if (bcls(D) === "ranger") D.favored = pick(Object.keys(FAVORED));
   D.gender = R() < .5 ? "m" : "f"; const ns = nameSet(D.world); D.name = pick(ns[D.gender] || ns.m); D.lookDesc = `${pick(LOOK_BITS.hair)}, ${pick(LOOK_BITS.face)}, ${pick(LOOK_BITS.wear)}`;
   TRAITS.forEach(t => { D[t.k] = R() < .45 ? (R() < .5 ? 12 + Math.round(R() * 14) : 74 + Math.round(R() * 14)) : 40 + Math.round(R() * 20); });
   D.story = ""; D.epithet = ""; D.about = ""; D.step = 6; sfx("dice"); renderCreate();
@@ -5746,23 +5767,23 @@ function hasFeat(c, f) { return (c.feats || []).includes(f); }
 /* ---------- пассивные умения в механике ---------- */
 function heroSkillExtra(c, key) { let b = 0; const p = prof(c.level);
   if ((c.expert || []).includes(key) && c.skills.includes(key)) b += p;
-  if (c.cls === "fighter" && c.level >= 7 && !c.skills.includes(key) && ["athletics", "acrobatics", "stealth"].includes(key)) b += Math.ceil(p / 2);
+  if (bcls(c) === "fighter" && c.level >= 7 && !c.skills.includes(key) && ["athletics", "acrobatics", "stealth"].includes(key)) b += Math.ceil(p / 2);
   if (hasFeat(c, "observant") && (key === "perception" || key === "investigation")) b += 3; return b; }
-function heroSaveExtra(c, ab) { return c.cls === "paladin" && c.level >= 6 ? Math.max(1, mod(c.scores.cha)) : 0; }
-function skillAdv(key) { const c = C(); if (c.cls === "rogue" && c.level >= 9 && key === "stealth") return 1; if (c.cls === "ranger" && c.level >= 10 && (key === "stealth" || key === "survival") && !inSettlement(S.world.loc)) return 1; return 0; }
-function condImmune(cond) { const c = C(); return c.cls === "barbarian" && c.level >= 6 && c.rage && (cond === "prone" || cond === "restrained"); }
-function heroInitRoll(first) { const c = C(); const a = rnd(20), b = rnd(20); const adv = c.cls === "barbarian" && c.level >= 7; const nat = adv ? Math.max(a, b) : a; const bonus = mod(c.scores.dex) + traitFx(c.traits || {}).init + (hasFeat(c, "alert") ? 5 : 0) + (first ? 5 : 0); return { nat, tot: nat + bonus, txt: `d20 (${adv ? a + " / " + b : nat}) ${fmt(bonus)}${first ? " · внезапность" : ""}${hasFeat(c, "alert") ? " · бдительность" : ""}` }; }
+function heroSaveExtra(c, ab) { return bcls(c) === "paladin" && c.level >= 6 ? Math.max(1, mod(c.scores.cha)) : 0; }
+function skillAdv(key) { const c = C(); if (bcls(c) === "rogue" && c.level >= 9 && key === "stealth") return 1; if (bcls(c) === "ranger" && c.level >= 10 && (key === "stealth" || key === "survival") && !inSettlement(S.world.loc)) return 1; return 0; }
+function condImmune(cond) { const c = C(); return bcls(c) === "barbarian" && c.level >= 6 && c.rage && (cond === "prone" || cond === "restrained"); }
+function heroInitRoll(first) { const c = C(); const a = rnd(20), b = rnd(20); const adv = bcls(c) === "barbarian" && c.level >= 7; const nat = adv ? Math.max(a, b) : a; const bonus = mod(c.scores.dex) + traitFx(c.traits || {}).init + (hasFeat(c, "alert") ? 5 : 0) + (first ? 5 : 0); return { nat, tot: nat + bonus, txt: `d20 (${adv ? a + " / " + b : nat}) ${fmt(bonus)}${first ? " · внезапность" : ""}${hasFeat(c, "alert") ? " · бдительность" : ""}` }; }
 function heroLevelDmg(target, d, dmg, crit) {
   const c = C(); let txt = ""; const melee = !(d?.props || []).includes("ranged"); const E = ENEMIES[target];
-  if (crit && c.cls === "barbarian" && c.level >= 9) { const m = /(\d+)?d(\d+)/.exec(String(d?.dice || "1d8")); if (m) { const x = rollDice("1d" + m[2]); dmg.total += x.total; txt += ` + сокрушительный крит ${x.text}`; } }
-  if (c.cls === "cleric" && c.level >= 8) { const x = rollDice("1d8", crit); dmg.total += x.total; txt += ` + божественный удар ${x.text}`; }
-  if (c.cls === "fighter" && c.level >= 10 && melee) { dmg.total += 2; txt += " + стиль 2"; }
-  if (c.cls === "ranger" && c.level >= 6 && c.favored && FAVORED[c.favored]?.[2].has(E?.type)) { dmg.total += 2; txt += " + опытный охотник 2"; }
+  if (crit && bcls(c) === "barbarian" && c.level >= 9) { const m = /(\d+)?d(\d+)/.exec(String(d?.dice || "1d8")); if (m) { const x = rollDice("1d" + m[2]); dmg.total += x.total; txt += ` + сокрушительный крит ${x.text}`; } }
+  if (bcls(c) === "cleric" && c.level >= 8) { const x = rollDice("1d8", crit); dmg.total += x.total; txt += ` + божественный удар ${x.text}`; }
+  if (bcls(c) === "fighter" && c.level >= 10 && melee) { dmg.total += 2; txt += " + стиль 2"; }
+  if (bcls(c) === "ranger" && c.level >= 6 && c.favored && FAVORED[c.favored]?.[2].has(E?.type)) { dmg.total += 2; txt += " + опытный охотник 2"; }
   return txt;
 }
 function spellDiceFor(sp) { const c = C(); if (sp.lvl === 0 && c.level >= 5) { const m = /^(\d+)d(\d+)(.*)$/.exec(sp.dice); if (m) return `${+m[1] * 2}d${m[2]}${m[3]}`; } return sp.dice; }
 function spellDmgBonus(sp) { const c = C(); let b = 0; const cm = castMod();
-  if (c.cls === "wizard" && ((c.level >= 6 && sp.lvl === 0) || c.level >= 10)) b += Math.max(0, cm); if (c.cls === "warlock" && c.level >= 6 && sp.lvl > 0) b += Math.max(0, cm); if (c.cls === "druid" && c.level >= 10) b += Math.max(0, cm);
+  if (bcls(c) === "wizard" && ((c.level >= 6 && sp.lvl === 0) || c.level >= 10)) b += Math.max(0, cm); if (bcls(c) === "warlock" && c.level >= 6 && sp.lvl > 0) b += Math.max(0, cm); if (bcls(c) === "druid" && c.level >= 10) b += Math.max(0, cm);
   return b; }
 function bardDie(c) { return c.level >= 10 ? "1d10" : c.level >= 5 ? "1d8" : "1d6"; }
 /* ---------- сильные враги для высоких уровней ---------- */
@@ -5804,8 +5825,8 @@ function levelUp() {
   const c = C(); if (c.level >= MAX_LEVEL || c.xp < XP_LEVELS[c.level] || lvlFlow) return; const nl = c.level + 1;
   levelFanfare(); levelBurst(nl, c).then(() => { lvlFlow = { nl, step: 0, hp: null, skills: [], asi: null, feat: null }; renderLevelFlow(); });
 }
-function lvlSkillPicks(c, nl) { return c.cls === "rogue" && nl === 6 ? 2 : c.cls === "bard" && nl === 10 ? 2 : 1; }
-function canExpert(c, nl) { return nl >= 6 || ["rogue", "bard"].includes(c.cls); }
+function lvlSkillPicks(c, nl) { return bcls(c) === "rogue" && nl === 6 ? 2 : bcls(c) === "bard" && nl === 10 ? 2 : 1; }
+function canExpert(c, nl) { return nl >= 6 || ["rogue", "bard"].includes(bcls(c)); }
 function renderLevelFlow() {
   const c = C(); const F = lvlFlow; const nl = F.nl; const cls = CLASSES[c.cls]; const hd = cls.hd; const cm = mod(c.scores.con) + (RACES[c.race].hpBonus || 0) + (hasFeat(c, "tough") ? 2 : 0);
   const steps = ["hp", "skill", ...(isAsiLevel(c.cls, nl) ? ["asi"] : []), "powers"]; const st = steps[F.step];
@@ -5829,7 +5850,7 @@ function renderLevelFlow() {
     <div class="row"><button class="btn primary" type="button" id="lv-next" ${(F.tab === "abil" ? pts === 2 : !!F.feat) ? "" : "disabled"}>Дальше</button></div>`; }
   if (st === "powers") { const feat = LEVEL_FEATS[c.cls]?.[nl] || ""; const spells = [].concat(LEVEL_SPELLS[c.cls]?.[nl] || []).filter(x => SPELLS[x]); const ns = slotsFor(c.cls, nl); const os = slotsFor(c.cls, nl - 1); const cards = [];
     cards.push(["l_up", "Умение уровня", feat]); if (prof(nl) > prof(nl - 1)) cards.push(["l_stars", "Бонус мастерства", `${fmt(prof(nl - 1))} → ${fmt(prof(nl))}: все владения, атаки и заклинания точнее`]);
-    if (nl === 5 && EXTRA_ATK.has(c.cls)) cards.push(["k_swords", "Дополнительная атака", "Два удара за ход"]); if (c.cls === "rogue" && Math.ceil(nl / 2) > Math.ceil((nl - 1) / 2)) cards.push(["k_venom", "Скрытая атака", `${Math.ceil(nl / 2)}d6`]);
+    if (nl === 5 && EXTRA_ATK.has(bcls(c))) cards.push(["k_swords", "Дополнительная атака", "Два удара за ход"]); if (bcls(c) === "rogue" && Math.ceil(nl / 2) > Math.ceil((nl - 1) / 2)) cards.push(["k_venom", "Скрытая атака", `${Math.ceil(nl / 2)}d6`]);
     if (nl === 5 && (cls.spells || cls.pact)) cards.push(["l_spark", "Заговоры сильнее", "Урон заговоров удваивается"]);
     spells.forEach(x => cards.push(["k_book", "Новое заклинание", `${SPELLS[x].name} — ${SPELLS[x].desc}`])); const sl = Object.entries(ns).filter(([l, n]) => (os[l] || 0) < n); if (sl.length) cards.push(["k_aura", "Ячейки заклинаний", sl.map(([l, n]) => `${l} круг: ${os[l] || 0} → ${n}`).join(", ")]);
     if (F.skills.length) cards.push(["l_muscle", "Навыки", F.skills.map(k => `${SKILLS[k][0]}${c.skills.includes(k) ? " (экспертиза)" : ""}`).join(", ")]); if (F.feat) cards.push([FEATS[F.feat].ico, "Черта: " + FEATS[F.feat].n, FEATS[F.feat].d]); if (F.asi) cards.push(["a_str", "Характеристики", Object.entries(F.asi).filter(([, v]) => v).map(([a, v]) => `${ABIL_FULL[a]} +${v}`).join(", ")]);
@@ -5865,7 +5886,7 @@ function levelupHTML(e) { const cls = CLASSES[e.cls]; return `<div class="lu-in"
 let lvlNotified = 0;
 function checkLevelReady() { if (!S) return; const c = C(); const nx = nextXP(c); if (nx != null && c.xp >= nx && lvlNotified !== c.level) { lvlNotified = c.level; setTimeout(() => { sfx("holy3", .7); pushFeed({ t: "chips", items: [{ c: "xp", x: `Доступен ${c.level + 1} уровень! Нажмите «Новый уровень» в листе героя` }] }); }, 900); } }
 
-{ const _ac = acNow; acNow = function (c) { return _ac(c) + (hasFeat(c, "sentinel") ? 1 : 0) + (c.cls === "warlock" && c.level >= 10 ? 2 : 0); }; }
+{ const _ac = acNow; acNow = function (c) { return _ac(c) + (hasFeat(c, "sentinel") ? 1 : 0) + (bcls(c) === "warlock" && c.level >= 10 ? 2 : 0); }; }
 function aoeHit(sp, main) { const others = aliveEnemiesHere().filter(id => id !== main); if (!others.length) return ""; const dc = spellDC(); const parts = [];
   others.forEach(id => { const E = ENEMIES[id]; const sv = rnd(20) + (E.dex || 0); const d = rollDice(spellDiceFor(sp)); const dmg = Math.max(0, (sv >= dc ? Math.floor(d.total / 2) : d.total) + spellDmgBonus(sp)); hurtEnemy(id, dmg); parts.push(`${E.name} −${dmg}${S.world.enemies[id].alive ? "" : " (повержен)"}`); });
   return ` · задеты: ${parts.join(", ")}`; }
@@ -6109,11 +6130,11 @@ function openRecruit(id, agreed) {
     <div class="cr-grid"><div><h4>В бою</h4><p>${{ tank: "Держит удар и прикрывает героя.", striker: "Наносит много урона.", healer: "Лечит и поднимает павших.", ranged: "Стреляет издалека.", caster: "Бьёт магией по нескольким врагам.", support: "Вдохновляет и помогает." }[A.role]}</p><p class="cr-ab"><b>${esc(A.ab.n)}.</b> ${esc(A.ab.d)}</p></div>
       <div><h4>Помогает в навыках</h4><div class="cr-tags">${A.skills.map(s => `<span>${esc(SKILLS[s][0])}</span>`).join("")}</div><h4>Что ценит</h4><div class="cr-tags">${known.map(t => `<span class="lk">${esc(t)}</span>`).join("")}<span class="unk">остальное узнаете в пути</span></div></div></div>
     ${full ? `<p class="cr-warn">Отряд полон (${PARTY_MAX}). Сначала отпустите кого-то.</p>` : !trust && d.join !== "gold" ? `<p class="cr-warn">${esc(n.name)} пока недостаточно вам доверяет (нужно хотя бы «дружелюбно»). Можно попробовать убедить${tried ? " — но сегодня уже пробовали" : ""}.</p>` : ""}
-    <div class="row">${`<button class="btn" type="button" id="cr-no">Не сейчас</button>`}${!full && d.join === "gold" && !agreed ? `<button class="btn primary" type="button" id="cr-pay" ${purse(c) < price * 10 ? "disabled" : ""}>${COIN} Нанять за ${price} зм</button>` : ""}${!full && !trust && d.join !== "gold" && !tried ? `<button class="btn" type="button" id="cr-talk">Уговорить <small>Убежд. ${fmt(skillBonus("persuasion"))} · КС 14</small></button>` : ""}${!full && (trust && d.join !== "gold" || agreed) ? `<button class="btn primary" type="button" id="cr-yes">Принять в отряд</button>` : ""}</div></div>`;
+    <div class="row">${`<button class="btn" type="button" id="cr-no">Не сейчас</button>`}${!full && d.join === "gold" && !agreed ? `<button class="btn primary" type="button" id="cr-pay" ${purse(c) < price * 10 ? "disabled" : ""}>${COIN} Нанять за ${price} ${MZ()}</button>` : ""}${!full && !trust && d.join !== "gold" && !tried ? `<button class="btn" type="button" id="cr-talk">Уговорить <small>Убежд. ${fmt(skillBonus("persuasion"))} · КС 14</small></button>` : ""}${!full && (trust && d.join !== "gold" || agreed) ? `<button class="btn primary" type="button" id="cr-yes">Принять в отряд</button>` : ""}</div></div>`;
   modal(html, root => { root.querySelector(".modal").classList.add("cr-modal");
     root.querySelector("#cr-no").onclick = closeModal;
     root.querySelector("#cr-yes")?.addEventListener("click", () => { closeModal(); compJoin(id, "trust"); });
-    root.querySelector("#cr-pay")?.addEventListener("click", () => { setPurse(c, purse(c) - price * 10); pushFeed({ t: "chips", items: [{ c: "gold", x: `−${price} зм` }] }); closeModal(); compJoin(id, "gold"); });
+    root.querySelector("#cr-pay")?.addEventListener("click", () => { setPurse(c, purse(c) - price * 10); pushFeed({ t: "chips", items: [{ c: "gold", x: `−${price} ${MZ()}` }] }); closeModal(); compJoin(id, "gold"); });
     root.querySelector("#cr-talk")?.addEventListener("click", () => { closeModal(); (S.world.compTry = S.world.compTry || {})[id] = today; S.pendingRecruit = id; S.dlgPending = id;
       takeTurn(`Уговариваю ${n.name} пойти со мной`, { checks: [{ kind: "skill", skill: "persuasion", dc: 14, reason: "Позвать в отряд" }], talk_to: id }); });
   });
@@ -6650,6 +6671,443 @@ function voxPick(eff, sp) { const v = String(eff?.voice || "").toLowerCase().tri
 { const _cj = compJoin; compJoin = function (id) { try { vox(id, "pleased", { force: true, delay: 300 }); } catch (e) {} return _cj.apply(this, arguments); }; }
 function voxPreview() { const all = [...(VOX.f?.laugh || []), ...(VOX.m?.huh || []), ...(VOX.f?.pleased || [])]; if (!all.length || !AU.cfg.on) return; const f = all[Math.floor(Math.random() * all.length)]; const el = new Audio(auSrc(f)); el.volume = clamp(AU.cfg.vox ?? .8, 0, 1); el.play().catch(() => {}); }
 
+/* WORLDS */
+/* =========================================================================
+   МИРЫ ЛЮБОЙ АТМОСФЕРЫ: сеттинги, биомы, лексикон, особые классы/народы/предыстории
+   Механика остаётся 5e — меняется облик: названия, деньги, оружие, враги, карта
+   ========================================================================= */
+/* группы оружия: какие типы WT получают одно «семейство» названий (по порядку) */
+const WGROUP = { knife: ["dagger", "sickle"], club: ["club", "lhammer", "mace", "morningstar", "flail", "warhammer"], club2: ["greatclub", "maul"], axe1: ["handaxe"], axe: ["battleaxe", "warpick"], axe2: ["greataxe"],
+  sword1: ["shortsword", "scimitar", "rapier"], sword: ["longsword"], sword2: ["greatsword", "scythe"], pole: ["spear", "trident"], pole2: ["glaive", "halberd"], thrown: ["javelin"], staff: ["staff"], whip: ["whip"], sling: ["sling"],
+  bow: ["shortbow"], bow2: ["longbow"], xbow: ["lcrossbow"], xbow2: ["hcrossbow"] };
+const WSET = {
+  fantasy: { n: "Фэнтези", d: "Мечи, магия, чудовища и забытые руины", col: "#e9b45c", biome: "coast", house: "roof",
+    prompt: "классическое фэнтези: средневековье, мечи, магия, чудовища, храмы и древние руины" },
+  steampunk: { n: "Стимпанк", d: "Пар, шестерни, дирижабли и газовые фонари", col: "#c98a4b", biome: "city", house: "roof", roof: ["#7a4a3a", "#5c4636"],
+    prompt: "стимпанк: викторианская эпоха пара, заводы, дирижабли, газовые фонари, механизмы и эфирная наука вместо магии; чудовища — механические и алхимические",
+    photo: "cinematic photograph, victorian steampunk industrial town, brass and copper machinery, coal smoke, gas lamps, sepia and teal palette, 85mm lens, film grain",
+    money: ["ф", "ш", "фунтов"],
+    cls: { fighter: ["Гвардеец", "Сталь и порох"], rogue: ["Карманник", "Ловкость и отмычки"], wizard: ["Эфиролог", "Наука эфира"], cleric: ["Капеллан Машины", "Вера и медицина"], barbarian: ["Кочегар", "Ярость и пар"],
+      paladin: ["Рыцарь Шестерни", "Клятва и броня"], ranger: ["Аэронавт-стрелок", "Дальний выстрел"], bard: ["Артист кабаре", "Слово и сцена"], warlock: ["Подписант", "Сделка с эфирной сущностью"], druid: ["Биоалхимик", "Живые соки и газы"] },
+    race: { human: ["Человек", "Горожанин века пара"], elf: ["Эльф-аристократ", "Древний род, тонкие черты"], dwarf: ["Дварф-механик", "Плоть, сталь и заклёпки"], halfling: ["Полурослик", "Мелкий, удачливый, вездесущий"],
+      halfelf: ["Полукровка", "Свой и чужой в любом салоне"], gnome: ["Гном-изобретатель", "Гений шестерёнок"], halforc: ["Полуорк-докер", "Сила портовых трущоб"], tiefling: ["Эфирник", "Отмечен эфирной аварией"], dragonborn: ["Паровой голем", "Котёл вместо сердца"] },
+    bg: { acolyte: "Послушник Церкви Машины", noble: "Наследник промышленника", hermit: "Затворник-изобретатель", sailor: "Аэронавт", knight: "Офицер Королевской гвардии", witch: "Ученик алхимика", pilgrim: "Странствующий проповедник", monster: "Охотник на механических тварей", healer: "Аптекарь", miner: "Шахтёр", sage: "Учёный Академии", cultist: "Беглец из ложи" },
+    w: { knife: [["Нож", "m"], ["Резак", "m"]], club: [["Трость со свинцом", "f"], ["Гаечный ключ", "m"], ["Дубинка констебля", "f"], ["Кастет с шипами", "m"], ["Цепь", "f"], ["Паровой молот", "m"]], club2: [["Лом", "m"], ["Кувалда", "f"]],
+      axe1: [["Тесак", "m"]], axe: [["Пожарный топор", "m"], ["Кирка", "f"]], axe2: [["Паровой колун", "m"]], sword1: [["Кортик", "m"], ["Сабля", "f"], ["Шпага-трость", "f"]], sword: [["Палаш", "m"]], sword2: [["Цепная пила", "f"], ["Механическая коса", "f"]],
+      pole: [["Штык-нож", "m"], ["Багор", "m"]], pole2: [["Алебарда стражи", "f"], ["Паровое копьё", "n"]], thrown: [["Метательный нож", "m"]], staff: [["Посох с тесла-катушкой", "m"]], whip: [["Хлыст", "m"]], sling: [["Рогатка", "f"]],
+      bow: [["Пистолет", "m"]], bow2: [["Длинноствольная винтовка", "f"]], xbow: [["Пневморужьё", "n"]], xbow2: [["Паровое ружьё", "n"]] },
+    a: { leather: "Кожаный плащ", studded: "Плащ с пластинами", chainshirt: "Кольчужный жилет", scale: "Латунная кираса", chainmail: "Клёпаные латы", shield: "Стальной щит" },
+    foe: { zombie: "Гальванический мертвец", skeleton: "Заводной автоматон", bandit: "Бандит", cultist: "Сектант ложи", thug: "Главарь банды", wolf: "Бойцовый пёс", giant_rat: "Канализационная крыса", goblin: "Трубочист-налётчик", giant_spider: "Механический паук",
+      guard_x: "Констебль", dire_wolf: "Заводной волкодав", ogre: "Паровой громила", owlbear: "Ходячий механизм", wight: "Мертвец на эфире", ghost: "Эфирный призрак" },
+    it: { potion: "Целебный эликсир", potion2: "Сильный эликсир", holywater: "Эфирная соль", torch: "Карбидная лампа", lantern: "Газовый фонарь", oil: "Баллон газа", candles: "Спички", incense: "Нюхательная соль", flint: "Зажигалка", ale: "Кружка портера", drink: "Портер на всех" },
+    wd: { "Книга заклинаний": "Журнал формул", "Мешочек с компонентами": "Набор реактивов", "Священный символ": "Шестерня-оберег", "Колчан со стрелами": "Патронташ", "Лютня": "Концертина", "Книга теней": "Контракт с печатью", "Омела": "Пробирки", "Травяной сбор": "Аптечка травника", "Молитвенник": "Катехизис Машины", "Свечная лавка": "Лавка ламп", "свечник": "ламповщик", "свечника": "ламповщика", "углежог": "кочегар", "углежога": "кочегара", "торфяник": "шахтёр", "торфяника": "шахтёра", "бортник": "механик", "бортника": "механика", "Караульня": "Полицейский участок", "сержант стражи": "сержант полиции", "стражник": "констебль" },
+    names: { m: ["Эдгар", "Альберт", "Чарльз", "Генри", "Уильям", "Освальд", "Томас", "Бенджамин", "Артур", "Сайлас", "Эдвин", "Руфус"], f: ["Аделаида", "Виктория", "Элеонор", "Мэри", "Шарлотта", "Ада", "Эдит", "Беатрис", "Мод", "Клара", "Эвелин", "Роза"] },
+    looks: { m: ["в цилиндре и с моноклем", "в засаленном рабочем фартуке", "с бакенбардами и часами на цепочке", "в лётных очках на лбу", "в потёртом сюртуке"], f: ["в корсете поверх рабочей блузы", "в шляпке с вуалью", "с гогглами на волосах", "в перчатках, испачканных маслом", "в строгом платье гувернантки"] } },
+  cyberpunk: { n: "Киберпанк", d: "Неон, импланты, корпорации и хакеры", col: "#e45cc8", biome: "city", house: "flat", neon: true,
+    prompt: "киберпанк: мегаполис будущего, неон и дождь, корпорации, импланты, хакеры, банды, нейросети; вместо магии — кибернетика, сеть и технологии; вместо чудовищ — дроны, киборги и мутанты",
+    photo: "cinematic photograph, cyberpunk megacity at night, neon signs, rain-soaked streets, holograms, cybernetic implants, teal and magenta palette, 50mm lens, film grain",
+    money: ["кр", "ц", "кредитов"],
+    cls: { fighter: ["Соло", "Наёмный боец"], rogue: ["Взломщик", "Тень и отмычка"], wizard: ["Нетраннер", "Код и сеть"], cleric: ["Рипердок", "Импланты и лечение"], barbarian: ["Хромированный берсерк", "Боевые стимуляторы"],
+      paladin: ["Корпоративный страж", "Присяга и броня"], ranger: ["Охотник за головами", "Слежка и прицел"], bard: ["Медиа-звезда", "Голос улиц"], warlock: ["Должник ИИ", "Сила в кредит"], druid: ["Биохакер", "Генная инженерия"] },
+    race: { human: ["Человек", "Чистый, почти без имплантов"], elf: ["Генмод", "Выращен в лаборатории, изящен"], dwarf: ["Хром-тяжеловес", "Тело на треть из металла"], halfling: ["Уличный бегун", "Мелкий, юркий, везучий"],
+      halfelf: ["Полусинт", "Наполовину искусственный"], gnome: ["Технарь", "Мелкий гений железа"], halforc: ["Мутант трущоб", "Сила, шрамы и косые взгляды"], tiefling: ["Демон-мод", "Рога, хвост и неоновые глаза"], dragonborn: ["Боевой киборг", "Броня и огнемёт в груди"] },
+    bg: { soldier: "Ветеран корпоративных войн", sage: "Корпоративный аналитик", criminal: "Член банды", acolyte: "Сектант техно-культа", folk: "Герой трущоб", noble: "Наследник корпорации", hermit: "Отшельник вне сети", sailor: "Портовый докер", outlander: "Кочевник пустошей", entertainer: "Стример",
+      artisan: "Механик", knight: "Агент корпоративной безопасности", witch: "Ученица нетраннера", pilgrim: "Паломник цифровой веры", gravedigger: "Утилизатор", monster: "Охотник на киберпсихов", healer: "Уличный медик", miner: "Рабочий мегазавода", antiquarian: "Собиратель старых технологий", merchant: "Брокер", cultist: "Беглец из секты ИИ", haunted: "Преследуемый цифровым двойником" },
+    w: { knife: [["Нож-бабочка", "m"], ["Моносерп", "m"]], club: [["Шокер", "m"], ["Дубинка", "f"], ["Электродубинка", "f"], ["Кастет", "m"], ["Цепь", "f"], ["Гидравлический молот", "m"]], club2: [["Бита", "f"], ["Пневмомолот", "m"]],
+      axe1: [["Мачете", "n"]], axe: [["Термотопор", "m"], ["Ледоруб", "m"]], axe2: [["Пила-тесак", "f"]], sword1: [["Короткий моноклинок", "m"], ["Мачете-сабля", "f"], ["Нанорапира", "f"]], sword: [["Моноклинок", "m"]], sword2: [["Термокатана", "f"], ["Цепная коса", "f"]],
+      pole: [["Электрокопьё", "n"], ["Гарпун", "m"]], pole2: [["Силовая глефа", "f"], ["Плазменная алебарда", "f"]], thrown: [["Метательный диск", "m"]], staff: [["Шоковый жезл", "m"]], whip: [["Мономолекулярная нить", "f"]], sling: [["Травматический пистолет", "m"]],
+      bow: [["Пистолет", "m"]], bow2: [["Снайперская винтовка", "f"]], xbow: [["Пистолет-пулемёт", "m"]], xbow2: [["Дробовик", "m"]] },
+    a: { leather: "Синтекожаная куртка", studded: "Армированная куртка", chainshirt: "Кевларовый жилет", scale: "Бронежилет", chainmail: "Тактическая броня", shield: "Баллистический щит" },
+    foe: { zombie: "Киберзомби", skeleton: "Охранный дрон", bandit: "Бандит", cultist: "Сектант", thug: "Главарь банды", wolf: "Киберпёс", giant_rat: "Мутировавшая крыса", goblin: "Уличный панк", giant_spider: "Паук-дрон",
+      guard_x: "Охранник", dire_wolf: "Боевой киберпёс", ogre: "Тяжёлый киборг", owlbear: "Боевой мех", wight: "Сбойный андроид", ghost: "Цифровой призрак" },
+    it: { potion: "Медстимулятор", potion2: "Сильный медстимулятор", antidote: "Антитоксин", holywater: "Очищающий раствор", healkit: "Аптечка", torch: "Фонарик", lantern: "Прожектор", oil: "Аккумулятор", thieves: "Набор взломщика", candles: "Химсвет", incense: "Ароматизатор", flint: "Зажигалка",
+      waterskin: "Фляга", ale: "Банка синтепива", wine: "Бутылка синтевина", drink: "Синтепиво на всех", room: "Капсула на ночь", bless: "Апгрейд импланта" },
+    wd: { "Книга заклинаний": "Кибердека", "Мешочек с компонентами": "Набор чипов", "Священный символ": "Хирургический набор", "Колчан со стрелами": "Запасные магазины", "Лютня": "Электрогитара", "Книга теней": "Чип с договором", "Омела": "Пробирки с культурами", "Травяной сбор": "Биореактор", "Молитвенник": "Голопланшет", "Воровские инструменты": "Набор взломщика", "Набор путешественника": "Рюкзак выживания",
+      "Кузница": "Мастерская имплантов", "кузнец": "рипердок", "кузнеца": "рипердока", "Пекарня": "Закусочная", "пекарь": "повар", "пекаря": "повара", "Свечная лавка": "Лавка электроники", "свечник": "электронщик", "свечника": "электронщика", "Лавка мясника": "Лавка синтемяса", "Амбар": "Склад", "Сарай для снастей": "Гараж", "Сарай": "Гараж",
+      "Караульня": "Пост охраны", "сержант стражи": "командир охраны", "стражник": "охранник", "Дом купца": "Квартира брокера", "зажиточный купец": "брокер", "купца": "брокера", "Дом хуторянина": "Дом фермера-гидропонщика", "хуторянин": "гидропонщик", "хуторянина": "гидропонщика", "батрак": "грузчик",
+      "углежог": "сборщик утиля", "углежога": "сборщика утиля", "торфяник": "рабочий завода", "торфяника": "рабочего завода", "бортник": "дроновод", "бортника": "дроновода", "бондарь": "сварщик", "бондаря": "сварщика", "знахарка": "уличная медичка", "знахарки": "уличной медички", "травница": "фармацевт", "травницы": "фармацевта",
+      "резчик по кости": "тату-мастер", "резчика по кости": "тату-мастера", "пастух": "курьер", "пастуха": "курьера", "лодочник": "таксист", "лодочника": "таксиста", "Ремесленная улица": "Улица мастерских", "Крепостные ворота": "Блокпост" },
+    names: { m: ["Рэй", "Джин", "Марко", "Кай", "Декс", "Виктор", "Тоши", "Рик", "Зейн", "Лео", "Иван", "Нико"], f: ["Кира", "Ю", "Сабина", "Нова", "Мия", "Рэйчел", "Айко", "Лина", "Зоя", "Эйва", "Нэнси", "Вера"] },
+    looks: { m: ["с хромированной челюстью", "с неоновым ирокезом", "в кожанке с подсветкой", "с кибернетическим глазом", "в мятом корпоративном костюме"], f: ["с неоновыми прядями", "с имплантом на виске", "в светящемся плаще-дождевике", "с татуировками-схемами", "в армированной куртке"] } },
+  postapoc: { n: "Постапокалипсис", d: "Руины, радиация, мутанты и дефицит", col: "#b8a35a", biome: "wasteland", house: "ruin",
+    prompt: "постапокалипсис: мир после катастрофы, руины старых городов, радиация, мутанты, рейдеры, общины выживших, дефицит воды и патронов; вместо магии — старые технологии и мутации",
+    photo: "cinematic photograph, post-apocalyptic wasteland settlement, rusted scrap metal shacks, dust and haze, makeshift gear, desaturated ochre palette, 35mm lens, film grain",
+    money: ["пт", "гл", "патронов"],
+    cls: { fighter: ["Боец", "Ствол и выдержка"], rogue: ["Сталкер", "Тихо и ловко"], wizard: ["Технарь", "Знания старого мира"], cleric: ["Медик", "Лечение и вера"], barbarian: ["Рейдер", "Ярость пустошей"],
+      paladin: ["Страж общины", "Клятва и броня"], ranger: ["Следопыт пустошей", "Охота и выживание"], bard: ["Радиоведущий", "Голос эфира"], warlock: ["Отмеченный Зоной", "Сила аномалий"], druid: ["Мутант-шептун", "Связь с изменённой природой"] },
+    race: { human: ["Выживший", "Обычный человек пустошей"], elf: ["Чистокровный из бункера", "Изящный, здоровый, чужой"], dwarf: ["Подземник", "Крепкий житель тоннелей"], halfling: ["Карлик-везунчик", "Мелкий, ловкий, удачливый"],
+      halfelf: ["Полукровка бункера", "Своя кровь наполовину"], gnome: ["Мусорщик-изобретатель", "Чинит что угодно"], halforc: ["Мутант", "Сила и шрамы радиации"], tiefling: ["Отмеченный", "Светится в темноте"], dragonborn: ["Огнедышащий мутант", "Кожа в чешуе, огонь в лёгких"] },
+    bg: { soldier: "Бывший военный", sage: "Хранитель архива", criminal: "Бывший рейдер", acolyte: "Служитель культа Бомбы", folk: "Герой общины", noble: "Сын главы убежища", hermit: "Одиночка", sailor: "Караванщик", outlander: "Пришелец издалека", entertainer: "Бродячий музыкант",
+      artisan: "Ремонтник", knight: "Боец Ордена Стали", witch: "Ученик знахаря", pilgrim: "Паломник к Кратеру", gravedigger: "Мародёр", monster: "Охотник на мутантов", miner: "Копатель руин", antiquarian: "Искатель довоенного", merchant: "Торговец караванов" },
+    w: { knife: [["Заточка", "f"], ["Серп из арматуры", "m"]], club: [["Труба", "f"], ["Гаечный ключ", "m"], ["Бита с гвоздями", "f"], ["Шипастая дубина", "f"], ["Цепь", "f"], ["Молот из рельса", "m"]], club2: [["Дорожный знак", "m"], ["Кувалда", "f"]],
+      axe1: [["Тесак", "m"]], axe: [["Пожарный топор", "m"], ["Кирка", "f"]], axe2: [["Секира из рессоры", "f"]], sword1: [["Мачете", "n"], ["Кривой тесак", "m"], ["Штык", "m"]], sword: [["Самодельный меч", "m"]], sword2: [["Бензопила", "f"], ["Коса", "f"]],
+      pole: [["Копьё из арматуры", "n"], ["Вилы", "n"]], pole2: [["Глефа из пилы", "f"], ["Алебарда из знака", "f"]], thrown: [["Метательное копьё", "n"]], staff: [["Посох из трубы", "m"]], whip: [["Кабель", "m"]], sling: [["Рогатка", "f"]],
+      bow: [["Обрез", "m"]], bow2: [["Охотничья винтовка", "f"]], xbow: [["Самодельный арбалет", "m"]], xbow2: [["Гвоздемёт", "m"]] },
+    a: { leather: "Кожаная куртка", studded: "Куртка с покрышками", chainshirt: "Жилет из жести", scale: "Броня из дорожных знаков", chainmail: "Тяжёлая броня рейдера", shield: "Щит из капота" },
+    foe: { zombie: "Гуль", skeleton: "Сторожевой робот", bandit: "Рейдер", cultist: "Сектант Бомбы", thug: "Вожак рейдеров", wolf: "Дикий пёс", giant_rat: "Крысоволк", goblin: "Мусорщик-дикарь", giant_spider: "Радскорпион",
+      guard_x: "Охранник общины", dire_wolf: "Мутировавший волк", ogre: "Супермутант", owlbear: "Рад-медведь", wight: "Светящийся гуль", ghost: "Тень Зоны" },
+    it: { potion: "Стимулятор", potion2: "Армейский стимулятор", antidote: "Антирадин", holywater: "Чистая вода", healkit: "Аптечка", torch: "Факел из ветоши", lantern: "Фонарь на батарейках", oil: "Канистра бензина", thieves: "Набор отмычек", candles: "Сигнальные шашки", incense: "Сигареты",
+      waterskin: "Фляга воды", ale: "Кружка браги", wine: "Бутылка довоенного вина", drink: "Брага на всех", room: "Койка на ночь", bless: "Благословение Бомбы" },
+    wd: { "Книга заклинаний": "Довоенный справочник", "Мешочек с компонентами": "Коробка деталей", "Священный символ": "Медальон-дозиметр", "Колчан со стрелами": "Патронташ", "Лютня": "Гитара", "Книга теней": "Метка Зоны", "Омела": "Мешочек спор", "Травяной сбор": "Травы пустошей", "Молитвенник": "Обгоревшая книга",
+      "Кузница": "Мастерская", "кузнец": "оружейник", "кузнеца": "оружейника", "Пекарня": "Харчевня", "пекарь": "повар", "пекаря": "повара", "Свечная лавка": "Лавка батареек", "свечник": "торговец батарейками", "свечника": "торговца батарейками", "Амбар": "Склад", "Сарай для снастей": "Гараж", "Караульня": "Сторожка",
+      "Дом купца": "Дом торговца", "зажиточный купец": "богатый торговец", "купца": "торговца", "Дом хуторянина": "Дом фермера", "хуторянин": "фермер", "хуторянина": "фермера", "углежог": "сборщик утиля", "углежога": "сборщика утиля", "торфяник": "копатель", "торфяника": "копателя", "бортник": "водовоз", "бортника": "водовоза",
+      "бондарь": "сварщик", "бондаря": "сварщика", "резчик по кости": "татуировщик", "резчика по кости": "татуировщика", "лодочник": "водитель", "лодочника": "водителя", "Крепостные ворота": "Ворота из автобусов" },
+    names: { m: ["Макс", "Рекс", "Бо", "Гриф", "Дейв", "Сол", "Тайрон", "Кид", "Хэнк", "Ржавый", "Шрам", "Бак"], f: ["Фьюри", "Сэди", "Эми", "Рори", "Зои", "Мэй", "Джинкс", "Пыль", "Ласка", "Ава", "Кэсс", "Тэнди"] },
+    looks: { m: ["в противогазе на шее", "в куртке из покрышек", "с ожогами на руках", "с самодельным протезом", "в выцветшей военной форме"], f: ["в пыльных очках-консервах", "с короткой стрижкой под машинку", "в залатанном плаще", "с ожерельем из гильз", "в бронежилете поверх свитера"] } },
+  space: { n: "Космос", d: "Станции, колонии, чужие планеты и пришельцы", col: "#7aa8e8", biome: "alien", house: "dome",
+    prompt: "научная фантастика: колония на чужой планете или станция в далёкой системе, корабли, бластеры, андроиды, инопланетные формы жизни и корпорации; вместо магии — псионика и технологии",
+    photo: "cinematic photograph, science fiction frontier colony on an alien planet, domes and antennas, strange flora, spacesuits and worn equipment, cold blue and violet light, 50mm lens, film grain",
+    money: ["кр", "ц", "кредитов"],
+    cls: { fighter: ["Десантник", "Броня и огонь"], rogue: ["Контрабандист", "Ловкость и хитрость"], wizard: ["Псионик-учёный", "Сила разума"], cleric: ["Корабельный врач", "Медицина и вера"], barbarian: ["Берсерк-гладиатор", "Ярость и стимуляторы"],
+      paladin: ["Страж Ордена", "Клятва и щит"], ranger: ["Разведчик фронтира", "Сканеры и прицел"], bard: ["Дипломат", "Слово и обаяние"], warlock: ["Носитель артефакта", "Сила древних"], druid: ["Ксенобиолог", "Язык чужой жизни"] },
+    race: { human: ["Человек", "Колонист с Земли"], elf: ["Тиорианец", "Высокий, долгоживущий, надменный"], dwarf: ["Тяжеломирец", "С планеты двойной гравитации"], halfling: ["Квикк", "Мелкий, юркий, удачливый"],
+      halfelf: ["Метис", "Человек с кровью тиорианцев"], gnome: ["Нанит", "Крошечный гений техники"], halforc: ["Грок", "Могучий воин-изгнанник"], tiefling: ["Вексид", "Рога, хвост, тёмное наследие"], dragonborn: ["Драксид", "Рептилоид с огнём в груди"] },
+    bg: { soldier: "Ветеран флота", sage: "Учёный станции", criminal: "Пират", acolyte: "Послушник Звёздного культа", folk: "Герой колонии", noble: "Отпрыск звёздной династии", hermit: "Смотритель маяка", sailor: "Пилот", outlander: "Рождённый в пустоте", entertainer: "Голозвезда",
+      artisan: "Инженер", knight: "Рыцарь Ордена", witch: "Ученик псионика", pilgrim: "Паломник к Реликту", gravedigger: "Мусорщик орбиты", monster: "Охотник на ксеноморфов", healer: "Медтехник", miner: "Астерошахтёр", antiquarian: "Археолог древних", merchant: "Вольный торговец" },
+    w: { knife: [["Вибронож", "m"], ["Лазерный резак", "m"]], club: [["Шоковая дубинка", "f"], ["Гаечный ключ", "m"], ["Станнер", "m"], ["Силовой кастет", "m"], ["Плеть-хлыст", "f"], ["Гравимолот", "m"]], club2: [["Ломик", "m"], ["Ударный молот", "m"]],
+      axe1: [["Плазменный тесак", "m"]], axe: [["Плазменный топор", "m"], ["Кирка шахтёра", "f"]], axe2: [["Силовой топор", "m"]], sword1: [["Вибромеч", "m"], ["Изогнутый клинок", "m"], ["Энергорапира", "f"]], sword: [["Энергоклинок", "m"]], sword2: [["Тяжёлый вибромеч", "m"], ["Плазменная коса", "f"]],
+      pole: [["Шоковое копьё", "n"], ["Гарпун", "m"]], pole2: [["Силовая глефа", "f"], ["Плазменная алебарда", "f"]], thrown: [["Граната-диск", "m"]], staff: [["Пси-жезл", "m"]], whip: [["Энергохлыст", "m"]], sling: [["Ручной парализатор", "m"]],
+      bow: [["Бластер", "m"]], bow2: [["Импульсная винтовка", "f"]], xbow: [["Иглострел", "m"]], xbow2: [["Рельсотрон", "m"]] },
+    a: { leather: "Лётный комбинезон", studded: "Армированный комбинезон", chainshirt: "Лёгкая броня", scale: "Боевой скафандр", chainmail: "Штурмовая броня", shield: "Энергощит" },
+    foe: { zombie: "Заражённый колонист", skeleton: "Охранный андроид", bandit: "Космопират", cultist: "Культист Пустоты", thug: "Капитан пиратов", wolf: "Ксенохищник", giant_rat: "Трюмный паразит", goblin: "Грабитель-ксенос", giant_spider: "Ксеноморф",
+      guard_x: "Охранник станции", dire_wolf: "Альфа-ксенохищник", ogre: "Боевой голем", owlbear: "Панцирный зверь", wight: "Одержимый андроид", ghost: "Пси-фантом" },
+    it: { potion: "Медгель", potion2: "Сильный медгель", antidote: "Антитоксин", holywater: "Деконтаминант", healkit: "Медкомплект", torch: "Фонарь", lantern: "Прожектор", oil: "Энергоячейка", thieves: "Взломщик замков", candles: "Световые палочки", incense: "Ароматическая капсула",
+      waterskin: "Фляга", ale: "Кружка синтеэля", wine: "Бутылка вина с Земли", drink: "Синтеэль на всех", room: "Каюта на ночь", bless: "Пси-настрой" },
+    wd: { "Книга заклинаний": "Пси-кристалл", "Мешочек с компонентами": "Набор фокусирующих линз", "Священный символ": "Медсканер", "Колчан со стрелами": "Энергоячейки", "Лютня": "Синтезатор", "Книга теней": "Осколок артефакта", "Омела": "Контейнер с образцами", "Травяной сбор": "Биосканер", "Молитвенник": "Голоскрижаль", "Набор путешественника": "Рюкзак колониста",
+      "Кузница": "Мастерская", "кузнец": "техник", "кузнеца": "техника", "Пекарня": "Камбуз", "пекарь": "кок", "пекаря": "кока", "Свечная лавка": "Лавка электроники", "свечник": "электронщик", "свечника": "электронщика", "Лавка мясника": "Лавка белковых пайков", "Амбар": "Ангар", "Сарай для снастей": "Шлюз", "Сарай": "Склад", "Караульня": "Пост охраны",
+      "сержант стражи": "начальник охраны", "стражник": "охранник", "Дом купца": "Модуль торговца", "зажиточный купец": "торговец", "купца": "торговца", "Дом хуторянина": "Гидропонный модуль", "хуторянин": "агроном", "хуторянина": "агронома", "батрак": "грузчик",
+      "углежог": "оператор реактора", "углежога": "оператора реактора", "торфяник": "шахтёр", "торфяника": "шахтёра", "бортник": "дроновод", "бортника": "дроновода", "бондарь": "сварщик", "бондаря": "сварщика", "знахарка": "фельдшер", "знахарки": "фельдшера", "травница": "ботаник", "травницы": "ботаника",
+      "резчик по кости": "гравёр", "резчика по кости": "гравёра", "пастух": "смотритель ферм", "пастуха": "смотрителя ферм", "лодочник": "пилот челнока", "лодочника": "пилота челнока", "рыбак": "сборщик водорослей", "рыбака": "сборщика водорослей", "Ремесленная улица": "Технический ярус", "Рыночная площадь": "Торговый купол", "Крепостные ворота": "Главный шлюз" },
+    names: { m: ["Рейнор", "Кассиан", "Орион", "Дэкс", "Зарек", "Лукас", "Тайко", "Эзра", "Финн", "Ивар", "Корвин", "Сет"], f: ["Вега", "Нова", "Лира", "Кира", "Талия", "Сая", "Рен", "Ирис", "Мира", "Элара", "Джун", "Астра"] },
+    looks: { m: ["в потёртом лётном комбинезоне", "с имплантом-сканером на виске", "с бледной кожей рождённого в пустоте", "в куртке с нашивками флота", "с дыхательной маской на шее"], f: ["в комбинезоне колониста", "с короткой серебристой стрижкой", "с голотатуировкой на щеке", "в куртке пилота", "с наушником связи"] } },
+  western: { n: "Дикий Запад", d: "Револьверы, пыль прерий и золотая лихорадка", col: "#d09060", biome: "desert", house: "roof", roof: ["#8a5a3a", "#6c4a32"],
+    prompt: "вестерн: Дикий Запад XIX века, городки на краю прерий, салуны, шерифы, бандиты, золотая лихорадка, железная дорога; магия — редкая, шаманская или сверхъестественная, чудовища — из легенд",
+    photo: "cinematic photograph, wild west frontier town, dusty main street, wooden saloon, harsh sunlight, warm sepia and ochre palette, 35mm lens, film grain",
+    money: ["$", "¢", "долларов"],
+    cls: { fighter: ["Стрелок", "Револьвер и выдержка"], rogue: ["Картёжник", "Ловкость рук и обман"], wizard: ["Шарлатан-учёный", "Наука и чудеса"], cleric: ["Проповедник", "Слово Божье и лечение"], barbarian: ["Дикарь прерий", "Ярость и сила"],
+      paladin: ["Маршал", "Закон и честь"], ranger: ["Следопыт", "Прерии и выслеживание"], bard: ["Менестрель салуна", "Песня и обаяние"], warlock: ["Продавший душу", "Сделка на перекрёстке"], druid: ["Шаман", "Духи земли"] },
+    race: { human: ["Поселенец", "Упрямый житель фронтира"], elf: ["Дитя холмов", "Древний народ прерий"], dwarf: ["Горняк", "Крепкий, как скала"], halfling: ["Коротышка", "Мелкий и удачливый"],
+      halfelf: ["Метис", "Свой и чужой везде"], gnome: ["Изобретатель", "Тянется к механизмам"], halforc: ["Громила", "Сила и косые взгляды"], tiefling: ["Меченый дьяволом", "Глаза горят, как угли"], dragonborn: ["Змеекожий", "Чешуя и огонь из пустыни"] },
+    bg: { acolyte: "Церковный служка", noble: "Сын скотопромышленника", hermit: "Отшельник каньона", sailor: "Речной лоцман", knight: "Техасский рейнджер", witch: "Ученик знахарки", pilgrim: "Странствующий проповедник", monster: "Охотник на нечисть", miner: "Старатель", antiquarian: "Искатель индейских сокровищ", watch: "Помощник шерифа", gravedigger: "Гробовщик" },
+    w: { knife: [["Охотничий нож", "m"], ["Серп", "m"]], club: [["Дубинка", "f"], ["Молоток", "m"], ["Приклад", "m"], ["Кастет", "m"], ["Цепь", "f"], ["Кузнечный молот", "m"]], club2: [["Оглобля", "f"], ["Кувалда", "f"]],
+      axe1: [["Томагавк", "m"]], axe: [["Топор лесоруба", "m"], ["Кирка старателя", "f"]], axe2: [["Колун", "m"]], sword1: [["Нож Боуи", "m"], ["Кавалерийская сабля", "f"], ["Шпага-трость", "f"]], sword: [["Сабля", "f"]], sword2: [["Двуручная пила", "f"], ["Коса", "f"]],
+      pole: [["Копьё", "n"], ["Вилы", "n"]], pole2: [["Штык на шесте", "m"], ["Багор", "m"]], thrown: [["Метательный нож", "m"]], staff: [["Посох шамана", "m"]], whip: [["Кнут погонщика", "m"]], sling: [["Деррингер", "m"]],
+      bow: [["Револьвер", "m"]], bow2: [["Винчестер", "m"]], xbow: [["Обрез", "m"]], xbow2: [["Двустволка", "f"]] },
+    a: { leather: "Кожаная куртка", studded: "Кожаный плащ с бляхами", chainshirt: "Жилет с железными пластинами", scale: "Чугунная кираса", chainmail: "Самодельный панцирь", shield: "Железный щит" },
+    foe: { zombie: "Ходячий мертвец", skeleton: "Скелет стрелка", bandit: "Бандит", cultist: "Сектант", thug: "Главарь банды", wolf: "Койот", giant_rat: "Пустынная крыса", goblin: "Конокрад", giant_spider: "Гигантский скорпион",
+      guard_x: "Помощник шерифа", dire_wolf: "Волк-оборотень", ogre: "Громила с рудников", owlbear: "Гризли", wight: "Мёртвый стрелок", ghost: "Призрак прерий" },
+    it: { potion: "Целебный тоник", potion2: "Сильный тоник", holywater: "Святая вода", torch: "Факел", lantern: "Керосиновая лампа", oil: "Бутыль керосина", candles: "Свечи", incense: "Табак", flint: "Спички", ale: "Стакан виски", wine: "Бутылка виски", drink: "Виски на всех", liquor: "Фляга самогона" },
+    wd: { "Книга заклинаний": "Записная книжка с формулами", "Мешочек с компонентами": "Ящик снадобий", "Священный символ": "Распятие", "Колчан со стрелами": "Патронташ", "Лютня": "Банджо", "Книга теней": "Контракт, подписанный кровью", "Омела": "Мешочек с перьями", "Травяной сбор": "Сушёный шалфей", "Пекарня": "Закусочная", "Караульня": "Офис шерифа", "сержант стражи": "шериф", "стражник": "помощник шерифа", "торфяник": "старатель", "торфяника": "старателя", "углежог": "погонщик", "углежога": "погонщика", "бортник": "ковбой", "бортника": "ковбоя", "Крепостные ворота": "Ворота форта" },
+    names: { m: ["Джесси", "Билли", "Уайатт", "Док", "Коди", "Джеб", "Хэнк", "Сэм", "Клэй", "Джош", "Буч", "Эзикиль"], f: ["Сара", "Энни", "Кэлли", "Маргарет", "Белль", "Лотти", "Элси", "Ханна", "Мэгги", "Руби", "Перл", "Лиззи"] },
+    looks: { m: ["в пыльной широкополой шляпе", "с усами подковой", "в кожаных чапсах", "с шрамом от пули на щеке", "в жилете с часами на цепочке"], f: ["в платье с запылённым подолом", "в мужской шляпе и с косой", "с шалью на плечах", "с кольтом на бедре", "в переднике салуна"] } },
+  pirates: { n: "Пираты", d: "Паруса, острова, клады и морские суеверия", col: "#5cb0c8", biome: "islands", house: "roof", roof: ["#a0542e", "#c07848"],
+    prompt: "пиратская эпоха: тропические острова, парусники, порты, клады, флот империи, морские суеверия, проклятия и вуду; магия — редкая, морская и проклятая; чудовища — морские и проклятые мертвецы",
+    photo: "cinematic photograph, golden age of piracy caribbean port town, tall ships, palm trees, weathered wood, warm tropical light, teal and gold palette, 85mm lens, film grain",
+    money: ["дбл", "рл", "дублонов"],
+    cls: { fighter: ["Абордажник", "Сабля и порох"], rogue: ["Корсар", "Ловкость и хитрость"], wizard: ["Морской колдун", "Ветра и знаки"], cleric: ["Корабельный капеллан", "Вера и лечение"], barbarian: ["Буканьер", "Ярость и ром"],
+      paladin: ["Офицер флота", "Присяга и сталь"], ranger: ["Марсовой стрелок", "Зоркий глаз"], bard: ["Шантимен", "Песня и байки"], warlock: ["Проклятый", "Долг морскому дьяволу"], druid: ["Жрец вуду", "Духи моря и леса"] },
+    race: { human: ["Человек", "Моряк, колонист, беглец"], elf: ["Морской эльф", "Глаза цвета глубины"], dwarf: ["Дварф-канонир", "Крепкий, как дубовый борт"], halfling: ["Полурослик-юнга", "Мелкий и везучий"],
+      halfelf: ["Полуэльф", "Свой в любом порту"], gnome: ["Гном-корабел", "Знает каждый узел"], halforc: ["Полуорк", "Сила и косые взгляды"], tiefling: ["Проклятый кровью", "Рога и пламя в глазах"], dragonborn: ["Змеекровный", "Чешуя и огонь из глубин"] },
+    bg: { soldier: "Морской пехотинец", sailor: "Матрос", knight: "Офицер флота", noble: "Сын губернатора", acolyte: "Монастырский служка", hermit: "Отшельник острова", witch: "Ученик вуду", miner: "Ловец жемчуга", merchant: "Торговец специями" },
+    w: { sword1: [["Абордажный тесак", "m"], ["Сабля", "f"], ["Шпага", "f"]], sword: [["Палаш", "m"]], xbow: [["Пистоль", "m"]], xbow2: [["Мушкетон", "m"]], bow: [["Короткий мушкет", "m"]], bow2: [["Мушкет", "m"]], pole: [["Абордажная пика", "f"], ["Острога", "f"]], club: [["Свайка", "f"], ["Молоток", "m"], ["Нагель", "m"], ["Кастет", "m"], ["Якорная цепь", "f"], ["Боевой молот", "m"]], axe1: [["Абордажный топорик", "m"]] },
+    a: { leather: "Кожаный камзол", studded: "Камзол с бляхами", chainshirt: "Кольчужная рубаха", scale: "Кираса", chainmail: "Офицерские латы", shield: "Баклер" },
+    foe: { zombie: "Утопленник", skeleton: "Проклятый скелет", bandit: "Пират", cultist: "Сектант вуду", thug: "Капитан пиратов", wolf: "Дикий пёс", giant_rat: "Трюмная крыса", goblin: "Островной дикарь", giant_spider: "Гигантский краб",
+      guard_x: "Солдат гарнизона", dire_wolf: "Акула суши", ogre: "Великан с острова", owlbear: "Морской змей", wight: "Проклятый капитан", ghost: "Призрак корабля" },
+    it: { ale: "Кружка рома", wine: "Бутылка рома", drink: "Ром на всех", liquor: "Фляга грога" },
+    wd: { "Лютня": "Скрипка", "Колчан со стрелами": "Пороховница", "Книга теней": "Чёрная метка", "Омела": "Мешочек с костями" },
+    names: { m: ["Джек", "Эдвард", "Генри", "Бартоломью", "Хуан", "Пьер", "Томас", "Сэмюэль", "Диего", "Иона", "Ник", "Флинт"], f: ["Энн", "Мэри", "Грейс", "Изабелла", "Марисоль", "Жанна", "Кэт", "Анжелика", "Роза", "Летиция", "Бесс", "Элена"] },
+    looks: { m: ["в треуголке и с серьгой в ухе", "с просоленной бородой", "с повязкой на глазу", "с татуировкой якоря", "в рваной рубахе"], f: ["в треуголке поверх платка", "с саблей на поясе", "с загорелой кожей и косами", "в мужском камзоле", "с жемчужной серьгой"] } },
+  modern: { n: "Городская мистика", d: "Наши дни: оккультизм, тайные общества, нечисть", col: "#9aa0c8", biome: "city", house: "flat",
+    prompt: "городская мистика в наши дни: смартфоны, полиция, интернет, а рядом — тайная магия, оккультные общества, призраки, вампиры и нечисть, о которых обычные люди не знают",
+    photo: "cinematic photograph, modern day small city at dusk, wet asphalt, streetlights, old brick buildings, mysterious atmosphere, muted cold palette, 50mm lens, film grain",
+    money: ["руб", "коп", "рублей"],
+    cls: { fighter: ["Боец", "Подготовка и выдержка"], rogue: ["Вор", "Ловкость и тени"], wizard: ["Оккультист", "Тайное знание"], cleric: ["Экзорцист", "Вера и исцеление"], barbarian: ["Оборотень", "Звериная ярость"],
+      paladin: ["Охотник Ордена", "Клятва и святое оружие"], ranger: ["Детектив", "Следы и улики"], bard: ["Музыкант", "Голос и обаяние"], warlock: ["Заключивший договор", "Сила в долг"], druid: ["Ведьма", "Травы и духи"] },
+    race: { human: ["Человек", "Обычный, ничего не знает"], elf: ["Фейри", "Чужой красоты, живёт среди людей"], dwarf: ["Подземный", "Из рода, что живёт в метро"], halfling: ["Домовой", "Мелкий, удачливый, хозяйственный"],
+      halfelf: ["Полукровка", "Человек с примесью фейри"], gnome: ["Гремлин", "Ладит с любой техникой"], halforc: ["Полутролль", "Сила и шрамы"], tiefling: ["Демонокровный", "Скрывает рога под шапкой"], dragonborn: ["Змеекровный", "Древняя кровь, жар в груди"] },
+    bg: { soldier: "Бывший военный", sage: "Аспирант-историк", criminal: "Бывший заключённый", acolyte: "Служка при храме", folk: "Волонтёр", noble: "Сын богатой семьи", hermit: "Отшельник за городом", sailor: "Моряк в отпуске", outlander: "Приезжий", entertainer: "Блогер",
+      artisan: "Мастер на все руки", knight: "Агент Ордена", witch: "Ученица ведьмы", pilgrim: "Паломник", gravedigger: "Работник морга", monster: "Охотник на нечисть", healer: "Фельдшер скорой", miner: "Диггер", antiquarian: "Антиквар", merchant: "Предприниматель", watch: "Бывший полицейский", courier: "Курьер" },
+    w: { knife: [["Нож", "m"], ["Серп", "m"]], club: [["Телескопическая дубинка", "f"], ["Молоток", "m"], ["Монтировка", "f"], ["Кастет", "m"], ["Цепь", "f"], ["Кувалда", "f"]], club2: [["Бейсбольная бита", "f"], ["Лом", "m"]],
+      axe1: [["Туристический топорик", "m"]], axe: [["Пожарный топор", "m"], ["Ледоруб", "m"]], axe2: [["Колун", "m"]], sword1: [["Мачете", "n"], ["Тесак", "m"], ["Серебряный стилет", "m"]], sword: [["Освящённый меч", "m"]], sword2: [["Бензопила", "f"], ["Коса", "f"]],
+      pole: [["Самодельное копьё", "n"], ["Багор", "m"]], pole2: [["Алебарда из музея", "f"], ["Пожарный багор", "m"]], thrown: [["Метательный нож", "m"]], staff: [["Трость с серебром", "f"]], whip: [["Ремень с пряжкой", "m"]], sling: [["Травматический пистолет", "m"]],
+      bow: [["Пистолет", "m"]], bow2: [["Охотничий карабин", "m"]], xbow: [["Арбалет", "m"]], xbow2: [["Дробовик", "m"]] },
+    a: { leather: "Кожаная куртка", studded: "Мотокуртка с защитой", chainshirt: "Скрытый бронежилет", scale: "Бронежилет", chainmail: "Тяжёлый бронежилет", shield: "Полицейский щит" },
+    foe: { zombie: "Мертвец", skeleton: "Скелет", bandit: "Бандит", cultist: "Сектант", thug: "Главарь банды", wolf: "Бродячий пёс", giant_rat: "Крыса-переросток", goblin: "Гремлин", giant_spider: "Паучиха из подвала",
+      guard_x: "Полицейский", dire_wolf: "Оборотень", ogre: "Тролль из-под моста", owlbear: "Чудовище из леса", wight: "Вампир", ghost: "Призрак" },
+    it: { potion: "Обезболивающее", potion2: "Аптечный набор шприцов", antidote: "Антидот", holywater: "Святая вода", healkit: "Аптечка", torch: "Фонарик", lantern: "Мощный фонарь", oil: "Канистра бензина", thieves: "Отмычки", candles: "Церковные свечи", incense: "Ладан",
+      flint: "Зажигалка", waterskin: "Бутылка воды", ale: "Бокал пива", wine: "Бутылка вина", drink: "Пиво на всех", room: "Номер на ночь", meal: "Горячий ужин" },
+    wd: { "Книга заклинаний": "Гримуар", "Мешочек с компонентами": "Набор для ритуалов", "Колчан со стрелами": "Запасные обоймы", "Лютня": "Гитара", "Набор путешественника": "Рюкзак", "Кузница": "Автомастерская", "кузнец": "автомеханик", "кузнеца": "автомеханика", "Свечная лавка": "Церковная лавка", "Лавка всякой всячины": "Магазин у дома", "Лавка старьёвщика": "Ломбард", "старьёвщик": "ломбардщик", "старьёвщика": "ломбардщика", "Амбар": "Склад", "Сарай для снастей": "Лодочный гараж", "Сарай": "Гараж",
+      "Караульня": "Отделение полиции", "сержант стражи": "участковый", "стражник": "полицейский", "Дом купца": "Особняк бизнесмена", "зажиточный купец": "бизнесмен", "купца": "бизнесмена", "служанка": "домработница", "Дом хуторянина": "Дом фермера", "хуторянин": "фермер", "хуторянина": "фермера", "батрак": "разнорабочий",
+      "углежог": "дальнобойщик", "углежога": "дальнобойщика", "торфяник": "рабочий", "торфяника": "рабочего", "бортник": "пасечник", "бортника": "пасечника", "бондарь": "столяр", "бондаря": "столяра", "знахарка": "гадалка", "знахарки": "гадалки", "травница": "фармацевт", "травницы": "фармацевта",
+      "резчик по кости": "тату-мастер", "резчика по кости": "тату-мастера", "лодочник": "таксист", "лодочника": "таксиста", "ткачиха": "швея", "ткачихи": "швеи", "Ремесленная улица": "Улица мастерских", "Крепостные ворота": "Въезд в город" },
+    names: { m: ["Андрей", "Максим", "Денис", "Игорь", "Артём", "Олег", "Кирилл", "Глеб", "Роман", "Сергей", "Павел", "Лев"], f: ["Алиса", "Дарья", "Полина", "Вера", "Ксения", "Марина", "Ева", "Нина", "Ольга", "Софья", "Лиза", "Яна"] },
+    looks: { m: ["в мятой куртке и с кофе", "с тату на шее", "в строгом пальто", "с наушниками на шее", "в рабочем комбинезоне"], f: ["в кожанке и с серьгами", "с крашеными в синий волосами", "в длинном пальто", "с телефоном в руке", "с усталыми глазами медсестры"] } },
+  east: { n: "Восточная сказка", d: "Самураи, ёкаи, храмы и кланы", col: "#d86a5a", biome: "mountains", house: "pagoda", roof: ["#5a3a32", "#3e4a44"],
+    prompt: "восточная сказка в духе средневековой Японии и Китая: кланы, самураи, ронины, монахи, храмы, духи-ёкаи и демоны-они, честь и долг; магия — оммёдо, ци и талисманы",
+    photo: "cinematic photograph, feudal east asian mountain village, wooden pagoda roofs, paper lanterns, misty pines, muted red and teal palette, 85mm lens, film grain",
+    money: ["рё", "мон", "рё"],
+    cls: { fighter: ["Самурай", "Меч и долг"], rogue: ["Синоби", "Тень и яд"], wizard: ["Оммёдзи", "Талисманы и знаки"], cleric: ["Монах-целитель", "Молитва и исцеление"], barbarian: ["Ронин-берсерк", "Ярость без господина"],
+      paladin: ["Хранитель храма", "Обет и сталь"], ranger: ["Охотник гор", "Лук и следы"], bard: ["Сказитель", "Песня и сямисэн"], warlock: ["Связанный с они", "Сила демона"], druid: ["Мико", "Духи природы"] },
+    race: { human: ["Человек", "Крестьянин, воин, монах"], elf: ["Кицунэ", "Лисья кровь, хитрость и изящество"], dwarf: ["Горный народ", "Крепкие, молчаливые кузнецы"], halfling: ["Тануки", "Мелкий, весёлый, удачливый"],
+      halfelf: ["Ханъё", "Наполовину дух"], gnome: ["Каппа", "Любопытный речной народ"], halforc: ["Полу-они", "Сила демонов в крови"], tiefling: ["Отмеченный тенгу", "Огненные глаза"], dragonborn: ["Потомок рю", "Кровь дракона"] },
+    bg: { soldier: "Асигару", sage: "Учёный при дворе", criminal: "Якудза", acolyte: "Послушник храма", folk: "Деревенский заступник", noble: "Сын даймё", hermit: "Горный отшельник", sailor: "Рыбак с побережья", outlander: "Чужеземец с запада", entertainer: "Актёр кабуки",
+      knight: "Самурай клана", witch: "Ученица мико", pilgrim: "Паломник", gravedigger: "Сторож кладбища", monster: "Охотник на ёкаев", merchant: "Купец гильдии", deserter: "Ронин" },
+    w: { knife: [["Танто", "m"], ["Кама", "m"]], club: [["Дубинка", "f"], ["Молот", "m"], ["Палица", "f"], ["Тэцубо", "m"], ["Кусаригама", "f"], ["Боевой молот", "m"]], club2: [["Канабо", "m"], ["Тяжёлый тэцубо", "m"]],
+      axe1: [["Топорик", "m"]], axe: [["Боевой топор", "m"], ["Клевец", "m"]], axe2: [["Ононо", "m"]], sword1: [["Вакидзаси", "m"], ["Изогнутый клинок", "m"], ["Тонкий меч", "m"]], sword: [["Катана", "f"]], sword2: [["Нодати", "m"], ["Боевая коса", "f"]],
+      pole: [["Яри", "n"], ["Трезубец", "m"]], pole2: [["Нагината", "f"], ["Алебарда", "f"]], thrown: [["Сюрикен", "m"]], staff: [["Бо", "m"]], whip: [["Кнут", "m"]], sling: [["Праща", "f"]], bow: [["Ханкю", "m"]], bow2: [["Юми", "m"]], xbow: [["Самострел", "m"]], xbow2: [["Тяжёлый самострел", "m"]] },
+    a: { leather: "Стёганый доспех", studded: "Доспех из кожи", chainshirt: "Кольчужная рубаха", scale: "Ламеллярный доспех", chainmail: "Доспех о-ёрой", shield: "Щит" },
+    foe: { zombie: "Голодный мертвец", skeleton: "Гасядокуро", bandit: "Разбойник", cultist: "Сектант", thug: "Главарь разбойников", wolf: "Горный волк", giant_rat: "Крыса-оборотень", goblin: "Каппа-разбойник", giant_spider: "Цутигумо",
+      guard_x: "Стражник клана", dire_wolf: "Волк-оборотень", ogre: "Они", owlbear: "Нуэ", wight: "Мстительный дух", ghost: "Юрэй" },
+    it: { potion: "Целебный отвар", potion2: "Сильный отвар", holywater: "Освящённое саке", lantern: "Бумажный фонарь", ale: "Чашка саке", wine: "Бутылка саке", drink: "Саке на всех", incense: "Благовония" },
+    wd: { "Книга заклинаний": "Свиток талисманов", "Священный символ": "Чётки", "Лютня": "Сямисэн", "Колчан со стрелами": "Колчан", "Молитвенник": "Сутра", "Книга теней": "Маска они", "Омела": "Веточка сакаки", "Пекарня": "Лавка рисовых лепёшек", "Свечная лавка": "Лавка фонарей", "Караульня": "Пост клана", "Дом купца": "Дом торговца", "Крепостные ворота": "Ворота замка" },
+    names: { m: ["Кэндзи", "Хироси", "Такэси", "Рю", "Иссэй", "Дзиро", "Масаси", "Кэнта", "Сора", "Ёситаро", "Дайки", "Хару"], f: ["Аяко", "Юки", "Сакура", "Мэй", "Хана", "Рэйко", "Кику", "Нацуми", "Аки", "Тиё", "Сумирэ", "Ран"] },
+    looks: { m: ["в выцветшем кимоно", "с бритым лбом и пучком", "в соломенной шляпе", "с шрамом через бровь", "в монашеской рясе"], f: ["в кимоно с цветами", "с высокой причёской и шпильками", "в белом одеянии мико", "с веером в руке", "в простой одежде крестьянки"] } },
+  myth: { n: "Античные мифы", d: "Полисы, оракулы, герои и гнев богов", col: "#e0c27a", biome: "coast", house: "roof", roof: ["#c08048", "#e6dcc8"],
+    prompt: "античные мифы в духе Древней Греции: полисы, храмы, оракулы, герои, вмешательство богов, сатиры, кентавры, минотавры и чудовища из легенд; магия — дар богов",
+    photo: "cinematic photograph, ancient greek coastal town, white marble temples, olive trees, terracotta roofs, bright mediterranean light, warm gold and blue palette, 85mm lens, film grain",
+    money: ["др", "об", "драхм"],
+    cls: { fighter: ["Гоплит", "Копьё и щит"], rogue: ["Плут", "Хитрость Гермеса"], wizard: ["Мудрец", "Тайны мироздания"], cleric: ["Жрец", "Милость богов"], barbarian: ["Варвар", "Ярость Ареса"],
+      paladin: ["Избранник бога", "Обет и сила"], ranger: ["Охотник Артемиды", "Лук и следы"], bard: ["Аэд", "Песнь и кифара"], warlock: ["Должник титана", "Сила древних"], druid: ["Жрица Деметры", "Голос природы"] },
+    race: { human: ["Эллин", "Гражданин полиса"], elf: ["Нимфорождённый", "Кровь нимф, красота и долгая жизнь"], dwarf: ["Потомок циклопов", "Кузнец и крепыш"], halfling: ["Пигмей", "Мелкий и удачливый"],
+      halfelf: ["Полубог", "Дитя смертного и божества"], gnome: ["Керкоп", "Проказник и выдумщик"], halforc: ["Потомок гигантов", "Сила и косые взгляды"], tiefling: ["Отмеченный Тартаром", "Рога и пламя"], dragonborn: ["Спартой", "Рождён из зубов дракона"] },
+    bg: { soldier: "Ветеран фаланги", sage: "Ученик философа", acolyte: "Храмовый служитель", noble: "Аристократ полиса", hermit: "Отшельник", sailor: "Мореход", knight: "Воин священной дружины", witch: "Ученица колдуньи", pilgrim: "Паломник к оракулу", monster: "Охотник на чудовищ", entertainer: "Актёр театра", merchant: "Торговец" },
+    w: { sword1: [["Ксифос", "m"], ["Копис", "m"], ["Тонкий меч", "m"]], sword: [["Меч", "m"]], pole: [["Дори", "n"], ["Трезубец", "m"]], thrown: [["Дротик", "m"]], bow: [["Лук", "m"]], bow2: [["Скифский лук", "m"]], xbow: [["Гастрафет", "m"]], xbow2: [["Тяжёлый гастрафет", "m"]] },
+    a: { leather: "Льняной панцирь", studded: "Панцирь с бляхами", chainshirt: "Чешуйчатая рубаха", scale: "Бронзовая кираса", chainmail: "Панцирь гоплита", shield: "Гоплон" },
+    foe: { zombie: "Восставший из Аида", skeleton: "Скелет-воин", bandit: "Разбойник", cultist: "Вакханка", thug: "Главарь разбойников", wolf: "Волк", giant_rat: "Гигантская крыса", goblin: "Сатир", giant_spider: "Арахна",
+      guard_x: "Стражник полиса", dire_wolf: "Пёс Аида", ogre: "Циклоп", owlbear: "Химера", wight: "Ламия", ghost: "Тень" },
+    it: { ale: "Чаша вина", wine: "Амфора вина", drink: "Вино на всех", incense: "Ладан для жертвы" },
+    wd: { "Лютня": "Кифара", "Священный символ": "Амулет бога", "Книга заклинаний": "Свиток мудрости", "Пекарня": "Хлебная лавка", "Караульня": "Пост гоплитов" },
+    names: { m: ["Ликон", "Дамон", "Никандр", "Филон", "Ксантипп", "Тимей", "Агатон", "Клеон", "Мирон", "Деметрий", "Аристид", "Леонт"], f: ["Ксения", "Мелисса", "Фео", "Эвридика", "Каллиста", "Дафна", "Ирена", "Таис", "Фила", "Агата", "Ниса", "Хлоя"] },
+    looks: { m: ["в льняном хитоне", "с курчавой бородой", "с бронзовым браслетом", "в плаще-гиматии", "с загорелым лицом гребца"], f: ["в белом пеплосе", "с золотой лентой в волосах", "с амфорой на плече", "с браслетами на запястьях", "в покрывале жрицы"] } },
+  custom: { n: "Свой мир", d: "Опишите атмосферу в пожеланиях — ИИ подстроит всё остальное", col: "#c59af0", biome: null, house: "roof",
+    prompt: "особый сеттинг, описанный игроком в пожеланиях: следуй его описанию эпохи, технологий, магии, существ и атмосферы" }
+};
+const WSET_HOUSE = { fantasy: "roof" };
+/* новые биомы */
+const BIOMES_NEW = { desert: "Пустыня", tundra: "Снега", jungle: "Джунгли", islands: "Острова", steppe: "Степь", wasteland: "Пустошь", city: "Город", alien: "Чужая планета" };
+const BIOME_EN = { coast: "coastal", marsh: "marsh", mountains: "mountain", forest: "forest", desert: "desert", tundra: "snowy tundra", jungle: "jungle", islands: "tropical island", steppe: "steppe", wasteland: "barren wasteland", city: "city", alien: "alien planet" };
+const BIOME_SEA = { desert: "Оазис", tundra: "Ледяное озеро", jungle: "Река", islands: "Море", steppe: "Озеро", wasteland: "Ядовитое озеро", city: "Канал", alien: "Чужое море" };
+const BIOME_PAL = {
+  desert: { deep: [60, 104, 118], shallow: [96, 150, 150], paper: [222, 196, 146], grass: [214, 184, 128], grass2: [200, 166, 110], forest: [120, 134, 74], rock: [178, 136, 96], snow: [240, 228, 206], marsh: [150, 150, 96], sand: [232, 206, 154], ink: [70, 46, 26] },
+  tundra: { deep: [58, 88, 112], shallow: [120, 156, 172], paper: [214, 214, 206], grass: [206, 210, 206], grass2: [184, 192, 190], forest: [70, 92, 80], rock: [150, 150, 150], snow: [246, 248, 250], marsh: [150, 164, 160], sand: [200, 196, 184], ink: [40, 44, 52] },
+  jungle: { deep: [36, 86, 90], shallow: [70, 130, 120], paper: [170, 170, 120], grass: [106, 140, 74], grass2: [84, 124, 62], forest: [44, 88, 46], rock: [140, 136, 110], snow: [230, 230, 220], marsh: [80, 110, 70], sand: [206, 190, 140], ink: [26, 36, 20] },
+  islands: { deep: [30, 96, 128], shallow: [70, 170, 176], paper: [210, 196, 150], grass: [150, 160, 90], grass2: [124, 146, 80], forest: [74, 112, 60], rock: [170, 150, 120], snow: [236, 232, 222], marsh: [110, 130, 84], sand: [236, 214, 160], ink: [36, 40, 30] },
+  steppe: { deep: [56, 96, 110], shallow: [100, 146, 150], paper: [214, 196, 144], grass: [196, 180, 110], grass2: [176, 164, 96], forest: [110, 122, 70], rock: [170, 150, 118], snow: [236, 232, 220], marsh: [140, 140, 90], sand: [220, 198, 146], ink: [60, 46, 26] },
+  wasteland: { deep: [70, 84, 60], shallow: [104, 118, 80], paper: [176, 160, 130], grass: [150, 132, 104], grass2: [130, 116, 92], forest: [96, 92, 72], rock: [120, 110, 100], snow: [210, 206, 196], marsh: [110, 120, 70], sand: [184, 164, 124], ink: [40, 32, 24] },
+  city: { deep: [34, 52, 64], shallow: [64, 90, 104], paper: [150, 150, 150], grass: [128, 128, 130], grass2: [112, 114, 118], forest: [80, 84, 96], rock: [100, 100, 104], snow: [220, 220, 224], marsh: [90, 100, 96], sand: [160, 156, 148], ink: [24, 26, 32] },
+  alien: { deep: [62, 40, 96], shallow: [110, 80, 150], paper: [180, 150, 170], grass: [150, 110, 140], grass2: [126, 96, 130], forest: [80, 130, 130], rock: [120, 96, 120], snow: [230, 220, 240], marsh: [100, 140, 110], sand: [200, 170, 150], ink: [36, 22, 44] }
+};
+/* значки на карте вместо деревьев по биому */
+const BIOME_GLYPH = { desert: { t: "palm", c: "palm", tuft: "cactus", reed: "cactus" }, jungle: { c: "t", tuft: "palm" }, islands: { t: "palm", c: "palm" }, steppe: { c: "t" }, tundra: { t: "c" },
+  wasteland: { t: "snag", c: "snag", tuft: "rubble", reed: "rubble" }, city: { t: "block", c: "block", tuft: "lamp", reed: "lamp" }, alien: { t: "crystal", c: "crystal", tuft: "spore", reed: "spore" } };
+
+Object.assign(BIOMES, BIOMES_NEW); Object.assign(MAP_PAL, BIOME_PAL); Object.assign(SEA_NAMES, BIOME_SEA);
+FORGE_STAGES.push("Классы и народы мира");
+BG_CATS.world = "✦ Этого мира";
+function settingOf(wd) { return (wd && WSET[wd.setting]) ? wd.setting : "fantasy"; }
+var MONEY = ["зм", "см", "золотых"]; function MZ() { return (MONEY || ["зм"])[0]; } function MS() { return (MONEY || ["зм", "см"])[1]; } function MZW() { return (MONEY || ["зм", "см", "золотых"])[2]; }
+function settingLine(opts) { const P = WSET[opts?.setting] || WSET.fantasy; return `Сеттинг: ${P.n} — ${P.prompt}. `; }
+let SKIN_KEY = null, SKIN0 = null, SKIN_LEX = null, SKIN_ADDED = [];
+const SKIN_T = () => ({ CLASSES, RACES, BACKGROUNDS, WT, WV, ITEMS, SPELLS, BESTIARY, ENC_FOES, FOE_TXT, KITS, CLASS_GEAR, LOOK_M, LOOK_F, WEAPONS });
+function skinSnap() { if (SKIN0) return; SKIN0 = {}; for (const [k, T] of Object.entries(SKIN_T())) SKIN0[k] = structuredClone(T); }
+function skinRestore() {
+  if (!SKIN0) return; const T = SKIN_T();
+  SKIN_ADDED.forEach(([t, k]) => { try { delete t[k]; } catch (e) {} }); SKIN_ADDED = [];
+  for (const [name, snap] of Object.entries(SKIN0)) { const t = T[name];
+    if (Array.isArray(t)) { t.length = 0; t.push(...structuredClone(snap)); continue; }
+    for (const [k, v] of Object.entries(snap)) { if (Array.isArray(v) || typeof v !== "object" || v === null || !t[k] || Array.isArray(t[k])) t[k] = structuredClone(v); else Object.assign(t[k], structuredClone(v)); } }
+  MONEY = ["зм", "см", "золотых"]; SKIN_LEX = null;
+}
+function addKey(t, k, v) { t[k] = v; SKIN_ADDED.push([t, k]); }
+/* лексикон: пресет сеттинга + то, что придумал ИИ для конкретного мира */
+function mergeLex(P, ai) {
+  const L = { money: P.money, cls: { ...(P.cls || {}) }, race: { ...(P.race || {}) }, bg: { ...(P.bg || {}) }, w: {}, a: { ...(P.a || {}) }, sp: { ...(P.sp || {}) }, foe: { ...(P.foe || {}) }, it: { ...(P.it || {}) }, wd: { ...(P.wd || {}) }, names: P.names, looks: P.looks };
+  Object.entries(P.w || {}).forEach(([grp, list]) => (WGROUP[grp] || []).forEach((t, i) => { if (list?.length) L.w[t] = list[i % list.length]; }));
+  if (ai && typeof ai === "object") { if (Array.isArray(ai.money) && ai.money[0]) L.money = ai.money; ["cls", "race", "bg", "w", "a", "sp", "foe", "it", "wd"].forEach(k => Object.assign(L[k], ai[k] || {})); }
+  return L;
+}
+function lexOf(wd) { const st = settingOf(wd); return mergeLex(WSET[st], wd?.lex); }
+function applySkin(wd, force) {
+  const st = settingOf(wd); const key = `${wd?.id}|${st}|${wd?.lexv || 0}|${(wd?.uniq?.classes || []).length}`; if (!force && key === SKIN_KEY) return; skinSnap(); skinRestore(); SKIN_KEY = key;
+  const L = lexOf(wd); SKIN_LEX = L; if (Array.isArray(L.money) && L.money[0]) MONEY = [L.money[0], L.money[1] || L.money[0], L.money[2] || L.money[0]];
+  Object.entries(L.cls).forEach(([k, v]) => { if (CLASSES[k] && v) { CLASSES[k].name = v[0] || CLASSES[k].name; if (v[1]) CLASSES[k].role = v[1]; if (v[2]) CLASSES[k].blurb = v[2]; } });
+  Object.entries(L.race).forEach(([k, v]) => { if (RACES[k] && v) { RACES[k].name = v[0] || RACES[k].name; if (v[1]) RACES[k].sub = v[1]; } });
+  Object.entries(L.bg).forEach(([k, v]) => { if (BACKGROUNDS[k] && v) BACKGROUNDS[k].name = v; });
+  const wch = new Set(); Object.entries(L.w).forEach(([t, v]) => { if (!WT[t] || !v) return; const n = v[0] || WT[t].n, g = GI[v[1]] != null ? v[1] : WT[t].g; WT[t].n = n; WT[t].g = g; WV[t] = [{ n, g, d: v[2] || "" }]; if (WEAPONS[t]) WEAPONS[t].name = n; wch.add(t); });
+  Object.values(ITEMS).forEach(it => { if (it.w && wch.has(it.w)) it.n = WT[it.w].n; });
+  if (wch.size) Object.values(KITS).forEach(list => list.forEach(K => { const ns = [...new Set(K.w.map(t => WT[t]?.n).filter(Boolean))]; if (ns.length) K.n = ns.slice(0, 2).map((n, i) => i ? lc1(n) : n).join(" и "); }));
+  Object.entries(L.a).forEach(([k, v]) => { if (ITEMS[k] && v) ITEMS[k].n = v; });
+  Object.entries(L.it).forEach(([k, v]) => { if (ITEMS[k] && v) ITEMS[k].n = v; });
+  Object.entries(L.sp).forEach(([k, v]) => { if (SPELLS[k] && v) SPELLS[k].name = v; });
+  const fn = {}; Object.entries(L.foe).forEach(([k, v]) => { if (BESTIARY[k] && v) { fn[k] = v; BESTIARY[k].label = `${v.toLowerCase()}, ${SKIN0.BESTIARY[k].label}`; } });
+  Object.values(ENC_FOES).forEach(list => list.forEach(e => { if (fn[e[0]]) e[1] = fn[e[0]]; }));
+  if (st !== "fantasy") Object.keys(FOE_TXT).forEach(k => { const n = fn[k] || BESTIARY[k]?.label?.split(",")[0]; if (!n) return; const ic = FOE_TXT[k][2]; FOE_TXT[k] = [`Впереди — ${lc1(n)}. Тебя пока не заметили: можно подготовиться или обойти.`, `Засада! ${n} бросается на тебя из укрытия.`, ic]; });
+  const W = L.wd; const rw = s => (W[s] || s);
+  Object.keys(CLASS_GEAR).forEach(k => { CLASS_GEAR[k] = CLASS_GEAR[k].map(rw); }); Object.values(BACKGROUNDS).forEach(b => { if (b.item) b.item = rw(b.item); });
+  if (L.looks?.m?.length) { LOOK_M.length = 0; LOOK_M.push(...L.looks.m); } if (L.looks?.f?.length) { LOOK_F.length = 0; LOOK_F.push(...L.looks.f); }
+  regUnique(wd);
+  if ((wd?.uniq?.backgrounds || []).length) BG_CATS.world = "✦ Этого мира"; else delete BG_CATS.world;
+}
+/* текстовые замены в уже построенных зданиях и жителях (кузница → мастерская имплантов) */
+function skinWords(def) {
+  const st = settingOf(def); if (st === "fantasy" || !def?.places) return; const key = `${st}|${def.lexv || 0}`; if (def.wsk === key) return; def.wsk = key;
+  const W = lexOf(def).wd; const keys = Object.keys(W).sort((a, b) => b.length - a.length); if (!keys.length) return;
+  const esc2 = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); const re = new RegExp(keys.map(esc2).join("|"), "g"); const fix = s => typeof s === "string" ? s.replace(re, m => W[m]) : s;
+  Object.values(def.places).forEach(p => { if (p.inner || p.kind === "street" || p.btpl || p.auto) { p.name = fix(p.name); p.short = fix(p.short); p.desc = fix(p.desc); } });
+  Object.values(def.npcs || {}).forEach(n => { if (n.minor || n.bld) n.role = fix(n.role); });
+  Object.values(def.quests || {}).forEach(q => { q.title = fix(q.title); q.brief = fix(q.brief); q.goal = fix(q.goal); });
+}
+function foeNm(wd, type, fb) { return lexOf(wd).foe[type] || fb; }
+/* ---------- особые классы, народы и предыстории мира ---------- */
+const U_CLS_T = () => { const out = []; for (const f of [() => KITS, () => WP_ONLY, () => WP_MART, () => APROF, () => LEVEL_SPELLS, () => LEVEL_FEATS, () => CLASS_META, () => CLASS_GEAR, () => DLG_CLASS, () => DLG_TONE, () => ASI_LEVELS, () => EMBLEM, () => LV_FEATS2, () => LV_SPELLS2]) { try { const t = f(); if (t && typeof t === "object") out.push(t); } catch (e) {} } return out; };
+const U_RACE_T = () => [RACE_ATT, RACE_COL, RACE_SOCIAL, EMBLEM];
+function bcls(o) { const k = o?.cls; return CLASSES[k]?.base || k; }
+function regUnique(wd) {
+  const u = wd?.uniq; if (!u) return; const CT = U_CLS_T();
+  (u.classes || []).forEach((c, i) => { const b = CLASSES[c.base]; if (!b) return; const k = "u_c" + (i + 1);
+    addKey(CLASSES, k, { ...structuredClone(b), name: c.name, role: c.role || b.role, blurb: c.blurb || b.blurb, features: c.features?.length ? c.features : b.features, skillList: [...new Set([...(c.skills || []), ...b.skillList])],
+      skillCount: b.skillCount + 1, color: c.color || b.color, base: c.base, uniq: true, baseName: b.name });
+    CT.forEach(t => { if (t[c.base] !== undefined) addKey(t, k, t[c.base]); }); if (ICONS["c_" + c.base]) addKey(ICONS, "c_" + k, ICONS["c_" + c.base]); if (EXTRA_ATK.has(c.base)) { EXTRA_ATK.add(k); SKIN_ADDED.push([{ set: 1 }, k]); } });
+  (u.races || []).forEach((r, i) => { const b = RACES[r.base]; if (!b) return; const k = "u_r" + (i + 1);
+    addKey(RACES, k, { ...structuredClone(b), name: r.name, sub: r.sub || b.sub, traits: r.traits?.length ? r.traits : b.traits, bonus: r.bonus || b.bonus, skills: [...new Set([...(b.skills || []), ...(r.skill ? [r.skill] : [])])], base: r.base, uniq: true, look: r.look || "", baseName: b.name });
+    U_RACE_T().forEach(t => { if (t[r.base] !== undefined) addKey(t, k, t[r.base]); }); if (r.social) RACE_SOCIAL[k] = r.social; if (r.att != null) RACE_ATT[k] = r.att; if (ICONS["r_" + r.base]) addKey(ICONS, "r_" + k, ICONS["r_" + r.base]); });
+  (u.backgrounds || []).forEach((g, i) => { const k = "u_b" + (i + 1); const base = BACKGROUNDS[g.base] ? g.base : "sage";
+    addKey(BACKGROUNDS, k, { name: g.name, skills: g.skills, hook: g.hook, gold: g.gold, item: g.item, cat: "world", feat: g.feat, uniq: true });
+    addKey(BG_ATT, k, {}); addKey(BG_ATT_TXT, k, g.att_txt || "местные знают таких, как вы"); if (ICONS["b_" + base]) addKey(ICONS, "b_" + k, ICONS["b_" + base]); });
+}
+{ const _r = skinRestore; skinRestore = function () { SKIN_ADDED.filter(([t]) => t.set).forEach(([, k]) => EXTRA_ATK.delete(k)); SKIN_ADDED = SKIN_ADDED.filter(([t]) => !t.set); return _r.apply(this, arguments); }; }
+/* ---------- ИИ: особые сущности и лексикон ---------- */
+const ABILS6 = ["str", "dex", "con", "int", "wis", "cha"];
+const hexCol = s => /^#[0-9a-f]{6}$/i.test(String(s || "")) ? s : null;
+function uniqClean(r) {
+  const out = { classes: [], races: [], backgrounds: [] }; if (!r || typeof r !== "object") return out; const sk = s => SKILLS[s] ? s : null;
+  (Array.isArray(r.classes) ? r.classes : []).slice(0, 2).forEach(c => { if (!c || !CLASSES[c.base] || CLASSES[c.base].uniq || !str(c.name, 30)) return;
+    out.classes.push({ name: str(c.name, 30), base: c.base, role: str(c.role, 36), blurb: str(c.blurb, 180), features: (Array.isArray(c.features) ? c.features : []).map(f => str(f, 160)).filter(Boolean).slice(0, 3), skills: [...new Set((Array.isArray(c.skills) ? c.skills : []).map(sk).filter(Boolean))].slice(0, 7), color: hexCol(c.color) }); });
+  (Array.isArray(r.races) ? r.races : []).slice(0, 2).forEach(x => { if (!x || !RACES[x.base] || RACES[x.base].uniq || !str(x.name, 30)) return; let bonus = null;
+    if (x.bonus && typeof x.bonus === "object") { const e = Object.entries(x.bonus).filter(([a, v]) => ABILS6.includes(a) && Number(v) > 0).map(([a, v]) => [a, clamp(Math.round(Number(v)), 1, 2)]).sort((a, b) => b[1] - a[1]).slice(0, 2); if (e.length) { e[0][1] = 2; if (e[1]) e[1][1] = 1; bonus = Object.fromEntries(e); } }
+    out.races.push({ name: str(x.name, 30), base: x.base, sub: str(x.sub, 60), traits: (Array.isArray(x.traits) ? x.traits : []).map(t => str(t, 120)).filter(Boolean).slice(0, 3), bonus, skill: sk(x.skill), social: str(x.social, 70), att: clamp(Math.round(Number(x.att) || 0), -10, 5), look: str(x.look, 120) }); });
+  (Array.isArray(r.backgrounds) ? r.backgrounds : []).slice(0, 2).forEach(g => { if (!g || !str(g.name, 34)) return; let skills = [...new Set((Array.isArray(g.skills) ? g.skills : []).map(sk).filter(Boolean))].slice(0, 2);
+    if (skills.length < 2) skills = [...new Set([...skills, "insight", "perception"])].slice(0, 2);
+    out.backgrounds.push({ name: str(g.name, 34), skills, hook: str(g.hook, 200).replace(/^вы\s+/i, "") || "пришли сюда по своим причинам", item: str(g.item, 50) || "Памятная вещь", gold: clamp(Math.round(Number(g.gold) || 10), 3, 30), feat: str(g.feat, 200), base: BACKGROUNDS[g.base] ? g.base : null, att_txt: str(g.att_txt, 60) }); });
+  return out;
+}
+function lexClean(r) {
+  if (!r || typeof r !== "object") return null; const o = { cls: {}, race: {}, bg: {}, w: {}, a: {}, sp: {}, foe: {}, it: {}, wd: {} };
+  if (Array.isArray(r.money) && str(r.money[0], 5)) o.money = [str(r.money[0], 5), str(r.money[1], 5) || str(r.money[0], 5), str(r.money[2], 16) || str(r.money[0], 5)];
+  const pair = (src, dst, ok) => Object.entries(src && typeof src === "object" ? src : {}).forEach(([k, v]) => { if (!ok(k)) return; const a = Array.isArray(v) ? v : [v]; const n = str(a[0], 32); if (n) dst[k] = [n, str(a[1], 40), str(a[2], 160)]; });
+  pair(r.classes, o.cls, k => CLASSES[k] && !CLASSES[k].uniq); pair(r.races, o.race, k => RACES[k] && !RACES[k].uniq);
+  Object.entries(r.weapons || {}).forEach(([k, v]) => { if (!WT[k]) return; const a = Array.isArray(v) ? v : [v]; const n = str(a[0], 32); if (n) o.w[k] = [n, ["m", "f", "n"].includes(a[1]) ? a[1] : WT[k].g]; });
+  const one = (src, dst, ok) => Object.entries(src && typeof src === "object" ? src : {}).forEach(([k, v]) => { const n = str(Array.isArray(v) ? v[0] : v, 40); if (n && ok(k)) dst[k] = n; });
+  one(r.backgrounds, o.bg, k => BACKGROUNDS[k] && !BACKGROUNDS[k].uniq); one(r.armor, o.a, k => ITEMS[k]); one(r.spells, o.sp, k => SPELLS[k]); one(r.foes, o.foe, k => BESTIARY[k]); one(r.items, o.it, k => ITEMS[k]); one(r.words, o.wd, k => k.length >= 3 && k.length <= 40);
+  return o;
+}
+const SKIN_WORDS = ["Кузница", "кузнец", "кузнеца", "Пекарня", "пекарь", "пекаря", "Свечная лавка", "свечник", "свечника", "Лавка мясника", "Лавка старьёвщика", "Аптекарская лавка", "Лавка всякой всячины", "Амбар", "Сарай", "Сарай для снастей", "Караульня", "сержант стражи", "стражник", "Дом купца", "зажиточный купец", "купца", "Дом хуторянина", "хуторянин", "хуторянина", "батрак",
+  "углежог", "углежога", "торфяник", "торфяника", "бортник", "бортника", "бондарь", "бондаря", "знахарка", "знахарки", "травница", "травницы", "резчик по кости", "резчика по кости", "лодочник", "лодочника", "Ремесленная улица", "Рыночная площадь", "Крепостные ворота",
+  "Книга заклинаний", "Мешочек с компонентами", "Священный символ", "Колчан со стрелами", "Лютня", "Книга теней", "Омела", "Травяной сбор", "Молитвенник", "Набор путешественника"];
+function worldCtx(w, opts) { const P = WSET[w.setting] || WSET.fantasy; return `Мир «${w.name}»: ${w.public}
+Тайна (для тебя, игроку не раскрывать): ${String(w.secret || "").slice(0, 600)}
+Сеттинг: ${P.n} — ${P.prompt}.${opts.wish ? ` Пожелания игрока: ${opts.wish}.` : ""} Окружение: ${BIOMES[w.biome] || ""}. Тон: ${TONES[opts.tone] || ""}.`; }
+async function skinUniqAI(sample, w, opts) {
+  const cls = Object.entries(CLASSES).filter(([, c]) => !c.uniq).map(([k, c]) => `${k} (${SKIN0?.CLASSES?.[k]?.name || c.name}: ${c.features.join("; ")})`).join("\n");
+  const rc = Object.entries(RACES).filter(([, r]) => !r.uniq).map(([k, r]) => `${k} (${SKIN0?.RACES?.[k]?.name || r.name}: ${r.traits.join("; ")})`).join("\n");
+  const r = await sample.json(`Ты — мастер настольных ролевых игр и автор сеттингов. Пиши по-русски.
+${worldCtx(w, opts)}
+Игра работает на правилах 5e: механика классов и рас сохраняется, меняется то, как они выглядят и называются в этом мире.
+Придумай для ЭТОГО мира 2 особых класса, 2 особых народа (расы, виды или происхождения) и 2 особые предыстории, которых нет больше нигде. Они связаны с местами, культурой, конфликтом и тайной мира (но не раскрывают её) и звучат в духе сеттинга.
+- Особый класс строится на механике базового класса (base). features — 2 способности: переосмысли способности базы в духе мира, СОХРАНИВ их механику в описании (например, «Удар по уязвимому узлу: +1d6 урона при преимуществе»). skills — 5–6 навыков из: ${Object.keys(SKILLS).join(", ")}. Базовые классы:
+${cls}
+- Особый народ строится на базовой расе (base). traits — 3 черты: две переосмысляют механику базы с сохранением сути, третья — особенность этого мира. bonus — одна характеристика +2 и одна +1 (str, dex, con, int, wis, cha). skill — один навык из списка выше. social — как к ним относятся местные, до 8 слов; att — отношение местных от −10 до 5. look — внешность по-английски для генератора портретов, 6–12 слов. Базовые расы:
+${rc}
+- Особая предыстория: skills — 2 навыка из списка; hook — продолжает фразу «Вы …», 1 предложение; item — памятная вещь; gold 5–25; feat — особенность, 1 предложение: чем она помогает в этом мире; att_txt — как встречают местные, до 6 слов.
+Используй разные базы. Ответь только JSON:
+{"classes":[{"name":"…","base":"rogue","role":"2–4 слова","blurb":"1 предложение","features":["…","…"],"skills":["…"],"color":"#hex"}],"races":[{"name":"…","base":"human","sub":"до 7 слов","traits":["…","…","…"],"bonus":{"dex":2,"int":1},"skill":"…","social":"…","att":0,"look":"…"}],"backgrounds":[{"name":"…","skills":["…","…"],"hook":"…","item":"…","gold":10,"feat":"…","att_txt":"…"}]}`, { cache: false });
+  const u = uniqClean(r); return u.classes.length + u.races.length + u.backgrounds.length ? u : null;
+}
+async function skinLexAI(sample, w, opts) {
+  const S0 = SKIN0; const list = (T, f) => Object.entries(T).filter(([, v]) => !v.uniq).map(([k, v]) => `${k}=${f(v)}`).join("; ");
+  const r = await sample.json(`Ты — автор сеттингов для настольных ролевых игр. Пиши по-русски.
+${worldCtx(w, opts)}
+Переименуй стандартные элементы игры 5e так, чтобы они звучали в духе этого сеттинга и мира (механика не меняется, только названия). Если понятие не подходит сеттингу — замени ближайшим аналогом. Названия короткие, 1–3 слова.
+Ответь только JSON с такими ключами (все id сохранить):
+"money": ["сокращение крупной монеты до 4 знаков", "сокращение мелкой", "крупная в родительном падеже мн. ч."],
+"classes": {"id": ["название", "роль, 2–4 слова", "1 предложение: кто это в этом мире"]} для: ${list(S0.CLASSES, v => v.name)}
+"races": {"id": ["название", "описание до 6 слов"]} для: ${list(S0.RACES, v => v.name)}
+"backgrounds": {"id": "название"} для: ${list(S0.BACKGROUNDS, v => v.name)}
+"weapons": {"id": ["название", "род: m|f|n"]} для: ${Object.entries(S0.WT).map(([k, v]) => `${k}=${v.n}`).join("; ")}
+"armor": {"id": "название"} для: ${["leather", "studded", "chainshirt", "scale", "chainmail", "shield"].filter(k => S0.ITEMS[k]).map(k => `${k}=${S0.ITEMS[k].n}`).join("; ")}
+"spells": {"id": "название способности"} для: ${Object.entries(S0.SPELLS).map(([k, v]) => `${k}=${v.name}`).join("; ")}
+"foes": {"id": "существо в ед. ч."} для: ${Object.entries(S0.BESTIARY).map(([k, v]) => `${k}=${v.label.split(",")[0]}`).join("; ")}
+"items": {"id": "название"} для: ${["potion", "potion2", "antidote", "holywater", "healkit", "torch", "lantern", "oil", "thieves", "candles", "incense", "flint", "waterskin", "ale", "wine", "drink", "room", "bless"].filter(k => S0.ITEMS[k]).map(k => `${k}=${S0.ITEMS[k].n}`).join("; ")}
+"words": {"исходное": "замена"} — замени дословно (с тем же падежом), если не подходит сеттингу: ${SKIN_WORDS.join("; ")}`, { cache: false });
+  return lexClean(r);
+}
+{ const _fw = forgeWorld; forgeWorld = async function (opts, onStage, signal) {
+  const st = WSET[opts.setting] ? opts.setting : "fantasy"; applySkin({ id: "forge-" + st, setting: st }, true);
+  const w = await _fw.apply(this, arguments); w.setting = st; if (opts.wish) w.wish = str(opts.wish, 300);
+  if (st !== "fantasy" && WSET[st].photo && !w.photo_style) w.photo_style = WSET[st].photo;
+  onStage(6); const sample = await getSample();
+  if (sample && !signal?.aborted) { const [lx, un] = await Promise.allSettled([st === "fantasy" ? Promise.resolve(null) : skinLexAI(sample, w, opts), skinUniqAI(sample, w, opts)]);
+    if (lx.status === "fulfilled" && lx.value) w.lex = lx.value; if (un.status === "fulfilled" && un.value) w.uniq = un.value;
+    if (lx.status === "rejected") console.warn("lex", lx.reason); if (un.status === "rejected") console.warn("uniq", un.reason); }
+  if (signal?.aborted) throw { code: "cancelled" };
+  w.lexv = 1; SKIN_KEY = null; return w; }; }
+/* ---------- переключение облика: игра следует S.wd, создание — D.world ---------- */
+function skinTarget() { return S ? S.wd : D?.world || null; }
+{ const _sw = setWorld; setWorld = function (def) { const r = _sw.apply(this, arguments); try { skinWords(def); const t = skinTarget() || def; applySkin(t); } catch (e) { console.error(e); } return r; }; }
+{ const _rc = renderCreate; renderCreate = function () { try { if (!S && D?.world) applySkin(D.world); } catch (e) { console.error(e); } return _rc.apply(this, arguments); }; }
+{ const _ns = nameSet; nameSet = function (wd) { const P = WSET[settingOf(wd)]; if (P?.names && (!wd.culture || wd.culture === "auto")) return P.names; return _ns.apply(this, arguments); }; }
+{ const _ie = indexEntry; indexEntry = function (s) { const e = _ie.apply(this, arguments); try { e.clsName = CLASSES[s.char.cls]?.name; e.raceName = RACES[s.char.race]?.name; e.clsBase = bcls(s.char); e.raceBase = RACES[s.char.race]?.base || s.char.race; e.clsColor = CLASSES[s.char.cls]?.color; e.setting = settingOf(s.wd); } catch (er) {} return e; }; }
+function settingBrief() {
+  if (!WD) return ""; const st = settingOf(WD); const P = WSET[st]; const out = []; const c = S?.char;
+  if (st !== "fantasy") out.push(`СЕТТИНГ: ${P.n} — ${P.prompt}${st === "custom" && WD.wish ? ` (${WD.wish})` : ""}. Механика 5e, но всё описывай в духе сеттинга, без неуместных средневековых понятий. Деньги — ${MZW()}. Способности и заклинания — это проявления сеттинга (${st === "cyberpunk" ? "импланты, хаки, гаджеты" : st === "space" ? "псионика и технологии" : st === "steampunk" ? "эфирная наука и механизмы" : st === "postapoc" ? "аномалии, мутации, старые технологии" : "в духе мира"}). Классы здесь называются: ${Object.values(CLASSES).filter(x => !x.uniq).map(x => x.name).join(", ")}.`);
+  if (c) { const cl = CLASSES[c.cls], rc = RACES[c.race], bg = BACKGROUNDS[c.bg];
+    if (cl?.uniq) out.push(`КЛАСС ГЕРОЯ — особый для этого мира: ${cl.name} (${cl.role}). ${cl.blurb} Способности: ${cl.features.join("; ")}.`);
+    if (rc?.uniq) out.push(`НАРОД ГЕРОЯ — особый для этого мира: ${rc.name} (${rc.sub}). Черты: ${rc.traits.join("; ")}. Как относятся местные: ${RACE_SOCIAL[c.race] || "по-разному"}.`);
+    if (bg?.uniq) out.push(`ПРЕДЫСТОРИЯ ГЕРОЯ — особая для этого мира: ${bg.name}. Особенность: ${bg.feat || ""}.`); }
+  const u = WD.uniq; if (u && (u.classes?.length || u.races?.length)) out.push(`Особые для мира классы и народы (могут встречаться среди НПС): ${[...(u.classes || []).map(x => x.name), ...(u.races || []).map(x => x.name)].join(", ")}.`);
+  return out.length ? out.join("\n") + "\n" : "";
+}
+function uniqSummary(w) { const u = w?.uniq; if (!u) return ""; const all = [...(u.classes || []).map(x => x.name), ...(u.races || []).map(x => x.name), ...(u.backgrounds || []).map(x => x.name)]; return all.length ? `<small class="w-uniq">✦ Только здесь: ${all.map(esc).join(", ")}</small>` : ""; }
+function settingGrid() {
+  const g = document.createElement("div"); g.className = "set-grid"; const cur = D.forge.setting || "fantasy";
+  g.innerHTML = `<span class="set-lab">Сеттинг</span><div class="set-cards">${Object.entries(WSET).map(([k, s]) => `<button type="button" class="set-card" data-set="${k}" aria-pressed="${cur === k}" style="--sc:${s.col}" ${D.forge.stage >= 0 ? "disabled" : ""}><b>${s.n}</b><small>${s.d}</small></button>`).join("")}</div>`;
+  g.querySelectorAll("[data-set]").forEach(b => b.onclick = () => { const k = b.dataset.set; D.forge.setting = k; if (WSET[k].biome) D.forge.biome = WSET[k].biome; renderCreate(); }); return g;
+}
+{ const _rf = runForge; runForge = async function () { if (D.forge.setting === "custom" && !String(D.forge.wish || "").trim()) { D.forge.err = "Для своего мира опишите атмосферу в пожеланиях: эпоха, технологии или магия, кто там живёт."; renderCreate(); return; } return _rf.apply(this, arguments); }; }
+/* ---------- карта: новые значки и дома ---------- */
+function roofCol(q) { const r = WSET[settingOf(WD)]?.roof; return r ? r[q > .5 ? 0 : 1] : (q > .5 ? "#9c4a32" : "#7d5a3a"); }
+function drawGlyph(g, it, ink) {
+  const { X, Y, s, q } = it; const t = it.type;
+  if (t === "palm") { g.strokeStyle = "rgba(30,24,14,.25)"; g.fillStyle = "rgba(30,24,14,.22)"; g.beginPath(); g.ellipse(X + s * .6, Y + s * 1.2, s * .9, s * .25, 0, 0, 7); g.fill();
+    g.strokeStyle = "#6a4a2a"; g.lineWidth = s * .28; g.beginPath(); g.moveTo(X, Y + s * 1.2); g.quadraticCurveTo(X + s * .5, Y + s * .2, X + s * .2, Y - s * .7); g.stroke();
+    const tx = X + s * .2, ty = Y - s * .7; g.strokeStyle = `rgb(${60 + q * 20},${110 + q * 20},${50})`; g.lineWidth = s * .32; g.lineCap = "round";
+    for (let j = 0; j < 5; j++) { const a = -Math.PI * .95 + j * Math.PI * .47; g.beginPath(); g.moveTo(tx, ty); g.quadraticCurveTo(tx + Math.cos(a) * s * .9, ty + Math.sin(a) * s * .9 - s * .3, tx + Math.cos(a) * s * 1.5, ty + Math.sin(a) * s * 1.2 + s * .3); g.stroke(); } return true; }
+  if (t === "cactus") { g.fillStyle = `rgb(${86 + q * 20},${124 + q * 16},${70})`; g.strokeStyle = ink; g.lineWidth = .7; const w = s * .42;
+    g.beginPath(); g.roundRect(X - w / 2, Y - s * 1.2, w, s * 2.2, w / 2); g.fill(); g.stroke(); g.beginPath(); g.roundRect(X - w * 1.6, Y - s * .5, w * .8, s * .9, w / 2); g.fill(); g.stroke(); g.beginPath(); g.roundRect(X + w * .8, Y - s * .8, w * .8, s * .9, w / 2); g.fill(); g.stroke(); return true; }
+  if (t === "block") { const neon = WSET[settingOf(WD)]?.neon; const w = s * 1.5, h = s * (2 + q * 2.6), d = s * .55;
+    g.fillStyle = "rgba(10,12,18,.35)"; g.fillRect(X - w / 2 + 2, Y - h + 2, w + d, h); g.fillStyle = `rgb(${70 + q * 20},${74 + q * 20},${88 + q * 18})`; g.fillRect(X - w / 2, Y - h, w, h);
+    g.fillStyle = `rgb(${52 + q * 14},${56 + q * 14},${68 + q * 12})`; g.beginPath(); g.moveTo(X + w / 2, Y - h); g.lineTo(X + w / 2 + d, Y - h - d * .6); g.lineTo(X + w / 2 + d, Y - d * .6); g.lineTo(X + w / 2, Y); g.closePath(); g.fill();
+    g.fillStyle = `rgb(${96 + q * 20},${100 + q * 20},${114 + q * 18})`; g.beginPath(); g.moveTo(X - w / 2, Y - h); g.lineTo(X - w / 2 + d, Y - h - d * .6); g.lineTo(X + w / 2 + d, Y - h - d * .6); g.lineTo(X + w / 2, Y - h); g.closePath(); g.fill();
+    const wc = neon ? ["#ff5cd0", "#5ce8ff", "#ffd75c"] : ["#f2d48a", "#e8c070"]; for (let yy = Y - h + s * .45; yy < Y - s * .3; yy += s * .55) for (let xx = X - w / 2 + s * .3; xx < X + w / 2 - s * .15; xx += s * .45) { if (hash(Math.round(xx * 7) + ":" + Math.round(yy * 7)) % 3) continue; g.fillStyle = wc[hash(xx + "," + yy) % wc.length]; g.fillRect(xx, yy, s * .18, s * .2); }
+    g.strokeStyle = ink; g.lineWidth = .6; g.strokeRect(X - w / 2, Y - h, w, h); return true; }
+  if (t === "lamp") { const neon = WSET[settingOf(WD)]?.neon; g.strokeStyle = "rgba(30,30,36,.8)"; g.lineWidth = .7; g.beginPath(); g.moveTo(X, Y + s); g.lineTo(X, Y - s); g.stroke(); g.fillStyle = neon ? "rgba(255,92,208,.55)" : "rgba(255,214,120,.5)"; g.beginPath(); g.arc(X, Y - s, s * .6, 0, 7); g.fill(); return true; }
+  if (t === "snag") { g.strokeStyle = `rgb(${84 + q * 20},${70 + q * 14},${56})`; g.lineWidth = s * .26; g.lineCap = "round"; g.beginPath(); g.moveTo(X, Y + s * 1.1); g.lineTo(X + s * .1, Y - s * 1.1); g.moveTo(X + s * .05, Y - s * .1); g.lineTo(X - s * .7, Y - s * .7); g.moveTo(X + s * .08, Y - s * .5); g.lineTo(X + s * .7, Y - s * 1); g.stroke(); return true; }
+  if (t === "rubble") { g.fillStyle = "rgba(96,88,80,.75)"; g.strokeStyle = "rgba(40,32,24,.6)"; g.lineWidth = .5; [[-.6, .2, .5], [.3, .3, .6], [0, -.3, .4]].forEach(([a, b, r]) => { g.beginPath(); g.moveTo(X + a * s - r * s, Y + b * s); g.lineTo(X + a * s, Y + b * s - r * s); g.lineTo(X + a * s + r * s, Y + b * s); g.closePath(); g.fill(); g.stroke(); }); return true; }
+  if (t === "crystal") { const cs = [[0, 1.9, .5], [-.55, 1.2, .35], [.55, 1.35, .38]]; cs.forEach(([o, h, w], j) => { g.beginPath(); g.moveTo(X + o * s - w * s, Y + s * .9); g.lineTo(X + o * s, Y + s * .9 - h * s); g.lineTo(X + o * s + w * s, Y + s * .9); g.closePath(); g.fillStyle = j ? `rgba(${120 + q * 60},${90},${200},.85)` : `rgba(${90},${200},${210 - q * 40},.9)`; g.fill(); g.strokeStyle = ink; g.lineWidth = .6; g.stroke(); }); return true; }
+  if (t === "spore") { g.strokeStyle = "rgba(60,40,70,.7)"; g.lineWidth = .6; g.beginPath(); g.moveTo(X, Y + s); g.lineTo(X, Y - s * .2); g.stroke(); g.fillStyle = `rgba(${200 + q * 40},${110},${180},.8)`; g.beginPath(); g.arc(X, Y - s * .3, s * .55, Math.PI, 0); g.fill(); return true; }
+  return false;
+}
+function drawHouseAlt(g, it, ink) {
+  const st = WSET[settingOf(WD)]; const style = st?.house || "roof"; if (style === "roof") return false; const { X, Y, s, q } = it;
+  g.fillStyle = "rgba(30,24,14,.3)"; g.fillRect(X - s + 1, Y - s * .1 + 1.2, s * 2, s * 1.2);
+  if (style === "flat") { const h = s * (1.2 + q * .9); g.fillStyle = q > .5 ? "#b9bcc4" : "#9ea3ad"; g.fillRect(X - s, Y + s - h, s * 2, h); g.strokeStyle = ink; g.lineWidth = .7; g.strokeRect(X - s, Y + s - h, s * 2, h); g.fillStyle = st.neon ? (q > .5 ? "#ff5cd0" : "#5ce8ff") : "#f0d080"; g.fillRect(X - s * .6, Y + s - h * .7, s * .35, s * .3); g.fillRect(X + s * .2, Y + s - h * .7, s * .35, s * .3); return true; }
+  if (style === "ruin") { g.fillStyle = "#a89a86"; g.beginPath(); g.moveTo(X - s, Y + s); g.lineTo(X - s, Y - s * .3); g.lineTo(X - s * .3, Y - s * .1); g.lineTo(X + s * .1, Y - s * .6); g.lineTo(X + s, Y - s * .2); g.lineTo(X + s, Y + s); g.closePath(); g.fill(); g.strokeStyle = ink; g.lineWidth = .7; g.stroke(); g.fillStyle = "#4a4038"; g.fillRect(X - s * .5, Y + s * .1, s * .4, s * .5); return true; }
+  if (style === "dome") { g.fillStyle = q > .5 ? "#dfe4ee" : "#c4ccda"; g.beginPath(); g.arc(X, Y + s * .7, s * 1.05, Math.PI, 0); g.closePath(); g.fill(); g.strokeStyle = ink; g.lineWidth = .7; g.stroke(); g.strokeStyle = "rgba(60,80,120,.5)"; g.beginPath(); g.arc(X, Y + s * .7, s * .6, Math.PI * 1.1, Math.PI * 1.6); g.stroke(); g.fillStyle = "#7ac8ff"; g.beginPath(); g.arc(X + s * .4, Y + s * .2, s * .16, 0, 7); g.fill(); return true; }
+  if (style === "pagoda") { g.fillStyle = "#e2d4b8"; g.fillRect(X - s * .8, Y - s * .1, s * 1.6, s * 1.1); g.strokeStyle = ink; g.lineWidth = .7; g.strokeRect(X - s * .8, Y - s * .1, s * 1.6, s * 1.1); g.fillStyle = roofCol(q);
+    g.beginPath(); g.moveTo(X - s * 1.4, Y - s * .05); g.quadraticCurveTo(X - s * .6, Y - s * .3, X, Y - s * 1.05); g.quadraticCurveTo(X + s * .6, Y - s * .3, X + s * 1.4, Y - s * .05); g.closePath(); g.fill(); g.stroke(); return true; }
+  return false;
+}
+
 /* =========================================================================
    ЗВУК: музыка по настроению, фон, эффекты
    Музыка и звуки — Battle for Wesnoth (GPL v2+); «Three Sheets» — Scott Buckley (CC BY-SA 4.0)
@@ -6892,7 +7350,7 @@ async function adjudicate(text) {
   const prompt = `Ты — арбитр правил 5e в текстовой ролевой игре. Ты НЕ пишешь историю, только решаешь, какие броски нужны для действия игрока. Броски сделает программа.
 ${sceneBrief()}
 ${npcBrief()}${combatBrief()}${travelBrief()}${questBrief()}${compBrief(true)}
-ГЕРОЙ: ${charBrief()}
+${settingBrief()}ГЕРОЙ: ${charBrief()}
 Недавнее:
 ${recentLog(6)}
 
@@ -6921,7 +7379,7 @@ function validatePlan(plan) {
     const adv = clamp(Number(ch.adv) || 0, -1, 1); const reason = str(ch.reason, 120);
     if (ch.kind === "skill" && SKILLS[ch.skill]) out.checks.push({ kind: "skill", skill: ch.skill, dc: clamp(Math.round(Number(ch.dc) || 12), 5, 30), adv, reason });
     else if (ch.kind === "save" && ABIL.includes(ch.ability)) out.checks.push({ kind: "save", ability: ch.ability, dc: clamp(Math.round(Number(ch.dc) || 12), 5, 30), adv, reason });
-    else if (ch.kind === "attack" && enemyHere(ch.target)) { const a = { kind: "attack", target: ch.target, weapon: C().weapons.includes(ch.weapon) ? ch.weapon : C().weapons[0], adv, reason }; out.checks.push(a); if (EXTRA_ATK.has(C().cls) && C().level >= 5) out.checks.push({ ...a, extra: true, reason: "Дополнительная атака" }); }
+    else if (ch.kind === "attack" && enemyHere(ch.target)) { const a = { kind: "attack", target: ch.target, weapon: C().weapons.includes(ch.weapon) ? ch.weapon : C().weapons[0], adv, reason }; out.checks.push(a); if (EXTRA_ATK.has(bcls(C())) && C().level >= 5) out.checks.push({ ...a, extra: true, reason: "Дополнительная атака" }); }
     else if (ch.kind === "spell" && C().spells.includes(ch.spell)) {
       const sp = SPELLS[ch.spell]; const needT = !["heal", "sleep", "buff", "smite"].includes(sp.kind);
       if (needT && !enemyHere(ch.target)) { out.notes.push(`Для «${sp.name}» нет подходящей цели.`); return; }
@@ -7031,7 +7489,7 @@ ${toneLine()}
 МИР «${WD.name}» (${GENRES[WD.genre] || "Расследование"}; опасность: ${(DANGERS[WD.danger] || "Опасный").toLowerCase()}): ${WD.public}
 ТАЙНА (знает только мастер, раскрывать постепенно через заслуженные улики): ${WD.secret}
 Опорные точки: ${(WD.beats || []).join(" | ")}. Хорошие концовки: ${(WD.endings || []).join(" | ")}.
-ГЕРОЙ: ${charBrief()}
+${settingBrief()}ГЕРОЙ: ${charBrief()}
 ${sceneBrief()}
 ${npcBrief()}${combatBrief()}${travelBrief()}${questBrief()}${compBrief()}
 ЗАДАНИЕ: ${S.world.quest}
@@ -7082,7 +7540,7 @@ function applyEffects(eff, combatEnded) {
   if (eff.heal) { const p = parseDice(eff.heal.dice || eff.heal); if (p) { const r = rollDice(p); const got = healHero(r.total); chips.push({ c: "heal", x: `+${got} HP` }); } }
   (Array.isArray(eff.items_add) ? eff.items_add : []).slice(0, 3).forEach(it => { const name = str(typeof it === "string" ? it : it?.name, 40); if (!name) return; c.items.push({ name, desc: str(it.desc, 120), potion: /зелье лечения/i.test(name) }); chips.push({ c: "item", x: `+ ${name}` }); });
   (Array.isArray(eff.items_remove) ? eff.items_remove : []).slice(0, 3).forEach(n => { const i = c.items.findIndex(x => x.name.toLowerCase() === String(n).toLowerCase()); if (i >= 0) { chips.push({ c: "item", x: `− ${c.items[i].name}` }); c.items.splice(i, 1); } });
-  const gold = clamp(Math.round(Number(eff.gold) || 0), -50, 100); if (gold && c.gold + gold >= 0) { c.gold += gold; chips.push({ c: "gold", x: `${gold > 0 ? "+" : ""}${gold} зм` }); }
+  const gold = clamp(Math.round(Number(eff.gold) || 0), -50, 100); if (gold && c.gold + gold >= 0) { c.gold += gold; chips.push({ c: "gold", x: `${gold > 0 ? "+" : ""}${gold} ${MZ()}` }); }
   const xp = Math.round((clamp(Math.round(Number(eff.xp) || 0), 0, 100 + 50 * C().level) + (S.pendingXP || 0)) * (MODES[S.mode]?.xp || 1)); if (xp) { c.xp += xp; chips.push({ c: "xp", x: `+${xp} опыта` }); }
   if (eff.attitude && typeof eff.attitude === "object") Object.entries(eff.attitude).forEach(([id, v]) => { if (!NPCS[id]) return; const dv = clamp(Math.round(Number(v) || 0), -15, 15); if (!dv) return; const st = S.world.npcs[id] || (S.world.npcs[id] = { att: 0, mem: [] }); st.att = clamp(st.att + dv, -100, 100); chips.push({ c: "npc", x: `${NPCS[id].name}: ${dv > 0 ? "+" : ""}${dv} к отношению` }); });
   const loc = POIS[S.world.loc];
@@ -7252,8 +7710,8 @@ function openSettings() {
 /* ---------- портрет НПС ---------- */
 let popT = null;
 function popNPC(id) { const p = document.getElementById("npc-pop"); const n = NPCS[id]; if (!n) return; p.innerHTML = `${npcPh(id)}<div class="cap"><b>${esc(n.name)}</b><small>${esc(n.role)} · ${attLabel(S.world.npcs[id]?.att || 0)[0]}</small></div>`; p.classList.add("show"); clearTimeout(popT); popT = setTimeout(() => p.classList.remove("show"), 4200); }
-function shortRest() { advanceTime(1); const c = C(); const r = rollDice({ n: 1, d: CLASSES[c.cls].hd, mod: mod(c.scores.con) }); c.hitDice--; const got = healHero(Math.max(1, r.total)); if (c.cls === "fighter") c.secondWind = true; restoreRes(c, "short"); pushFeed({ t: "sys", html: "Короткий отдых: час тишины, перевязка, глоток воды." }); pushFeed({ t: "chips", items: [{ c: "heal", x: `+${got} HP (${r.text})` }] }); after(); }
-function longRest() { const c = C(); const t = worldTime(); t.day++; t.part = 0; c.hp = c.maxHp; c.hitDice = c.level; c.secondWind = c.cls === "fighter"; Object.values(c.slots).forEach(s => s[1] = s[0]); restoreRes(c, "long"); pushFeed({ t: "sys", html: "<b>Долгий отдых.</b> Ночь проходит. Хиты, ячейки и силы восстановлены." }); pushFeed({ t: "chips", items: [{ c: "heal", x: "HP полностью" }] }); after(); }
+function shortRest() { advanceTime(1); const c = C(); const r = rollDice({ n: 1, d: CLASSES[c.cls].hd, mod: mod(c.scores.con) }); c.hitDice--; const got = healHero(Math.max(1, r.total)); if (bcls(c) === "fighter") c.secondWind = true; restoreRes(c, "short"); pushFeed({ t: "sys", html: "Короткий отдых: час тишины, перевязка, глоток воды." }); pushFeed({ t: "chips", items: [{ c: "heal", x: `+${got} HP (${r.text})` }] }); after(); }
+function longRest() { const c = C(); const t = worldTime(); t.day++; t.part = 0; c.hp = c.maxHp; c.hitDice = c.level; c.secondWind = bcls(c) === "fighter"; Object.values(c.slots).forEach(s => s[1] = s[0]); restoreRes(c, "long"); pushFeed({ t: "sys", html: "<b>Долгий отдых.</b> Ночь проходит. Хиты, ячейки и силы восстановлены." }); pushFeed({ t: "chips", items: [{ c: "heal", x: "HP полностью" }] }); after(); }
 function nextXP(c) { return c.level >= MAX_LEVEL ? null : XP_LEVELS[c.level]; }
 function deathDC() { return MODES[S?.mode]?.deathDC || 10; }
 function capturedDefeat() {
