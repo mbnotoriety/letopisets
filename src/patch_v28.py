@@ -36,4 +36,7 @@ c=h.count('УСТАНОВЛЕННЫЕ ФАКТЫ (не противоречь):'
 h=h.replace('${pinsBrief()}УСТАНОВЛЕННЫЕ ФАКТЫ (не противоречь):','${pinsBrief()}${deedsBrief()}УСТАНОВЛЕННЫЕ ФАКТЫ (не противоречь):')
 R('<span><b>10</b>классов</span><span><b>4</b>биома</span>','<span><b>11</b>сеттингов</span><span><b>12</b>биомов</span>')
 R('/* MOBILE */\n','@media (max-width: 440px) { .logo b { font-family: var(--display) !important; font-size: 17px !important; letter-spacing: 0 !important; font-weight: 700 !important; } }\n/* MOBILE */\n')
+R(MK,'\n/* DLGC */\n'+open(SP+'dlgc.js').read()+MK)
+R('/* MOBILE */\n',open(SP+'dlgc.css').read()+'/* MOBILE */\n')
+R('({ short: "50–90 слов, 1–2 абзаца", normal: "90–170 слов, 2–3 абзаца", long: "170–260 слов, 3–4 абзаца" })[S.settings?.len || "normal"]','(S.dialogue || S.dlgPending ? "ИДЁТ РАЗГОВОР: 40–100 слов, 1–2 абзаца — главное реплика собеседника и его живая реакция, без долгих описаний обстановки" : ({ short: "50–90 слов, 1–2 абзаца", normal: "90–170 слов, 2–3 абзаца", long: "170–260 слов, 3–4 абзаца" })[S.settings?.len || "normal"])')
 open(P,'w').write(h); print('v28 ok', h.count('deedsBrief()'))

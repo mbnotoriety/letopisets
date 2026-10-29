@@ -1320,6 +1320,42 @@ button.pill { background: transparent; font: inherit; cursor: pointer; } button.
 @media (max-width: 600px) { .e-narr.v2 { padding: 14px 14px 12px; font-size: 16px; border-radius: 14px; } .sp-ava { width: 34px; height: 34px; } .sp-body { padding: 8px 11px; } .e-player { max-width: 92%; } }
 @media (prefers-reduced-motion: reduce) { .e-narr.v2 { animation: none; } }
 @media (max-width: 440px) { .logo b { font-family: var(--display) !important; font-size: 17px !important; letter-spacing: 0 !important; font-weight: 700 !important; } }
+/* DLG COMPACT */
+.dlg { padding: 6px 6px 7px; gap: 5px; border-radius: 14px; box-shadow: 0 6px 20px rgba(0, 0, 0, .22); }
+.dlg-head { gap: 8px; padding: 0 2px; }
+.dlg-head .ph.dlg-ph { width: 28px; height: 28px; border-width: 1.5px; }
+.dlg-who { flex-direction: row; align-items: baseline; gap: 8px; }
+.dlg-who b { font-family: var(--display); font-size: 14px; font-weight: 600; flex: none; max-width: 55%; }
+.dlg-who small { font-size: 11.5px; }
+.dlg-x { width: 26px; height: 26px; font-size: 11px; }
+.dlg-opts { gap: 2px; max-height: min(30vh, 250px); }
+.dlg-o { padding: 5px 8px; gap: 8px; font-size: 14px; line-height: 1.32; border-radius: 9px; }
+.dlg-n { width: 18px; height: 18px; font-size: 10.5px; border-radius: 5px; }
+.dlg-tag { font-size: 9.5px; padding: 0 5px; margin-right: 5px; }
+.dlg-ck { font-size: 11px; padding: 2px 7px; gap: 5px; }
+.dlg-foot { display: flex; flex-wrap: wrap; gap: 6px; padding: 1px 2px 0; }
+.dlg-foot .dlg-o { width: auto; flex: none; padding: 4px 11px 4px 8px; gap: 6px; font-size: 12.5px; border-radius: 99px; border: 1px solid var(--line); background: rgba(255, 255, 255, .02); color: var(--mist); }
+.dlg-foot .dlg-o:hover:not(:disabled) { transform: none; color: var(--foam); }
+.dlg-foot .dlg-n { width: auto; height: auto; border: 0; font-size: 11px; color: inherit; }
+.dlg-foot .dlg-o.end { margin-left: auto; }
+.dlg-foot .dlg-o.recruit { border-color: rgba(124, 199, 156, .45); color: #9fdcb8; }
+body.dlg-open #act-form, body.dlg-open #sugg { display: none; }
+body.dlg-open.dlg-typing #act-form { display: flex; }
+body.dlg-open .npc-pop { display: none !important; }
+.e-narr.v2 { padding: 14px 18px 13px; font-size: 16.5px; line-height: 1.66; }
+.e-narr.v2 p { margin-bottom: .65em; }
+.sp-line { margin: .1em 0 .7em; gap: 10px; } .sp-ava { width: 36px; height: 36px; } .sp-body { padding: 7px 12px 8px; }
+.scene-banner { margin: -2px 0 10px; }
+@media (max-width: 600px) {
+  .dlg { padding: 5px 4px 6px; gap: 4px; }
+  .dlg-opts { max-height: 36vh; }
+  .dlg-o { padding: 6px 7px; font-size: 13.5px; }
+  .dlg-o { flex-wrap: nowrap; align-items: flex-start; } .dlg-n { margin-top: 1px; }
+  .dlg-ck.inl { display: inline-flex; margin: 0 0 0 2px; padding: 0 6px; font-size: 10.5px; vertical-align: 1px; } .dlg-ck.inl span { display: none; }
+  .dlg-foot { flex-wrap: nowrap; gap: 4px; } .dlg-foot .dlg-o { white-space: nowrap; padding: 4px 9px; font-size: 11.5px; min-width: 0; } .dlg-foot .dlg-o.end .dlg-n, .dlg-foot .dlg-o.own .dlg-n { display: none; }
+  .e-narr.v2 { padding: 12px 13px 11px; font-size: 15.5px; }
+}
+.e-narr.v2 .narr-voice, .e-narr.v2 .narr-fix { margin-top: 3px; padding: 0; font-size: 11.5px; } .e-narr.v2 .narr-tools:not(:has(button)) { display: none; }
 /* MOBILE */
 /* МОБИЛЬНАЯ ВЁРСТКА — финальные правки (идут последними) */
 #app { overflow-x: clip; }
@@ -7202,6 +7238,17 @@ function deedsBrief() {
 }
 { const _vp = validatePlan; validatePlan = function (plan) { const out = _vp.apply(this, arguments); try { const d = str(plan?.deed, 90); if (d && !/^(null|нет|-)$/i.test(d)) { S.world.deeds = S.world.deeds || []; S.world.deeds.push({ d, t: S.turn, loc: S.world.loc }); if (S.world.deeds.length > 24) S.world.deeds.splice(0, S.world.deeds.length - 24); out.deed = d; } } catch (e) { console.error(e); } return out; }; }
 
+/* DLGC */
+/* КОМПАКТНЫЙ ДИАЛОГ: служебные кнопки в одну строку, поле ввода — только по «Сказать своё» */
+{ const _rd = renderDlg; renderDlg = function () { _rd.apply(this, arguments); try { const el = document.getElementById("dlg"); const on = !!el && !el.hidden; document.body.classList.toggle("dlg-open", on); if (!on) { document.body.classList.remove("dlg-typing"); return; }
+  const ol = el.querySelector(".dlg-opts"); if (!ol) return; el.querySelector(".dlg-foot")?.remove(); const foot = document.createElement("div"); foot.className = "dlg-foot";
+  ol.querySelectorAll(".dlg-o.own, .dlg-o.recruit, .dlg-o.end").forEach(b => { const li = b.closest("li"); foot.append(b); if (li && !li.children.length) li.remove(); }); el.append(foot);
+  foot.querySelectorAll(".dlg-tx").forEach(t => { t.textContent = t.textContent.replace("Позвать с собой в путь", "Позвать в путь").replace("Закончить разговор", "Закончить").replace(/^Позвать с собой$/, "Позвать в путь"); });
+  if (matchMedia("(max-width: 600px)").matches) ol.querySelectorAll(".dlg-o").forEach(b => { const ck = b.querySelector(":scope > .dlg-ck"), tx = b.querySelector(".dlg-tx"); if (ck && tx) { ck.classList.add("inl"); tx.append(" ", ck); } });
+  document.getElementById("npc-pop")?.classList.remove("show", "on", "open"); } catch (e) { console.error(e); } }; }
+{ const _o = dlgOwn; dlgOwn = function () { document.body.classList.add("dlg-typing"); const r = _o.apply(this, arguments); document.getElementById("act-input")?.focus(); return r; }; }
+document.addEventListener("submit", ev => { if (ev.target?.id === "act-form") document.body.classList.remove("dlg-typing"); }, true);
+
 /* =========================================================================
    ЗВУК: музыка по настроению, фон, эффекты
    Музыка и звуки — Battle for Wesnoth (GPL v2+); «Three Sheets» — Scott Buckley (CC BY-SA 4.0)
@@ -7599,7 +7646,7 @@ ${S.world.villainMove ? "ПРОТИВНИК ДЕЛАЕТ ХОД: в этой с�
 ${resultsBrief(results)}`}
 
 Правила письма:
-- ${S.world.combat && fightMode() !== "full" ? "ИДЁТ БОЙ: 1–3 коротких динамичных предложения, 25–60 слов: удары, движение, звук, реакция врагов. Без долгих описаний" : ({ short: "50–90 слов, 1–2 абзаца", normal: "90–170 слов, 2–3 абзаца", long: "170–260 слов, 3–4 абзаца" })[S.settings?.len || "normal"]}. Реплики НПС в «ёлочках», у каждого свой голос и манера речи.
+- ${S.world.combat && fightMode() !== "full" ? "ИДЁТ БОЙ: 1–3 коротких динамичных предложения, 25–60 слов: удары, движение, звук, реакция врагов. Без долгих описаний" : (S.dialogue || S.dlgPending ? "ИДЁТ РАЗГОВОР: 40–100 слов, 1–2 абзаца — главное реплика собеседника и его живая реакция, без долгих описаний обстановки" : ({ short: "50–90 слов, 1–2 абзаца", normal: "90–170 слов, 2–3 абзаца", long: "170–260 слов, 3–4 абзаца" })[S.settings?.len || "normal"])}. Реплики НПС в «ёлочках», у каждого свой голос и манера речи.
 - НПС живые: у каждого свои цели и страхи, они могут отказать, солгать, торговаться, требовать плату, первыми заводить разговор. Не будь услужливым: герой получает только то, что заслужил словами, броском или ценой.
 - Мир не ждёт героя: учитывай время суток и часы угрозы. Если герой медлит или шумно проваливается, угроза растёт.
 - Покупки и продажи проходят через окно торговли движка: не выдавай купленное через items_add и не списывай gold за покупки; если герой хочет купить или продать, предложи ему поторговать. Последние сделки видны в недавних событиях.
