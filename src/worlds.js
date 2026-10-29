@@ -5,7 +5,7 @@ function settingOf(wd) { return (wd && WSET[wd.setting]) ? wd.setting : "fantasy
 var MONEY = ["зм", "см", "золотых"]; function MZ() { return (MONEY || ["зм"])[0]; } function MS() { return (MONEY || ["зм", "см"])[1]; } function MZW() { return (MONEY || ["зм", "см", "золотых"])[2]; }
 function settingLine(opts) { const P = WSET[opts?.setting] || WSET.fantasy; return `Сеттинг: ${P.n} — ${P.prompt}. `; }
 let SKIN_KEY = null, SKIN0 = null, SKIN_LEX = null, SKIN_ADDED = [];
-const SKIN_T = () => ({ CLASSES, RACES, BACKGROUNDS, WT, WV, ITEMS, SPELLS, BESTIARY, ENC_FOES, FOE_TXT, KITS, CLASS_GEAR, LOOK_M, LOOK_F, WEAPONS });
+const SKIN_T = () => ({ CLASSES, RACES, BACKGROUNDS, WT, WV, ITEMS, SPELLS, BESTIARY, ENC_FOES, FOE_TXT, KITS, CLASS_GEAR, LOOK_M, LOOK_F, WEAPONS, OBJ, SC_CROWD, SC_NAMES });
 function skinSnap() { if (SKIN0) return; SKIN0 = {}; for (const [k, T] of Object.entries(SKIN_T())) SKIN0[k] = structuredClone(T); }
 function skinRestore() {
   if (!SKIN0) return; const T = SKIN_T();
@@ -42,6 +42,7 @@ function applySkin(wd, force) {
   const W = L.wd; const rw = s => (W[s] || s);
   Object.keys(CLASS_GEAR).forEach(k => { CLASS_GEAR[k] = CLASS_GEAR[k].map(rw); }); Object.values(BACKGROUNDS).forEach(b => { if (b.item) b.item = rw(b.item); });
   if (L.looks?.m?.length) { LOOK_M.length = 0; LOOK_M.push(...L.looks.m); } if (L.looks?.f?.length) { LOOK_F.length = 0; LOOK_F.push(...L.looks.f); }
+  if (typeof skinInterior === "function") skinInterior(st);
   regUnique(wd);
   if ((wd?.uniq?.backgrounds || []).length) BG_CATS.world = "✦ Этого мира"; else delete BG_CATS.world;
 }

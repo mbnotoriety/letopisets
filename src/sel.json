@@ -1,0 +1,548 @@
+{
+"fantasy": {
+"tavern": [
+[
+"The Britons",
+"The Britons.mp3",
+307
+],
+[
+"Midnight Tale",
+"Midnight Tale.mp3",
+162
+],
+[
+"Minstrel Guild",
+"Minstrel Guild.mp3",
+186
+],
+[
+"Pippin the Hunchback",
+"Pippin the Hunchback.mp3",
+193
+],
+[
+"Achaidh Cheide",
+"Achaidh Cheide.mp3",
+134
+],
+[
+"Folk Round",
+"Folk Round.mp3",
+184
+],
+[
+"Master of the Feast",
+"Master of the Feast.mp3",
+228
+],
+[
+"Kings of Tara",
+"Kings of Tara.mp3",
+222
+],
+[
+"Suonatore di Liuto",
+"Suonatore di Liuto.mp3",
+144
+]
+]
+},
+"cyberpunk": {
+"explore": [
+[
+"Brain Dance",
+"Brain Dance.mp3",
+215
+],
+[
+"Robobozo",
+"Robobozo.mp3",
+206
+]
+],
+"tavern": [
+[
+"Ethernight Club",
+"Ethernight Club.mp3",
+306
+],
+[
+"Club Diver",
+"Club Diver.mp3",
+146
+]
+],
+"tension": [
+[
+"Nightmare Machine",
+"Nightmare Machine.mp3",
+226
+],
+[
+"Enter the Maze",
+"Enter the Maze.mp3",
+178
+]
+],
+"battle": [
+[
+"Cyborg Ninja",
+"Cyborg Ninja.mp3",
+180
+],
+[
+"Basic Implosion",
+"Basic Implosion.mp3",
+190
+]
+],
+"night": [
+[
+"Eternal Terminal",
+"Eternal Terminal.mp3",
+198
+]
+]
+},
+"steampunk": {
+"explore": [
+[
+"Industrial Revolution",
+"Industrial Revolution.mp3",
+146
+],
+[
+"Gaslamp Funworks",
+"Gaslamp Funworks.mp3",
+149
+],
+[
+"Melodie Victoria",
+"Melodie Victoria.mp3",
+241
+]
+],
+"tavern": [
+[
+"The Entertainer",
+"The Entertainer.mp3",
+193
+],
+[
+"Hyperfun",
+"Hyperfun.mp3",
+233
+]
+],
+"tension": [
+[
+"Iron Horse",
+"Iron Horse.mp3",
+100
+],
+[
+"Industrial Music Box",
+"Industrial Music Box.mp3",
+103
+]
+],
+"battle": [
+[
+"Machinations",
+"Machinations.mp3",
+105
+]
+],
+"night": [
+[
+"Tenebrous Brothers Carnival - Mermaid",
+"Tenebrous Brothers Carnival - Mermaid.mp3",
+267
+]
+]
+},
+"space": {
+"explore": [
+[
+"Mesmerizing Galaxy",
+"Mesmerizing Galaxy Loop.mp3",
+93
+],
+[
+"Martian Cowboy",
+"Martian Cowboy.mp3",
+178
+],
+[
+"Orion 300XB",
+"Orion 300XB.mp3",
+223
+]
+],
+"tavern": [
+[
+"Space Jazz",
+"Space Jazz.mp3",
+370
+]
+],
+"tension": [
+[
+"Phantom from Space",
+"Phantom from Space.mp3",
+156
+],
+[
+"Shadowlands 6 - The Pit",
+"Shadowlands 6 - The Pit.mp3",
+206
+]
+],
+"battle": [
+[
+"Corruption",
+"Corruption.mp3",
+423
+]
+],
+"night": [
+[
+"Spellbound",
+"Spellbound.mp3",
+230
+]
+]
+},
+"western": {
+"explore": [
+[
+"Crossing the Divide",
+"Crossing the Divide.mp3",
+193
+],
+[
+"Fireflies and Stardust",
+"Fireflies and Stardust.mp3",
+255
+],
+[
+"Lost Frontier",
+"Lost Frontier.mp3",
+265
+]
+],
+"tavern": [
+[
+"Still Pickin",
+"Still Pickin.mp3",
+298
+]
+],
+"tension": [
+[
+"Smoking Gun",
+"Smoking Gun.mp3",
+188
+],
+[
+"Western Streets",
+"Western Streets.mp3",
+109
+]
+],
+"battle": [
+[
+"Robo-Western",
+"Robo-Western.mp3",
+61
+],
+[
+"Rynos Theme",
+"Rynos Theme.mp3",
+186
+]
+],
+"night": [
+[
+"Pale Rider",
+"Pale Rider.mp3",
+130
+]
+]
+},
+"pirates": {
+"explore": [
+[
+"Secret of Tiki Island",
+"Secret of Tiki Island.mp3",
+196
+],
+[
+"Moonlight Beach",
+"Moonlight Beach.mp3",
+339
+]
+],
+"tavern": [
+[
+"Captain Scurvy",
+"Captain Scurvy.mp3",
+227
+],
+[
+"Netherworld Shanty",
+"Netherworld Shanty.mp3",
+195
+]
+],
+"tension": [
+[
+"Malicious",
+"Malicious.mp3",
+223
+]
+],
+"battle": [
+[
+"Crossing the Chasm",
+"Crossing the Chasm.mp3",
+197
+]
+],
+"night": [
+[
+"With the Sea",
+"With the Sea.mp3",
+163
+]
+]
+},
+"east": {
+"explore": [
+[
+"Eastern Thought",
+"Eastern Thought.mp3",
+262
+],
+[
+"Senbazuru",
+"Senbazuru.mp3",
+94
+],
+[
+"Finding Movement",
+"Finding Movement.mp3",
+116
+]
+],
+"tavern": [
+[
+"Shenyang",
+"Shenyang.mp3",
+151
+],
+[
+"Guzheng City",
+"Guzheng City.mp3",
+114
+]
+],
+"tension": [
+[
+"Gathering Darkness",
+"Gathering Darkness.mp3",
+265
+]
+],
+"battle": [
+[
+"Mountain Emperor",
+"Mountain Emperor.mp3",
+200
+]
+],
+"night": [
+[
+"Ripples",
+"Ripples.mp3",
+205
+]
+],
+"sacred": [
+[
+"That Zen Moment",
+"That Zen Moment.mp3",
+602
+]
+]
+},
+"myth": {
+"explore": [
+[
+"Teller of the Tales",
+"Teller of the Tales.mp3",
+212
+],
+[
+"Ascending the Vale",
+"Ascending the Vale.mp3",
+248
+]
+],
+"tavern": [
+[
+"Greko (Sketch)",
+"Greko Sketch.mp3",
+215
+]
+],
+"tension": [
+[
+"Private Reflection",
+"Private Reflection.mp3",
+91
+]
+],
+"battle": [
+[
+"Strength of the Titans",
+"Strength of the Titans.mp3",
+62
+],
+[
+"Clash Defiant",
+"Clash Defiant.mp3",
+376
+]
+],
+"sacred": [
+[
+"Temple of the Manes",
+"Temple of the Manes.mp3",
+156
+],
+[
+"Ancient Rite",
+"Ancient Rite.mp3",
+113
+]
+],
+"night": [
+[
+"Rites",
+"Rites.mp3",
+127
+]
+]
+},
+"postapoc": {
+"explore": [
+[
+"Peaceful Desolation",
+"Peaceful Desolation.mp3",
+91
+],
+[
+"Industrial Cinematic",
+"Industrial Cinematic.mp3",
+244
+],
+[
+"Long Road Ahead",
+"Long Road Ahead.mp3",
+146
+]
+],
+"tavern": [
+[
+"Porch Blues",
+"Porch Blues.mp3",
+116
+]
+],
+"tension": [
+[
+"Decay",
+"Decay.mp3",
+278
+],
+[
+"Dark Times",
+"Dark Times.mp3",
+184
+]
+],
+"battle": [
+[
+"Metalmania",
+"Metalmania.mp3",
+190
+],
+[
+"Grim Idol",
+"Grim Idol.mp3",
+225
+]
+],
+"night": [
+[
+"Aftermath",
+"Aftermath.mp3",
+193
+]
+]
+},
+"modern": {
+"explore": [
+[
+"Half Mystery",
+"Half Mystery.mp3",
+429
+],
+[
+"Spy Glass",
+"Spy Glass.mp3",
+227
+],
+[
+"Secrets of the Schoolyard",
+"Secrets of the Schoolyard.mp3",
+178
+]
+],
+"tavern": [
+[
+"Deadly Roulette",
+"Deadly Roulette.mp3",
+159
+]
+],
+"tension": [
+[
+"Ghost Story",
+"Ghost Story.mp3",
+320
+],
+[
+"Darkest Child",
+"Darkest Child.mp3",
+239
+]
+],
+"battle": [
+[
+"Urban Gauntlet",
+"Urban Gauntlet.mp3",
+209
+]
+],
+"night": [
+[
+"Ice Demon",
+"Ice Demon.mp3",
+265
+]
+]
+}
+}
