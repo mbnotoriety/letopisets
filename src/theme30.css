@@ -1,0 +1,83 @@
+/* ===== THEME 30: чернильная синь, киноварная буквица, пометки на полях ===== */
+:root {
+  --ink: #13161d; --deep: #181c25; --shoal: #1e2330; --reef: #262c3b; --line: #2d3445; --line-soft: rgba(196, 206, 230, .08);
+  --foam: #eceae4; --mist: #a4a9b6; --dim: #737a8a; --page: #e4e0d6;
+  --cinnabar: #e0533c; --azure: #a9c1f2; --accent: #a9c1f2;
+}
+body { background: var(--ink); }
+.nav { background: rgba(19, 22, 29, .86); }
+/* без капслока и разрядки в подписях */
+.eyebrow, .scene-banner small, .sp-name, .e-player .who-s, .dlg-tag, .scene-head .eyebrow, .mtabs button { text-transform: none !important; letter-spacing: 0 !important; }
+.eyebrow { font-size: 12px !important; font-weight: 500 !important; color: var(--dim) !important; }
+/* текст рассказчика: крупнее, спокойнее, «страница» */
+#story { container-type: inline-size; container-name: story; }
+.e-narr.v2 { font-size: 17.5px !important; line-height: 1.74 !important; color: var(--page) !important; padding-left: 0 !important; letter-spacing: .002em; }
+.e-narr.v2::before { display: none !important; }
+.e-narr.v2 p { margin: 0 0 .95em !important; text-wrap: pretty; hyphens: auto; }
+.e-narr.v2 .tx > :last-child { margin-bottom: 0 !important; }
+.e-narr.v2 .lead-p { font-size: 1em !important; color: var(--page) !important; }
+.e-narr.v2 q { color: #fbf8f1 !important; }
+.e-narr.v2 b, .e-narr.v2 strong { color: #fbf8f1; font-weight: 600; }
+/* буквица — только в начале новой сцены */
+.e-first::first-letter { color: inherit !important; font-size: 1em !important; float: none !important; padding: 0 !important; font-weight: inherit !important; }
+.e-narr.v2.has-banner .tx > p:first-child::first-letter { float: left; font-family: var(--display); font-weight: 600; font-size: 3.35em; line-height: .86; margin: .07em .12em 0 -.02em; color: var(--cinnabar); }
+@supports (initial-letter: 2) { .e-narr.v2.has-banner .tx > p:first-child::first-letter { float: none; font-size: 1em; line-height: 1; margin: 0 .1em 0 0; initial-letter: 2; -webkit-initial-letter: 2; } }
+/* заставка сцены */
+.scene-banner { display: block !important; margin: 6px 0 16px !important; }
+.scene-banner .sb-l, .scene-banner .sb-r { display: none !important; }
+.scene-banner b { display: block; font-family: var(--display) !important; font-size: 22px !important; font-weight: 600 !important; line-height: 1.2; color: var(--foam) !important; max-width: none !important; white-space: normal !important; letter-spacing: -.012em; }
+.scene-banner small { display: block; margin-top: 3px; font-size: 13.5px !important; color: var(--dim) !important; }
+.e-narr.v2.has-banner { padding-top: 22px !important; border-top: 1px solid var(--line-soft); margin-top: 6px; }
+.feed-inner > .e-narr.v2.has-banner:first-child { border-top: 0; padding-top: 0 !important; margin-top: 0; }
+/* реплики */
+.sp-line { gap: 12px !important; margin: .1em 0 .85em !important; }
+.sp-ava { width: 30px !important; height: 30px !important; box-shadow: 0 0 0 1.5px var(--ac) !important; }
+.sp-body { border-left: 0 !important; padding: 0 !important; }
+.sp-name { font-family: var(--ui) !important; font-size: 13px !important; color: color-mix(in srgb, var(--ac) 70%, #ffffff) !important; font-weight: 600 !important; margin-bottom: 1px !important; }
+.sp-name small { font-weight: 400 !important; color: var(--dim) !important; font-size: 12.5px !important; }
+.sp-body p { color: #f4f1ea; }
+.ent.npc { color: var(--azure) !important; border-bottom: 1px solid rgba(169, 193, 242, .3) !important; font-weight: 500 !important; }
+.ent.place { border-bottom: 0 !important; font-weight: 600 !important; color: #f4f1ea !important; }
+/* ход игрока */
+.e-player { max-width: min(78%, 520px) !important; }
+.e-player .who-s { display: none !important; }
+.e-player .pl-tx { background: var(--shoal) !important; border: 0 !important; border-radius: 14px 14px 4px 14px !important; font-size: 15px !important; line-height: 1.5 !important; color: var(--foam) !important; padding: 10px 15px !important; }
+.e-player.act .pl-tx { color: var(--mist) !important; font-style: italic !important; }
+/* пометки на полях */
+.chips.moved { display: none !important; }
+.e-notes { list-style: none; margin: 14px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 14px; font-family: var(--ui); }
+.e-notes .nt { display: flex; align-items: baseline; gap: 7px; font-size: 13px; line-height: 1.35; color: var(--mist); }
+.e-notes .nt::before { content: ""; flex: none; width: 7px; height: 7px; border-radius: 2px; background: var(--dim); transform: translateY(-1px); }
+.e-notes .nt.xp::before { background: var(--azure); } .e-notes .nt.xp { color: #cfdbf7; }
+.e-notes .nt.item::before { background: #d6c79a; } .e-notes .nt.gold::before { background: #d6b25e; }
+.e-notes .nt.heal::before, .e-notes .nt.appr-up::before { background: #5fc796; }
+.e-notes .nt.dmg::before, .e-notes .nt.appr-dn::before { background: var(--cinnabar); }
+.e-notes .nt.npc::before { background: var(--mist); border-radius: 50%; }
+.e-notes .nt.new { animation: ntIn .5s ease-out both; }
+@keyframes ntIn { from { opacity: 0; transform: translateX(-6px); } }
+.chips.chips-inline { justify-content: flex-start; align-self: stretch; gap: 6px 14px; }
+.chips.chips-inline .chip { border: 0; background: none; padding: 0; font-size: 13px; font-weight: 500; color: var(--mist); }
+/* широкая колонка: пометки уходят на поля справа */
+@container story (min-width: 900px) {
+  .feed-inner { max-width: 640px !important; padding-right: 236px !important; }
+  .e-narr.v2 { position: relative; font-size: 18px !important; }
+  .e-notes { position: absolute; top: 2px; left: calc(100% + 36px); width: 196px; margin: 0; flex-direction: column; flex-wrap: nowrap; gap: 9px; padding-left: 14px; border-left: 1px solid var(--line-soft); }
+  .e-narr.v2.has-banner .e-notes { top: 24px; }
+  .chips.chips-inline { margin-right: -236px; }
+  .composer-inner { max-width: 640px !important; padding-right: 236px; padding-left: 16px; box-sizing: content-box; }
+}
+/* шапка сцены и правая колонка в той же палитре */
+.scene { border-bottom-color: var(--line-soft) !important; }
+.scene h2 { font-size: 20px !important; }
+.e-roll { background: var(--deep) !important; }
+.inrow { background: var(--deep) !important; border-color: var(--line) !important; }
+.dlg { background: var(--deep) !important; }
+.sugg button.cont { border-color: var(--line) !important; }
+@media (max-width: 600px) {
+  .e-narr.v2 { font-size: 16.5px !important; line-height: 1.7 !important; }
+  .scene-banner b { font-size: 19px !important; }
+  .e-narr.v2.has-banner .tx > p:first-child::first-letter { font-size: 3em; }
+  .e-notes { gap: 5px 12px; } .e-notes .nt { font-size: 12.5px; }
+}
+@media (prefers-reduced-motion: reduce) { .e-notes .nt.new { animation: none; } }
+.e-narr.v2 .sp-body p { margin: 0 !important; }
